@@ -13,6 +13,8 @@
     qty: 100,
     fileName: null,
     fileURL: null,
+    dieCutURL: null,   // canvas-generated die-cut (image + smooth white contour)
+    dieBorder: 26,     // perimeter offset in px (at processing scale)
     bg: "studio",
     // image placement
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false },
@@ -55,6 +57,106 @@
 
   var els = {};
   function $(id) { return document.getElementById(id); }
+
+  // ---- Die-cut generator: trace silhouette, offset perimeter, smooth ----
+  function clampi(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  // separable max-dilation (grows the mask outward by r)
+  function dilateMax(src, W, H, r) {
+    if (r < 1) return src;
+    var tmp = new Float32Array(W * H), out = new Float32Array(W * H), x, y, xx, yy, m, row;
+    for (y = 0; y < H; y++) {
+      row = y * W;
+      for (x = 0; x < W; x++) {
+        m = 0; var x0 = x - r < 0 ? 0 : x - r, x1 = x + r >= W ? W - 1 : x + r;
+        for (xx = x0; xx <= x1; xx++) { if (src[row + xx] > m) m = src[row + xx]; }
+        tmp[row + x] = m;
+      }
+    }
+    for (x = 0; x < W; x++) {
+      for (y = 0; y < H; y++) {
+        m = 0; var y0 = y - r < 0 ? 0 : y - r, y1 = y + r >= H ? H - 1 : y + r;
+        for (yy = y0; yy <= y1; yy++) { if (tmp[yy * W + x] > m) m = tmp[yy * W + x]; }
+        out[y * W + x] = m;
+      }
+    }
+    return out;
+  }
+
+  // separable box blur (smooths jagged edges into curves)
+  function boxBlur(src, W, H, r) {
+    if (r < 1) return src;
+    var tmp = new Float32Array(W * H), out = new Float32Array(W * H), win = 2 * r + 1, x, y, k, sum, row;
+    for (y = 0; y < H; y++) {
+      row = y * W; sum = 0;
+      for (k = -r; k <= r; k++) sum += src[row + clampi(k, 0, W - 1)];
+      for (x = 0; x < W; x++) { tmp[row + x] = sum / win; sum += src[row + clampi(x + r + 1, 0, W - 1)] - src[row + clampi(x - r, 0, W - 1)]; }
+    }
+    for (x = 0; x < W; x++) {
+      sum = 0;
+      for (k = -r; k <= r; k++) sum += tmp[clampi(k, 0, H - 1) * W + x];
+      for (y = 0; y < H; y++) { out[y * W + x] = sum / win; sum += tmp[clampi(y + r + 1, 0, H - 1) * W + x] - tmp[clampi(y - r, 0, H - 1) * W + x]; }
+    }
+    return out;
+  }
+
+  function makeDieCut(url, border, cb) {
+    var im = new Image();
+    im.onload = function () {
+      var maxDim = 520;
+      var s = Math.min(1, maxDim / Math.max(im.naturalWidth, im.naturalHeight));
+      var iw = Math.max(1, Math.round(im.naturalWidth * s)), ih = Math.max(1, Math.round(im.naturalHeight * s));
+      // border thickness proportional to the art's larger side (slider 0-60)
+      var b = clampi(Math.round(Math.max(iw, ih) * border / 440), 0, 90);
+      var smooth = Math.max(1, Math.round(b * 0.55) + 2);
+      var pad = b + smooth + 8;
+      var W = iw + pad * 2, H = ih + pad * 2;
+      var c = document.createElement("canvas"); c.width = W; c.height = H;
+      var ctx = c.getContext("2d");
+      ctx.drawImage(im, pad, pad, iw, ih);
+      var data = ctx.getImageData(0, 0, W, H).data;
+
+      // alpha silhouette; if the image is fully opaque, fall back to its bounding box
+      var a = new Float32Array(W * H), i, transparentSeen = false;
+      for (i = 0; i < W * H; i++) { var al = data[i * 4 + 3]; a[i] = al; if (al < 250) transparentSeen = true; }
+      if (!transparentSeen) {
+        // opaque photo -> treat drawn rectangle as the silhouette
+        for (i = 0; i < W * H; i++) a[i] = 0;
+        for (var yy = pad; yy < pad + ih; yy++) for (var xx = pad; xx < pad + iw; xx++) a[yy * W + xx] = 255;
+      }
+
+      var m = dilateMax(a, W, H, b);      // offset perimeter outward
+      m = boxBlur(m, W, H, smooth);       // smooth the corners
+      m = boxBlur(m, W, H, Math.ceil(smooth / 2));
+
+      // white border layer with anti-aliased edge (threshold with a soft ramp)
+      var out = ctx.createImageData(W, H), t = 128, ramp = 30, v, alpha;
+      for (i = 0; i < W * H; i++) {
+        v = m[i];
+        alpha = clampi((v - (t - ramp / 2)) / ramp * 255, 0, 255);
+        out.data[i * 4] = 255; out.data[i * 4 + 1] = 255; out.data[i * 4 + 2] = 255; out.data[i * 4 + 3] = alpha;
+      }
+      ctx.clearRect(0, 0, W, H);
+      ctx.putImageData(out, 0, 0);
+      ctx.drawImage(im, pad, pad, iw, ih); // artwork on top of the white contour
+      try { cb(c.toDataURL("image/png")); } catch (e) { cb(null); }
+    };
+    im.onerror = function () { cb(null); };
+    im.src = url;
+  }
+
+  var dieTimer = null;
+  function regenDieCut(immediate) {
+    if (!state.fileURL) { state.dieCutURL = null; return; }
+    clearTimeout(dieTimer);
+    var run = function () {
+      makeDieCut(state.fileURL, state.dieBorder, function (dataUrl) {
+        state.dieCutURL = dataUrl;
+        if (state.shape === "die") renderPreview();
+      });
+    };
+    if (immediate) run(); else dieTimer = setTimeout(run, 180);
+  }
 
   function applyImgTransform() {
     var img = els.artwork && els.artwork.querySelector("img.cz-img");
@@ -99,7 +201,7 @@
     var img = art.querySelector("img.cz-img");
     if (hasImg) {
       if (!img) { img = document.createElement("img"); img.className = "cz-img"; img.alt = "Your artwork preview"; art.appendChild(img); }
-      img.src = state.fileURL;
+      img.src = (dieLive && state.dieCutURL) ? state.dieCutURL : state.fileURL;
       applyImgTransform();
       if (els.artLabel) els.artLabel.style.display = "none";
     } else {
@@ -122,6 +224,8 @@
       if (state.bg === "white") els.paper.classList.add("pg-white");
       else if (state.bg === "black") els.paper.classList.add("pg-black");
     }
+
+    if (els.borderRow) els.borderRow.hidden = !(die && hasImg);
   }
 
   // ---- Price render -----------------------------------------------------
@@ -246,6 +350,9 @@
     if (els.y) els.y.addEventListener("input", function () {
       state.img.y = clamp(parseInt(els.y.value, 10) || 0, -XY_MAX, XY_MAX); applyImgTransform();
     });
+    if (els.border) els.border.addEventListener("input", function () {
+      state.dieBorder = parseInt(els.border.value, 10) || 0; regenDieCut();
+    });
     if (els.editor) els.editor.addEventListener("click", function (e) {
       var b = e.target.closest("button[data-fit]");
       if (b) resetPlacement(b.getAttribute("data-fit"));
@@ -354,9 +461,11 @@
       if (fileState) fileState.textContent = "uploaded";
       // reset placement for the new image
       state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
+      state.dieCutURL = null;
       syncEditorInputs();
       renderPreview();
       showEditor(!!state.fileURL);
+      if (state.fileURL) regenDieCut(true);
       if (!state.fileURL) {
         // non-image file (PDF/AI): still note it, but no visual editor
         window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Got " + file.name + ", we'll render a proof from it" }));
@@ -389,11 +498,16 @@
       labelW: $("czLabelW"), labelH: $("czLabelH"),
       priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), savings: $("czSavings"),
       editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
+      border: $("ceBorder"), borderRow: $("ceBorderRow"),
       proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
       proofStage: $("proofStage"), proofSummary: $("proofSummary"),
     };
     wireGroup("finishOpts", "data-finish", function (v) { state.finish = v; renderAll(); });
-    wireGroup("shapeOpts", "data-shape", function (v) { state.shape = v; renderAll(); });
+    wireGroup("shapeOpts", "data-shape", function (v) {
+      state.shape = v;
+      if (v === "die" && state.fileURL && !state.dieCutURL) regenDieCut(true);
+      renderAll();
+    });
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
     wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
     wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });

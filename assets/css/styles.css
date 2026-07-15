@@ -395,13 +395,8 @@ section { position: relative; }
 .cz-artwork.die-empty { background: rgba(255,255,255,.03) !important; border: 2px dashed var(--line-strong); border-radius: 14px; }
 .cz-paper.pg-white .cz-artwork.die-empty { background: rgba(0,0,0,.03) !important; border-color: rgba(0,0,0,.25); }
 .cz-artwork.die-live { background: transparent !important; border: none !important; overflow: visible; }
-.cz-artwork.die-live img.cz-img {
-  text-shadow: none;
-  filter:
-    drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
-    drop-shadow(1.5px 1.5px 0 #fff) drop-shadow(-1.5px 1.5px 0 #fff) drop-shadow(1.5px -1.5px 0 #fff) drop-shadow(-1.5px -1.5px 0 #fff)
-    drop-shadow(3px 7px 7px rgba(0,0,0,.5));
-}
+/* border is rendered into the image on a canvas; just add a soft cast shadow */
+.cz-artwork.die-live img.cz-img { filter: drop-shadow(3px 7px 8px rgba(0,0,0,.5)); }
 .cz-scale-label { position: absolute; font-family: var(--font-round); font-size: 11px; color: rgba(255,255,255,.5); }
 .cz-scale-label.w { bottom: 18px; left: 50%; transform: translateX(-50%); }
 .cz-scale-label.h { left: 18px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
