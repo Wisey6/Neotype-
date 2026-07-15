@@ -283,7 +283,18 @@
     </div>
   </div>
 
-  <script src="assets/js/customizer.js?v=18" defer></script>
-  <script src="assets/js/main.js?v=18" defer></script>
+  <!-- Checkout config. Empty keys = inert (demo mode). See CHECKOUT-SETUP.md.
+       To go live: paste Ian's Snipcart public API key (and a file-host key)
+       and connect Stripe/PayPal inside the Snipcart dashboard. -->
+  <script>
+    window.NEOTYPE_CHECKOUT = {
+      snipcartKey: "",     // Snipcart PUBLIC API key (safe to expose)
+      uploadcareKey: "",   // Uploadcare public key for artwork uploads
+      currency: "aud"
+    };
+  </script>
+  <script src="assets/js/checkout.js?v=19" defer></script>
+  <script src="assets/js/customizer.js?v=19" defer></script>
+  <script src="assets/js/main.js?v=19" defer></script>
 </body>
 </html>

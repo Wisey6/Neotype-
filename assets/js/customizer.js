@@ -12,6 +12,7 @@
     size: 3,
     qty: 100,
     fileName: null,
+    file: null,
     fileURL: null,
     dieCutURL: null,   // canvas-generated die-cut (image + smooth contour)
     cutLineURL: null,  // proof-only green cut-line traced from the die-cut edge
@@ -554,11 +555,8 @@
     });
     var addInProof = $("proofAddCart");
     if (addInProof) addInProof.addEventListener("click", function () {
-      var r = compute();
       closeProof();
-      window.dispatchEvent(new CustomEvent("neotype:toast", {
-        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
-      }));
+      addToCart();
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && m && !m.hidden) closeProof();
@@ -574,6 +572,7 @@
     function accept(file) {
       if (!file) return;
       if (state.fileURL) { try { URL.revokeObjectURL(state.fileURL); } catch (_) {} }
+      state.file = file;
       state.fileName = file.name;
       state.isVector = /svg/i.test(file.type) || /\.svg$/i.test(file.name || "");
       state.fileURL = /^image\//.test(file.type) ? URL.createObjectURL(file) : null;
@@ -601,14 +600,42 @@
   }
 
   // ---- Cart -------------------------------------------------------------
+  // A full structured order: everything Ian needs to quote, proof and print.
+  function buildOrder() {
+    var r = compute();
+    return {
+      id: ["neotype", state.finish, state.shape, state.size, state.qty].join("-"),
+      name: SHAPE_LABEL[state.shape] + " sticker · " + state.size + "″ · " + FINISH[state.finish].label,
+      price: Math.round(r.total * 100) / 100,
+      qty: state.qty,
+      currency: CURRENCY,
+      file: state.file,
+      fileName: state.fileName,
+      fields: {
+        "Finish": FINISH[state.finish].label,
+        "Cut": SHAPE_LABEL[state.shape],
+        "Size": state.size + " in",
+        "Quantity": state.qty + " stickers",
+        "Background": state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
+        "Cut colour": state.dieBorderColor,
+        "Area": r.area.toFixed(3) + " m²"
+      }
+    };
+  }
+
+  function addToCart() {
+    var nc = window.NeotypeCheckout;
+    if (nc && nc.enabled) { nc.checkout(buildOrder()); return; }
+    // no checkout keys configured yet -> keep the demo behaviour
+    var r = compute();
+    window.dispatchEvent(new CustomEvent("neotype:toast", {
+      detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
+    }));
+  }
+
   function wireActions() {
     var add = $("addCart");
-    if (add) add.addEventListener("click", function () {
-      var r = compute();
-      window.dispatchEvent(new CustomEvent("neotype:toast", {
-        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
-      }));
-    });
+    if (add) add.addEventListener("click", addToCart);
   }
 
   // ---- Init -------------------------------------------------------------
