@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Neotype — site interactions: mobile nav, scroll reveals, FAQ, toast,
+   Neotype, site interactions: mobile nav, scroll reveals, FAQ, toast,
    newsletter, and a light hero peel micro-interaction.
    ========================================================================== */
 (function () {
@@ -71,7 +71,7 @@
         if (email) email.focus();
         return;
       }
-      showToast("You're in — 15% off is on its way to " + val);
+      showToast("You're in, 15% off is on its way to " + val);
       form.reset();
     });
   }

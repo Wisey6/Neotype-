@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Neotype Studio customizer — live configurator, price calculator, and an
+   Neotype Studio customizer, live configurator, price calculator, and an
    image editor (drag / zoom / rotate / fit) for placing uploaded artwork.
    Front-end only: no backend, no real payment.
    ========================================================================== */
@@ -48,7 +48,7 @@
     "vinyl-matte": "linear-gradient(150deg, #06e4dd, #04a49f 45%, #764cd9)",
     "vinyl-gloss": "linear-gradient(140deg, #3af0ea, #06e4dd 45%, #8f6ce6)",
     "clear":       "repeating-conic-gradient(#2b3a44 0% 25%, #223038 0% 50%)",
-    "glitter":     "radial-gradient(#8f6ce6, #4b2bd4)",
+    "glitter":     "radial-gradient(circle at 38% 30%, #b895ff, #6a3fd6 68%, #4b2bd4)",
   };
 
   var els = {};
@@ -239,7 +239,7 @@
       showEditor(!!state.fileURL);
       if (!state.fileURL) {
         // non-image file (PDF/AI): still note it, but no visual editor
-        window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Got " + file.name + " — we'll render a proof from it" }));
+        window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Got " + file.name + ", we'll render a proof from it" }));
       }
     }
 
@@ -257,12 +257,12 @@
     if (add) add.addEventListener("click", function () {
       var r = compute();
       window.dispatchEvent(new CustomEvent("neotype:toast", {
-        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + " — $" + Math.round(r.total)
+        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total)
       }));
     });
     if (proof) proof.addEventListener("click", function () {
       var msg = state.fileName
-        ? "Proof requested for " + state.fileName + " — check your email within a day"
+        ? "Proof requested for " + state.fileName + ", check your email within a day"
         : "Upload artwork above and we'll send a free proof within a day";
       window.dispatchEvent(new CustomEvent("neotype:toast", { detail: msg }));
     });
