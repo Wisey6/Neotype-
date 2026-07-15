@@ -16,6 +16,7 @@
     dieCutURL: null,   // canvas-generated die-cut (image + smooth contour)
     dieBorder: 26,     // perimeter offset in px (at processing scale)
     dieBorderColor: "#ffffff", // die-cut contour colour (white or black)
+    isVector: false,   // uploaded artwork is an SVG (render die-cut at high res)
     bg: "studio",
     // image placement
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false },
@@ -107,47 +108,69 @@
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 
-  function makeDieCut(url, border, color, cb) {
+  // Generate a die-cut: compute the smooth contour cheaply at low res, then
+  // composite it under a HIGH-res raster of the artwork so zooming stays crisp
+  // (vector SVGs are rendered large; rasters are not upscaled past native).
+  function makeDieCut(url, border, color, isVector, cb) {
     var rgb = hexRGB(color);
     var im = new Image();
     im.onload = function () {
-      var maxDim = 520;
-      var s = Math.min(1, maxDim / Math.max(im.naturalWidth, im.naturalHeight));
-      var iw = Math.max(1, Math.round(im.naturalWidth * s)), ih = Math.max(1, Math.round(im.naturalHeight * s));
-      // border thickness proportional to the art's larger side (slider 0-60)
-      var b = clampi(Math.round(Math.max(iw, ih) * border / 440), 0, 90);
-      var smooth = Math.max(1, Math.round(b * 0.55) + 2);
-      var pad = b + smooth + 8;
-      var W = iw + pad * 2, H = ih + pad * 2;
-      var c = document.createElement("canvas"); c.width = W; c.height = H;
-      var ctx = c.getContext("2d");
-      ctx.drawImage(im, pad, pad, iw, ih);
-      var data = ctx.getImageData(0, 0, W, H).data;
+      var nw = im.naturalWidth || 400, nh = im.naturalHeight || 400, ar = nw / nh;
+      // hi-res artwork target (crisp when zoomed)
+      var HI = 1300;
+      var hiW, hiH;
+      if (ar >= 1) { hiW = HI; hiH = Math.round(HI / ar); }
+      else { hiH = HI; hiW = Math.round(HI * ar); }
+      if (!isVector) { // don't upscale a raster beyond its native pixels
+        if (hiW > nw) { hiW = nw; hiH = nh; }
+      }
+      hiW = Math.max(1, hiW); hiH = Math.max(1, hiH);
 
-      // alpha silhouette; if the image is fully opaque, fall back to its bounding box
-      var a = new Float32Array(W * H), i, transparentSeen = false;
-      for (i = 0; i < W * H; i++) { var al = data[i * 4 + 3]; a[i] = al; if (al < 250) transparentSeen = true; }
-      if (!transparentSeen) {
-        // opaque photo -> treat drawn rectangle as the silhouette
-        for (i = 0; i < W * H; i++) a[i] = 0;
-        for (var yy = pad; yy < pad + ih; yy++) for (var xx = pad; xx < pad + iw; xx++) a[yy * W + xx] = 255;
+      // low-res pass for the (expensive) morphology
+      var LO = 340;
+      var los = Math.min(1, LO / Math.max(hiW, hiH));
+      var lw = Math.max(1, Math.round(hiW * los)), lh = Math.max(1, Math.round(hiH * los));
+      var b = clampi(Math.round(Math.max(lw, lh) * border / 440), 0, 70);
+      var smooth = Math.max(1, Math.round(b * 0.55) + 1);
+      var lpad = b + smooth + 4;
+      var LW = lw + lpad * 2, LH = lh + lpad * 2;
+
+      var lc = document.createElement("canvas"); lc.width = LW; lc.height = LH;
+      var lctx = lc.getContext("2d");
+      lctx.drawImage(im, lpad, lpad, lw, lh);
+      var ldata = lctx.getImageData(0, 0, LW, LH).data;
+
+      var a = new Float32Array(LW * LH), i, transparentSeen = false;
+      for (i = 0; i < LW * LH; i++) { var al = ldata[i * 4 + 3]; a[i] = al; if (al < 250) transparentSeen = true; }
+      if (!transparentSeen) { // opaque image -> use its bounding box
+        for (i = 0; i < LW * LH; i++) a[i] = 0;
+        for (var yy = lpad; yy < lpad + lh; yy++) for (var xx = lpad; xx < lpad + lw; xx++) a[yy * LW + xx] = 255;
       }
 
-      var m = dilateMax(a, W, H, b);      // offset perimeter outward
-      m = boxBlur(m, W, H, smooth);       // smooth the corners
-      m = boxBlur(m, W, H, Math.ceil(smooth / 2));
+      var m = dilateMax(a, LW, LH, b);
+      m = boxBlur(m, LW, LH, smooth);
+      m = boxBlur(m, LW, LH, Math.ceil(smooth / 2));
 
-      // coloured border layer with anti-aliased edge (threshold with a soft ramp)
-      var out = ctx.createImageData(W, H), t = 128, ramp = 30, v, alpha;
-      for (i = 0; i < W * H; i++) {
+      // low-res coloured border mask (soft edges -> upscales cleanly)
+      var mc = document.createElement("canvas"); mc.width = LW; mc.height = LH;
+      var mim = mc.getContext("2d").createImageData(LW, LH);
+      var t = 128, ramp = 30, v, alpha;
+      for (i = 0; i < LW * LH; i++) {
         v = m[i];
         alpha = clampi((v - (t - ramp / 2)) / ramp * 255, 0, 255);
-        out.data[i * 4] = rgb[0]; out.data[i * 4 + 1] = rgb[1]; out.data[i * 4 + 2] = rgb[2]; out.data[i * 4 + 3] = alpha;
+        mim.data[i * 4] = rgb[0]; mim.data[i * 4 + 1] = rgb[1]; mim.data[i * 4 + 2] = rgb[2]; mim.data[i * 4 + 3] = alpha;
       }
-      ctx.clearRect(0, 0, W, H);
-      ctx.putImageData(out, 0, 0);
-      ctx.drawImage(im, pad, pad, iw, ih); // artwork on top of the white contour
-      try { cb(c.toDataURL("image/png")); } catch (e) { cb(null); }
+      mc.getContext("2d").putImageData(mim, 0, 0);
+
+      // hi-res composite: upscaled border under a crisp artwork raster
+      var up = hiW / lw, hpad = Math.round(lpad * up);
+      var HW = hiW + hpad * 2, HH = hiH + hpad * 2;
+      var hc = document.createElement("canvas"); hc.width = HW; hc.height = HH;
+      var hctx = hc.getContext("2d");
+      hctx.imageSmoothingEnabled = true; hctx.imageSmoothingQuality = "high";
+      hctx.drawImage(mc, 0, 0, LW, LH, 0, 0, HW, HH);
+      hctx.drawImage(im, hpad, hpad, hiW, hiH);
+      try { cb(hc.toDataURL("image/png")); } catch (e) { cb(null); }
     };
     im.onerror = function () { cb(null); };
     im.src = url;
@@ -158,7 +181,7 @@
     if (!state.fileURL) { state.dieCutURL = null; return; }
     clearTimeout(dieTimer);
     var run = function () {
-      makeDieCut(state.fileURL, state.dieBorder, state.dieBorderColor, function (dataUrl) {
+      makeDieCut(state.fileURL, state.dieBorder, state.dieBorderColor, state.isVector, function (dataUrl) {
         state.dieCutURL = dataUrl;
         if (state.shape === "die") renderPreview();
       });
@@ -465,6 +488,7 @@
       if (!file) return;
       if (state.fileURL) { try { URL.revokeObjectURL(state.fileURL); } catch (_) {} }
       state.fileName = file.name;
+      state.isVector = /svg/i.test(file.type) || /\.svg$/i.test(file.name || "");
       state.fileURL = /^image\//.test(file.type) ? URL.createObjectURL(file) : null;
       if (fileLine) { fileLine.hidden = false; fileLine.textContent = "✓ " + file.name; }
       if (fileState) fileState.textContent = "uploaded";
