@@ -459,6 +459,7 @@ section { position: relative; }
 .cz-editor { width: 100%; max-width: 340px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(0,0,0,0.22); padding: 14px 16px; }
 .cz-editor[hidden] { display: none; }
 .cz-editor .ce-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.cz-editor .ce-row[hidden] { display: none; }
 .cz-editor .ce-row label { font-family: var(--font-round); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); width: 78px; flex: none; }
 .cz-editor input[type="range"] { flex: 1; accent-color: var(--teal); height: 4px; }
 .ce-swatches { display: flex; gap: 8px; flex: 1; }
@@ -478,6 +479,14 @@ section { position: relative; }
 .field > label b { color: var(--teal); font-weight: 700; }
 .opt-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .opt-help { font-family: var(--font-round); font-size: 12.5px; line-height: 1.5; color: var(--muted); margin: 9px 2px 0; }
+.swatch-row { gap: 10px; align-items: center; }
+.fsw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); cursor: pointer; padding: 0; position: relative; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.fsw:hover { transform: scale(1.12); }
+.fsw[aria-pressed="true"] { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.28); }
+.fsw-auto { background: linear-gradient(150deg, #06e4dd, #04a49f 45%, #764cd9); }
+.fsw-custom { overflow: hidden; display: grid; place-items: center; background: conic-gradient(from 0deg, #ff5ec9, #ffd400, #06e4dd, #764cd9, #ff5ec9); }
+.fsw-custom input[type="color"] { opacity: 0; width: 140%; height: 140%; cursor: pointer; border: 0; padding: 0; background: none; }
+.fsw-custom.is-active { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.28); }
 .opt { font-family: var(--font-round); font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: 100px; border: 1.5px solid var(--line-soft); background: var(--bg-3); color: var(--text); cursor: pointer; transition: .15s; user-select: none; }
 .opt:hover { border-color: var(--line-strong); }
 .opt[aria-pressed="true"] { background: var(--teal); color: #06231f; border-color: var(--teal); }

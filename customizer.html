@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=17" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=18" />
 </head>
 <body>
 
@@ -156,6 +156,24 @@
               <p class="opt-help" id="shapeHelp">Cut tight to the exact edge of your artwork, with a clean contour border.</p>
             </div>
 
+            <div class="field" id="fillField">
+              <label>Background <b id="czFillVal">Studio gradient</b></label>
+              <div class="opt-row swatch-row" id="fillOpts" role="group" aria-label="Background colour">
+                <button class="fsw fsw-auto" data-fill="auto" aria-pressed="true" title="Studio gradient"></button>
+                <button class="fsw" data-fill="#06e4dd" aria-pressed="false" title="Teal" style="background:#06e4dd"></button>
+                <button class="fsw" data-fill="#764cd9" aria-pressed="false" title="Purple" style="background:#764cd9"></button>
+                <button class="fsw" data-fill="#ec008c" aria-pressed="false" title="Pink" style="background:#ec008c"></button>
+                <button class="fsw" data-fill="#00ff09" aria-pressed="false" title="Green" style="background:#00ff09"></button>
+                <button class="fsw" data-fill="#ffd400" aria-pressed="false" title="Yellow" style="background:#ffd400"></button>
+                <button class="fsw" data-fill="#212830" aria-pressed="false" title="Ink" style="background:#212830"></button>
+                <button class="fsw" data-fill="#ffffff" aria-pressed="false" title="White" style="background:#fff"></button>
+                <label class="fsw fsw-custom" title="Custom colour">
+                  <input type="color" id="fillCustom" value="#30bfbb" aria-label="Custom background colour" />
+                </label>
+              </div>
+              <p class="opt-help" id="fillHelp">Sets the colour behind your art. Great for a transparent logo.</p>
+            </div>
+
             <div class="field">
               <label>Size <b id="czSizeVal">3 × 3 in</b></label>
               <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
@@ -265,7 +283,7 @@
     </div>
   </div>
 
-  <script src="assets/js/customizer.js?v=17" defer></script>
-  <script src="assets/js/main.js?v=17" defer></script>
+  <script src="assets/js/customizer.js?v=18" defer></script>
+  <script src="assets/js/main.js?v=18" defer></script>
 </body>
 </html>

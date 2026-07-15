@@ -18,6 +18,7 @@
     dieBorder: 26,     // perimeter offset in px (at processing scale)
     dieBorderColor: "#ffffff", // die-cut contour colour (white or black)
     isVector: false,   // uploaded artwork is an SVG (render die-cut at high res)
+    fillColor: "auto", // fixed-shape fill: "auto" (finish look) or a hex colour
     bg: "studio",
     // image placement
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false },
@@ -285,12 +286,22 @@
 
     // finish material: shown for fixed shapes; die-cut carries no fill (it is the art)
     art.classList.remove("cz-holo", "cz-chrome", "cz-glitter");
+    var material = state.finish === "holographic" || state.finish === "chrome" || state.finish === "glitter";
+    var customFill = state.fillColor && state.fillColor !== "auto";
     if (die) {
       art.style.background = "";
     } else if (state.finish === "holographic") { art.style.background = ""; art.classList.add("cz-holo"); }
     else if (state.finish === "chrome") { art.style.background = ""; art.classList.add("cz-chrome"); }
     else if (state.finish === "glitter") { art.style.background = FINISH_BG.glitter; art.classList.add("cz-glitter"); }
+    else if (customFill) {
+      // solid colour behind the art, with a soft sheen so it reads as vinyl
+      art.style.background = "linear-gradient(150deg, rgba(255,255,255,.16), rgba(255,255,255,0) 42%, rgba(0,0,0,.10)), " + state.fillColor;
+    }
     else { art.style.background = FINISH_BG[state.finish] || FINISH_BG["vinyl-matte"]; }
+
+    // Background colour control only applies to fixed shapes with a solid finish
+    var fillField = document.getElementById("fillField");
+    if (fillField) fillField.hidden = die || material;
 
     var img = art.querySelector("img.cz-img");
     if (hasImg) {
@@ -358,6 +369,8 @@
     setTxt("czQtyVal", state.qty.toLocaleString() + " stickers");
     var help = document.getElementById("shapeHelp");
     if (help) help.textContent = SHAPE_HELP[state.shape] || "";
+    var FILL_NAMES = { "auto": "Studio gradient", "#06e4dd": "Teal", "#764cd9": "Purple", "#ec008c": "Pink", "#00ff09": "Green", "#ffd400": "Yellow", "#212830": "Ink", "#ffffff": "White" };
+    setTxt("czFillVal", FILL_NAMES[state.fillColor] || (state.fillColor === "auto" ? "Studio gradient" : "Custom"));
   }
   function setTxt(id, t) { var e = $(id); if (e) e.textContent = t; }
   function renderAll() { renderPreview(); renderPrice(); renderLabels(); }
@@ -615,6 +628,25 @@
       if ((v === "die" || v === "kiss") && state.fileURL && !state.dieCutURL) regenDieCut(true);
       renderAll();
     });
+    var fillCustom = $("fillCustom");
+    wireGroup("fillOpts", "data-fill", function (v) {
+      state.fillColor = v;
+      var cw = document.querySelector(".fsw-custom");
+      if (cw) cw.classList.remove("is-active");
+      renderAll();
+    });
+    if (fillCustom) {
+      var pickCustom = function () {
+        state.fillColor = fillCustom.value;
+        var opts = $("fillOpts");
+        if (opts) opts.querySelectorAll("button[data-fill]").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+        var cw = document.querySelector(".fsw-custom");
+        if (cw) cw.classList.add("is-active");
+        renderAll();
+      };
+      fillCustom.addEventListener("input", pickCustom);
+      fillCustom.addEventListener("change", pickCustom);
+    }
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
     wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
     wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });
