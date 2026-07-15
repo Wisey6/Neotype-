@@ -227,7 +227,7 @@ section { position: relative; }
 
 /* main hero sticker = the die-cut sticker, floating and glitching */
 .hero-logo-sticker {
-  width: 400px; max-width: 88%; z-index: 3; position: relative;
+  width: 340px; max-width: 82%; z-index: 3; position: relative;
   transform: rotate(-4deg); cursor: pointer;
   filter: drop-shadow(6px 12px 20px rgba(0,0,0,0.55)) drop-shadow(0 0 22px rgba(6,228,221,0.28));
   animation: drop-in .9s cubic-bezier(.2,.9,.25,1.2) both;
@@ -239,6 +239,48 @@ section { position: relative; }
 .hero-sticker-4 { width: 84px; height: 84px; border-radius: 20px; background: var(--green); color: #063d02; position: absolute; bottom: 78px; right: -8px; z-index: 2; transform: rotate(-12deg); font-size: .8rem; animation: drop-in 1s .36s cubic-bezier(.2,.9,.25,1.2) both; }
 
 @keyframes drop-in { 0% { opacity: 0; transform: translateY(-30px) rotate(var(--r, 0deg)) scale(.8); } 100% { opacity: 1; } }
+
+/* ---- Emoji stickers (scattered) -------------------------------------- */
+.est {
+  position: absolute; display: grid; place-items: center;
+  width: var(--s, 66px); height: var(--s, 66px);
+  border: 4px solid #fff; border-radius: 22px;
+  background: var(--est-bg, #06e4dd);
+  box-shadow: var(--shadow-peel);
+  transform: rotate(var(--r, 0deg)); transform-origin: center;
+  font-size: calc(var(--s, 66px) * 0.5); line-height: 1; z-index: 4;
+  transition: transform .28s cubic-bezier(.2,.9,.3,1.2);
+  animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: var(--d, 0s);
+}
+.est::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 24px; height: 24px; background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,.92) 50%); border-bottom-right-radius: 16px; box-shadow: -2px -2px 6px rgba(0,0,0,.22) inset; transition: width .25s ease, height .25s ease; }
+.est:hover { transform: rotate(0deg) scale(1.1); z-index: 12; }
+.est:hover::after { width: 34px; height: 34px; }
+.est.circle { border-radius: 50%; }
+.est.blob { border-radius: 62% 38% 44% 56% / 52% 44% 56% 48%; }
+.est.holo { background: repeating-linear-gradient(112deg, #ff5ec9 0 9%, #ffd24a 15%, #37f2c3 24%, #3aa0ff 33%, #a24bff 42%, #ff5ec9 51%); background-size: 260% 260%; animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both, holo-shift 6s linear infinite; }
+.est.glit { background: radial-gradient(circle at 38% 30%, #b895ff, #6a3fd6 68%, #4b2bd4); }
+
+/* ---- Manifesto ------------------------------------------------------- */
+.manifesto { text-align: left; }
+.manifesto .wrap { max-width: 960px; }
+.manifesto-text {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(1.7rem, 3.6vw, 3rem); line-height: 1.7; letter-spacing: -0.01em;
+  color: var(--text);
+}
+.manifesto-text .muted { color: var(--muted-2); }
+.ink-st {
+  display: inline-grid; place-items: center; vertical-align: -0.34em;
+  width: 1.32em; height: 1.32em; margin: 0 .1em;
+  border: 3px solid #fff; border-radius: 9px;
+  background: var(--est-bg, #06e4dd);
+  box-shadow: 0 5px 12px -3px rgba(0,0,0,.5); font-size: .82em; line-height: 1;
+  transform: rotate(var(--r, -6deg));
+  transition: transform .2s ease;
+}
+.ink-st:hover { transform: rotate(0deg) scale(1.14); }
+.ink-st.circle { border-radius: 50%; }
+.ink-st.holo { background: repeating-linear-gradient(112deg, #ff5ec9 0 9%, #ffd24a 15%, #37f2c3 24%, #3aa0ff 33%, #a24bff 42%, #ff5ec9 51%); background-size: 260% 260%; animation: holo-shift 6s linear infinite; }
 
 /* ---- Finish cards ---------------------------------------------------- */
 .finish-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
