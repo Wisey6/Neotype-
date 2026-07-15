@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=5" />
 </head>
 <body>
 
@@ -34,7 +34,7 @@
         <a href="#faq">FAQ</a>
       </nav>
       <div class="nav-cta">
-        <a href="#customizer" class="btn btn--accent">Start a proof <span class="arrow">→</span></a>
+        <a href="#customizer" class="btn btn--holo">Start a proof <span class="arrow">→</span></a>
         <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
@@ -90,55 +90,84 @@
       <div class="wrap">
         <div class="section-head reveal">
           <span class="eyebrow">Six finishes</span>
-          <h2 class="display-lg">Pick the material that fits the mark.</h2>
-          <p class="lead">Every finish is printed on premium waterproof stock, laminated, and cut to your exact contour.</p>
+          <h2 class="display-lg">Pick the material that fits your design.</h2>
+          <p class="lead">Your art, cut to shape in the finish you choose. <b class="tint-teal">Hover any sticker</b> to see the material tilt and catch the light.</p>
         </div>
 
         <div class="finish-grid">
-          <article class="finish-card reveal">
-            <div class="finish-swatch">
-              <span class="sticker-shell"><img src="assets/img/neotype-sticker.png" alt="Neotype sticker in matte vinyl" loading="lazy" /><span class="foil foil-gloss"></span></span>
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sample fin-vinyl" style="border-radius:26% 74% 62% 38% / 38% 34% 66% 62%">
+                <span class="fin-glyph">★</span>
+                <span class="fin-cap">Your design</span>
+                <span class="fin-shine"></span>
+              </div>
             </div>
             <h3>Vinyl <span class="finish-tag">Best value</span></h3>
-            <p>Matte or gloss. Waterproof, UV-proof and dishwasher-safe — built to last five-plus years outdoors.</p>
+            <p>Matte or gloss on durable waterproof stock — your design built to survive laptops, bottles and bumpers for 5+ years.</p>
           </article>
-          <article class="finish-card reveal">
-            <div class="finish-swatch">
-              <span class="sticker-shell"><img src="assets/img/neotype-sticker.png" alt="Neotype sticker in holographic finish" loading="lazy" /><span class="foil foil-holo"></span></span>
+
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sample fin-holo" style="border-radius:18px">
+                <span class="fin-glyph">✦</span>
+                <span class="fin-cap">Your design</span>
+                <span class="fin-shine"></span>
+              </div>
             </div>
             <h3>Holographic <span class="finish-tag">Most loved</span></h3>
-            <p>A rainbow foil that shifts as it moves. Our most-ordered finish, and it photographs beautifully.</p>
+            <p>A rainbow foil that shifts as it tilts. Hover to watch it move — your art, catching every angle.</p>
           </article>
-          <article class="finish-card reveal">
-            <div class="finish-swatch">
-              <span class="sticker-shell"><img src="assets/img/neotype-sticker.png" alt="Neotype sticker in glitter finish" loading="lazy" /><span class="foil foil-glitter"></span></span>
+
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sample fin-glitter" style="border-radius:50%">
+                <span class="fin-glyph">✺</span>
+                <span class="fin-cap">Your design</span>
+                <span class="fin-shine"></span>
+              </div>
             </div>
             <h3>Glitter <span class="finish-tag">Tactile</span></h3>
-            <p>A fine sparkle laminate laid over your artwork — eye-catching in person, subtle in scans.</p>
+            <p>A fine sparkle laminate over your design — eye-catching in person, subtle in scans.</p>
           </article>
-          <article class="finish-card reveal">
-            <div class="finish-swatch">
-              <span class="sticker-shell"><img src="assets/img/neotype-sticker.png" alt="Neotype sticker in chrome finish" loading="lazy" /><span class="foil foil-chrome"></span></span>
+
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sample fin-chrome" style="border-radius:20%">
+                <span class="fin-glyph">◆</span>
+                <span class="fin-cap">Your design</span>
+                <span class="fin-shine"></span>
+              </div>
             </div>
             <h3>Chrome <span class="finish-tag">Premium</span></h3>
-            <p>Mirror-metallic silver that turns any logo into a badge. Impossible to walk past.</p>
+            <p>Mirror-metallic silver that turns your logo or art into a badge you can't walk past.</p>
           </article>
-          <article class="finish-card reveal">
-            <div class="finish-swatch sw-clear-tile">
-              <span class="sticker-shell"><img src="assets/img/neotype-logo.png" alt="Neotype art on clear sticker with no border" loading="lazy" /></span>
+
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sample fin-clear" style="border-radius:16px">
+                <span class="fin-glyph">♥</span>
+                <span class="fin-cap">Your design</span>
+                <span class="fin-shine"></span>
+              </div>
             </div>
             <h3>Clear <span class="finish-tag">No border</span></h3>
-            <p>Transparent backing, no white border — only your art shows. Perfect for glass, laptops and packaging.</p>
+            <p>Transparent backing, no white border — only your design shows. Perfect for glass, laptops and packaging.</p>
           </article>
-          <article class="finish-card reveal">
-            <div class="finish-swatch sw-sheet-tile">
-              <span class="mini-sheet" aria-hidden="true">
-                <img src="assets/img/neotype-sticker.png" alt="" /><img src="assets/img/neotype-sticker.png" alt="" /><img src="assets/img/neotype-sticker.png" alt="" />
-                <img src="assets/img/neotype-sticker.png" alt="" /><img src="assets/img/neotype-sticker.png" alt="" /><img src="assets/img/neotype-sticker.png" alt="" />
-              </span>
+
+          <article class="finish-card fin-card reveal" data-tilt>
+            <div class="fin-stage">
+              <div class="fin-sheet" aria-hidden="true">
+                <span class="mini-st" style="background:linear-gradient(140deg,#06e4dd,#04a49f)">★</span>
+                <span class="mini-st" style="background:linear-gradient(140deg,#764cd9,#4b2bd4)">✦</span>
+                <span class="mini-st" style="background:conic-gradient(from 0deg,#ff5ec9,#ffd24a,#37f2c3,#3aa0ff,#a24bff,#ff5ec9)">✺</span>
+                <span class="mini-st" style="background:var(--green);color:#063d02">◆</span>
+                <span class="mini-st" style="background:linear-gradient(140deg,#30bfbb,#06e4dd)">♥</span>
+                <span class="mini-st" style="background:linear-gradient(140deg,#8f6ce6,#764cd9)">☺</span>
+              </div>
             </div>
             <h3>Sticker sheets <span class="finish-tag">Multi-design</span></h3>
-            <p>Lots of die-cut stickers printed together on one peel-and-pick backing sheet — mix designs or keep it uniform.</p>
+            <p>Your designs die-cut together on one peel-and-pick sheet — mix them up or keep it uniform.</p>
           </article>
         </div>
       </div>
@@ -428,7 +457,7 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Added to cart</span></div>
 
-  <script src="assets/js/customizer.js" defer></script>
-  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/customizer.js?v=5" defer></script>
+  <script src="assets/js/main.js?v=5" defer></script>
 </body>
 </html>

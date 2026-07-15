@@ -97,4 +97,26 @@
     // one burst shortly after load
     if (!reduce) setTimeout(function () { glitch(target); }, 550);
   });
+
+  // ---- Finish cards: 3D tilt + shine tracking the pointer --------------
+  document.querySelectorAll("[data-tilt]").forEach(function (card) {
+    var sample = card.querySelector(".fin-sample");
+    function onMove(e) {
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width;
+      var py = (e.clientY - r.top) / r.height;
+      card.style.setProperty("--mx", (px * 100).toFixed(1) + "%");
+      card.style.setProperty("--my", (py * 100).toFixed(1) + "%");
+      if (!reduce && sample) {
+        card.style.setProperty("--ry", ((px - 0.5) * 18).toFixed(2) + "deg");
+        card.style.setProperty("--rx", ((0.5 - py) * 18).toFixed(2) + "deg");
+      }
+    }
+    function reset() {
+      card.style.setProperty("--rx", "0deg");
+      card.style.setProperty("--ry", "0deg");
+    }
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerleave", reset);
+  });
 })();

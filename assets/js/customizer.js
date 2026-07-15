@@ -73,10 +73,10 @@
     art.style.height = (state.shape === "sheet" ? Math.round(px * 0.78) : px) + "px";
 
     // finish background (animated finishes get a helper class)
-    art.classList.remove("fin-holo", "fin-chrome", "fin-glitter");
-    if (state.finish === "holographic") { art.style.background = ""; art.classList.add("fin-holo"); }
-    else if (state.finish === "chrome") { art.style.background = ""; art.classList.add("fin-chrome"); }
-    else if (state.finish === "glitter") { art.style.background = FINISH_BG.glitter; art.classList.add("fin-glitter"); }
+    art.classList.remove("cz-holo", "cz-chrome", "cz-glitter");
+    if (state.finish === "holographic") { art.style.background = ""; art.classList.add("cz-holo"); }
+    else if (state.finish === "chrome") { art.style.background = ""; art.classList.add("cz-chrome"); }
+    else if (state.finish === "glitter") { art.style.background = FINISH_BG.glitter; art.classList.add("cz-glitter"); }
     else { art.style.background = FINISH_BG[state.finish] || FINISH_BG["vinyl-matte"]; }
 
     var img = art.querySelector("img.cz-img");

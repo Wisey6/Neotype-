@@ -124,13 +124,22 @@ a { color: inherit; text-decoration: none; }
 .btn--purple:hover { box-shadow: var(--glow-purple); }
 .btn--ghost { background: transparent; color: var(--text); border-color: var(--line-strong); }
 .btn--ghost:hover { background: rgba(6, 228, 221, 0.1); color: var(--teal); border-color: var(--teal); }
+.btn--holo {
+  border: none; color: #0a0a12; position: relative; overflow: hidden;
+  background: linear-gradient(100deg, #ff5ec9, #ffd24a 22%, #37f2c3 44%, #3aa0ff 64%, #a24bff 84%, #ff5ec9);
+  background-size: 280% 100%; animation: holo-shift 6s linear infinite;
+  box-shadow: 0 0 18px rgba(58,160,255,.35);
+}
+.btn--holo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%); background-size: 250% 100%; animation: holo-shine 3.6s linear infinite; pointer-events: none; }
+.btn--holo:hover { animation-duration: 2.6s; box-shadow: 0 0 26px rgba(162,75,255,.55); }
 .btn .arrow { transition: transform .18s ease; }
 .btn:hover .arrow { transform: translateX(3px); }
+@keyframes holo-shine { 0%{background-position: 130% 0} 100%{background-position: -130% 0} }
 
 /* ---- Header ---------------------------------------------------------- */
 .site-header { position: sticky; top: 0; z-index: 60; background: rgba(33, 40, 48, 0.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line-soft); }
 .nav { display: flex; align-items: center; justify-content: space-between; height: 76px; gap: 20px; }
-.glitch img.brand-logo { height: 26px; width: auto; display: block; }
+.glitch img.brand-logo { height: 20px; width: auto; display: block; }
 .nav-links { display: flex; gap: 26px; align-items: center; }
 .nav-links a { font-family: var(--font-round); font-size: 15px; color: var(--muted); transition: color .15s; position: relative; white-space: nowrap; }
 .nav-links a:hover { color: var(--teal); }
@@ -233,34 +242,45 @@ section { position: relative; }
 
 /* ---- Finish cards ---------------------------------------------------- */
 .finish-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-.finish-card { position: relative; background: var(--bg-card); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 22px; overflow: hidden; transition: transform .2s ease, box-shadow .2s ease, border-color .2s; }
+.finish-card { position: relative; background: var(--bg-card); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 22px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s; }
 .finish-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-soft); border-color: var(--line-strong); }
-/* finish tile shows a real die-cut sticker with the finish applied */
-.finish-swatch { width: 100%; height: 156px; border-radius: 10px; margin-bottom: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); position: relative; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 50% 38%, #2b3640, #171d23 76%); }
 .finish-card h3 { font-size: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
 .finish-card p { font-size: 14.5px; color: var(--muted); margin: 8px 0 0; }
-.finish-tag { font-family: var(--font-round); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); border: 1px solid var(--line-strong); border-radius: 100px; padding: 3px 9px; }
+.finish-tag { font-family: var(--font-round); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); border: 1px solid var(--line-strong); border-radius: 100px; padding: 3px 9px; white-space: nowrap; }
 
-/* sticker + finish overlay (overlay masked to the sticker silhouette) */
-.sticker-shell { position: relative; display: inline-block; line-height: 0; }
-.sticker-shell img { display: block; width: 220px; max-width: 82%; height: auto; margin: 0 auto; filter: drop-shadow(3px 5px 7px rgba(0,0,0,0.55)); }
-.foil { position: absolute; inset: 0; pointer-events: none;
-  -webkit-mask: center / contain no-repeat url("../img/neotype-sticker.png");
-  mask: center / contain no-repeat url("../img/neotype-sticker.png"); }
+/* interactive finish sample: a die-cut "your design" sticker that tilts + shines */
+.fin-stage { height: 172px; margin-bottom: 18px; border-radius: 10px; position: relative; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 50% 34%, #2b3640, #14191f 78%); perspective: 780px; }
+.fin-sample {
+  width: 178px; height: 122px; border: 6px solid #fff; box-shadow: 0 14px 26px -10px rgba(0,0,0,.7);
+  display: grid; place-items: center; position: relative; overflow: hidden;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transform-style: preserve-3d;
+  transition: transform .3s cubic-bezier(.2,.9,.3,1);
+}
+.fin-card:hover .fin-sample { transition: transform .08s linear; }
+.fin-glyph { font-family: var(--font-display); font-weight: 900; font-size: 2.7rem; color: rgba(9,11,15,.82); text-shadow: 0 1px 0 rgba(255,255,255,.3); z-index: 2; }
+.fin-cap { position: absolute; bottom: 9px; font-family: var(--font-round); font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: rgba(9,11,15,.62); z-index: 2; }
+.fin-shine { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .25s;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.6), rgba(255,255,255,0) 46%); mix-blend-mode: soft-light; }
+.fin-card:hover .fin-shine { opacity: 1; }
 
-.foil-gloss { background: linear-gradient(118deg, transparent 42%, rgba(255,255,255,.22) 50%, transparent 58%); mix-blend-mode: screen; }
-.foil-holo { background: linear-gradient(60deg, #a24bff, #3aa0ff 20%, #37f2c3 40%, #ffd24a 60%, #ff3dd2 80%, #a24bff); background-size: 260% 260%; mix-blend-mode: screen; opacity: .72; animation: holo-shift 5s linear infinite; }
-.foil-glitter { background-image: radial-gradient(circle, rgba(255,255,255,.95) 0 1px, transparent 1.6px), radial-gradient(circle, rgba(190,160,255,.85) 0 1px, transparent 1.6px); background-size: 8px 8px, 12px 12px; background-position: 0 0, 4px 6px; mix-blend-mode: screen; opacity: .9; animation: sparkle 1s steps(2) infinite; }
-.foil-chrome { background: linear-gradient(118deg, #eef2f6 0%, #9aa3b2 20%, #ffffff 38%, #7d8696 55%, #c9d0da 72%, #8892a2 100%); background-size: 260% 100%; mix-blend-mode: overlay; opacity: .85; animation: chrome-slide 5s ease-in-out infinite; }
+.fin-vinyl { background: linear-gradient(140deg, #06e4dd, #04a49f 46%, #764cd9); }
+.fin-holo { background:
+    repeating-linear-gradient(112deg, #ff5ec9 0 9%, #ffd24a 15%, #37f2c3 24%, #3aa0ff 33%, #a24bff 42%, #ff5ec9 51%);
+  background-size: 260% 260%; animation: holo-shift 6s linear infinite; }
+.fin-card:hover .fin-holo { animation-duration: 2.4s; }
+.fin-glitter { background: radial-gradient(circle at 40% 35%, #a37cf0, #5a35c9); }
+.fin-glitter::after { content:""; position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.95) 0 1px, transparent 1.7px), radial-gradient(rgba(214,196,255,.9) 0 1px, transparent 1.7px); background-size: 9px 9px, 13px 13px; background-position: 0 0, 5px 7px; animation: sparkle .9s steps(2) infinite; z-index: 1; }
+.fin-chrome { background: linear-gradient(118deg, #eef2f6 0%, #9aa3b2 20%, #ffffff 38%, #7d8696 55%, #c9d0da 72%, #8892a2 100%); background-size: 260% 100%; animation: chrome-slide 5s ease-in-out infinite; }
+.fin-chrome .fin-glyph, .fin-chrome .fin-cap { color: rgba(9,11,15,.72); }
+.fin-clear { background: repeating-conic-gradient(#2b3a44 0 25%, #223038 0 50%) 50% / 15px 15px; border-color: rgba(255,255,255,.55); border-style: dashed; }
+.fin-clear .fin-glyph { color: var(--teal); text-shadow: 0 0 14px rgba(6,228,221,.5); }
+.fin-clear .fin-cap { color: rgba(255,255,255,.55); }
 
-/* clear finish: show the art with no white border, over a checker */
-.sw-clear-tile { background: repeating-conic-gradient(#2b3a44 0% 25%, #223038 0% 50%) 50% / 20px 20px; }
-.sw-clear-tile .sticker-shell img { filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4)); }
-
-/* sheet finish: several die-cut stickers on one backing sheet */
-.sw-sheet-tile { background: #12171c; }
-.mini-sheet { width: 82%; background: #eef0ea; border: 1.5px dashed rgba(0,0,0,.4); border-radius: 7px; padding: 12px 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 6px; box-shadow: var(--shadow-peel); }
-.mini-sheet img { width: 100%; height: auto; filter: drop-shadow(1px 2px 2px rgba(0,0,0,.25)); }
+/* sheet finish: several small die-cut stickers on one backing sheet */
+.fin-sheet { width: 84%; background: #eef0ea; border: 1.6px dashed rgba(0,0,0,.4); border-radius: 8px; padding: 12px 11px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px 8px; box-shadow: var(--shadow-peel); }
+.mini-st { aspect-ratio: 1; border: 3px solid #fff; border-radius: 30% 70% 62% 38% / 40% 34% 66% 60%; box-shadow: 0 2px 5px rgba(0,0,0,.25); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 1rem; color: rgba(9,11,15,.8); }
+.mini-st:nth-child(2n) { border-radius: 50%; }
+.mini-st:nth-child(3n) { border-radius: 22%; }
 
 @keyframes holo-shift { 0%{background-position:0% 50%} 100%{background-position:260% 50%} }
 @keyframes chrome-slide { 0%,100%{background-position:0% 0} 50%{background-position:100% 0} }
@@ -288,9 +308,9 @@ section { position: relative; }
 .cz-artwork .up-hint { font-family: var(--font-round); font-weight: 600; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; opacity: .9; padding: 0 12px; }
 .cz-artwork img.cz-img { position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; object-fit: contain; transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
 /* finish previews applied via JS classes */
-.cz-artwork.fin-holo { background: conic-gradient(from 0deg, #ff5ec9, #ffd400, #4ce0c0, #06e4dd, #764cd9, #ff5ec9); background-size: 200% 200%; animation: holo-shift 6s linear infinite; }
-.cz-artwork.fin-chrome { background: linear-gradient(115deg, #d7dbe2 0%, #8f97a6 22%, #f4f6fa 40%, #7d8494 55%, #c9cfd9 75%, #9aa2b1 100%); background-size: 220% 100%; animation: chrome-slide 5s ease-in-out infinite; }
-.cz-artwork.fin-glitter::before { content:""; position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.95) 1px, transparent 1.5px); background-size: 10px 10px; animation: sparkle 3s steps(2) infinite; pointer-events:none; z-index: 1; }
+.cz-artwork.cz-holo { background: conic-gradient(from 0deg, #ff5ec9, #ffd400, #4ce0c0, #06e4dd, #764cd9, #ff5ec9); background-size: 200% 200%; animation: holo-shift 6s linear infinite; }
+.cz-artwork.cz-chrome { background: linear-gradient(115deg, #d7dbe2 0%, #8f97a6 22%, #f4f6fa 40%, #7d8494 55%, #c9cfd9 75%, #9aa2b1 100%); background-size: 220% 100%; animation: chrome-slide 5s ease-in-out infinite; }
+.cz-artwork.cz-glitter::before { content:""; position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.95) 1px, transparent 1.5px); background-size: 10px 10px; animation: sparkle 3s steps(2) infinite; pointer-events:none; z-index: 1; }
 
 .shape-circle { border-radius: 50%; }
 .shape-square { border-radius: 6%; }
