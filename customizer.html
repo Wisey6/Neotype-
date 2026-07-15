@@ -283,18 +283,18 @@
     </div>
   </div>
 
-  <!-- Checkout config. Empty keys = inert (demo mode). See CHECKOUT-SETUP.md.
-       To go live: paste Ian's Snipcart public API key (and a file-host key)
-       and connect Stripe/PayPal inside the Snipcart dashboard. -->
+  <!-- Checkout config. Empty = inert (demo mode). See CHECKOUT-SETUP.md.
+       To go live: deploy the Cloudflare Worker in /worker (it holds the Stripe
+       secret key), then paste its URL + an Uploadcare public key below. -->
   <script>
     window.NEOTYPE_CHECKOUT = {
-      snipcartKey: "",     // Snipcart PUBLIC API key (safe to expose)
+      workerUrl: "",       // deployed Cloudflare Worker URL (Stripe checkout)
       uploadcareKey: "",   // Uploadcare public key for artwork uploads
       currency: "aud"
     };
   </script>
-  <script src="assets/js/checkout.js?v=19" defer></script>
-  <script src="assets/js/customizer.js?v=19" defer></script>
-  <script src="assets/js/main.js?v=19" defer></script>
+  <script src="assets/js/checkout.js?v=20" defer></script>
+  <script src="assets/js/customizer.js?v=20" defer></script>
+  <script src="assets/js/main.js?v=20" defer></script>
 </body>
 </html>

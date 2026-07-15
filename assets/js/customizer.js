@@ -611,6 +611,11 @@
       currency: CURRENCY,
       file: state.file,
       fileName: state.fileName,
+      raw: {
+        finish: state.finish, shape: state.shape, size: state.size, qty: state.qty,
+        background: state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
+        cutColour: state.dieBorderColor
+      },
       fields: {
         "Finish": FINISH[state.finish].label,
         "Cut": SHAPE_LABEL[state.shape],

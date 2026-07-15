@@ -1,0 +1,13 @@
+name = "neotype-checkout"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Public config. Adjust to the real domains before deploying.
+[vars]
+ALLOWED_ORIGIN = "https://neotype.au,https://wisey6.github.io"
+SUCCESS_URL = "https://neotype.au/success.html"
+CANCEL_URL = "https://neotype.au/customizer.html"
+
+# STRIPE_SECRET_KEY is a SECRET, not a var. Set it with:
+#   wrangler secret put STRIPE_SECRET_KEY
+# (never commit the secret key to the repo)

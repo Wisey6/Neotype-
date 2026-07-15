@@ -1,68 +1,86 @@
-# Turning on checkout & payments
+# Turning on checkout & payments (Stripe direct)
 
-The customizer is **checkout-ready but switched off**. Today, clicking *Add to
-cart* just shows a confirmation — no order reaches Ian. Follow the steps below
-to take real orders and card/PayPal payments. Nothing here touches the design;
-it's paste-a-key-and-go.
+The customizer is **checkout-ready but switched off**. Today, clicking checkout
+just shows a confirmation — no order or payment reaches Ian. This site takes
+card payments **directly through Stripe**, so the only fee is Stripe's standard
+card fee — **no cart-platform markup**.
 
-## What you get once it's on
+## How it works
 
-Every order lands in Ian's **Snipcart dashboard** and as an **email**, carrying:
+```
+Customer designs → uploads artwork → clicks checkout
+        │
+        ├─ artwork uploaded to a file host (Uploadcare) → link
+        │
+        ├─ options sent to a tiny Cloudflare Worker, which RECOMPUTES the price
+        │  server-side (so it can't be tampered with) and creates a Stripe
+        │  Checkout Session
+        │
+        └─ customer is sent to Stripe's secure page, pays by card
+                 │
+                 └─ payment + full spec + artwork link land in Ian's Stripe
+                    dashboard; customer gets a receipt and a thank-you page
+```
 
-- the money (paid by card or PayPal, straight to Ian's account),
-- the full spec — finish, cut, size, quantity, background, cut colour, area,
-- a **link to the customer's uploaded artwork** (the actual print file),
-- the customer's name, email and shipping address.
+Ian still emails a proof and prints as usual — this collects the order, file and
+money automatically.
 
-Ian still sends a proof and runs the file through his cutter/RIP as usual — the
-site's job is to collect the order, file and payment reliably.
+## What Ian gets per order
+- The payment (card), straight to his Stripe balance → his bank.
+- The full spec (finish, cut, size, qty, background, cut colour) in the Stripe
+  payment's **metadata**.
+- A **link to the customer's uploaded artwork** (the print file).
+- Customer name, email, phone and shipping address (collected by Stripe).
 
-## The 3 accounts you need
+## Accounts needed
 
-| # | Service | Why | Cost |
-|---|---------|-----|------|
-| 1 | **Snipcart** (snipcart.com) | Cart, checkout, order dashboard, emails | 2% per transaction (or a small monthly min). Free while in Test mode. |
-| 2 | **Stripe** and/or **PayPal** | Actually takes the payment | Standard card fees (~1.75% + 30c AU). No monthly fee. |
-| 3 | **Uploadcare** (uploadcare.com) | Hosts the customer's uploaded artwork so Ian can download it | Free tier covers a small shop. |
+| Service | Why | Cost |
+|---|---|---|
+| **Stripe** | Takes the card payment, dashboard, receipts | ~1.75% + 30¢ per AU card. No monthly fee. |
+| **Cloudflare** | Runs the tiny price/checkout Worker | Free tier is plenty. |
+| **Uploadcare** | Hosts the customer's artwork so Ian can download it | Free tier covers a small shop. |
 
-## Activation steps (about 30 minutes)
+There is **no 2% platform fee** — that's the point of this route.
 
-1. **Create a Snipcart account**, then in **Dashboard → Payment gateway**,
-   connect **Stripe** (and/or PayPal). Log in to / create Stripe when prompted.
-2. In Snipcart **Dashboard → API keys**, copy the **PUBLIC** key (starts with
-   a long string — the public key is safe to put on the site).
-3. **Create an Uploadcare account** and copy its **Public key**.
-4. Open **`customizer.html`**, find this block near the bottom, and paste the
-   two keys in:
+## Setup (about 30–40 min, done by the developer)
 
+1. **Stripe:** create the account, finish verification (business details + bank
+   account for payouts). Copy the **secret key** (`sk_test_…`, later `sk_live_…`).
+2. **Deploy the Worker** in the `worker/` folder — full steps in
+   `worker/README.md`. In short:
+   ```bash
+   cd worker && npm install
+   wrangler login
+   wrangler secret put STRIPE_SECRET_KEY   # paste Stripe secret key
+   wrangler deploy                          # prints the Worker URL
+   ```
+   The Stripe secret key lives only in the Worker — never on the website.
+3. **Uploadcare:** create the account, copy the **Public key**.
+4. In **`customizer.html`**, fill in the config block near the bottom:
    ```js
    window.NEOTYPE_CHECKOUT = {
-     snipcartKey: "PASTE_SNIPCART_PUBLIC_KEY_HERE",
-     uploadcareKey: "PASTE_UPLOADCARE_PUBLIC_KEY_HERE",
+     workerUrl: "https://neotype-checkout.<subdomain>.workers.dev",
+     uploadcareKey: "PASTE_UPLOADCARE_PUBLIC_KEY",
      currency: "aud"
    };
    ```
+5. Commit + push. Checkout is now live-ready.
 
-5. In the Snipcart dashboard, add **neotype.au** (and the github.io URL) under
-   **Domains & URLs** so checkout is allowed on the live site.
-6. Commit and push. The *Add to cart* buttons now open a real cart.
-7. **Test first:** keep the Snipcart account in **Test mode** and use Stripe's
-   test card `4242 4242 4242 4242` to place a full order end to end. When the
-   order (with the artwork link) arrives correctly, switch Snipcart to **Live**.
+## Test before going live
+1. Keep Stripe in **Test mode**; put the **test** secret key in the Worker.
+2. Build a sticker on the site and check out with test card
+   `4242 4242 4242 4242` (any future expiry, any CVC).
+3. Confirm the payment shows in the **Stripe dashboard** with the sticker spec +
+   artwork link under the payment's metadata, and that the thank-you page loads.
+4. Swap the Worker's secret for the **live** key and you're taking real orders.
 
-## One thing to harden before you scale
+## Keep prices in sync
+The price formula lives in **two** places that must match:
+`assets/js/customizer.js` (what the customer sees) and `worker/src/index.js`
+(what Stripe charges). If you change pricing, update both and re-deploy the
+Worker, or Stripe will charge a different amount than the site showed.
 
-Prices are calculated in the browser. In Test/early-live that's fine because
-**Ian approves every proof before printing**, so a tampered price is caught. To
-make pricing tamper-proof at volume, add a small **Snipcart order-validation
-webhook** (a tiny serverless function — Cloudflare Workers free tier) that
-re-computes the price server-side. Ask the developer to wire this when order
-volume justifies it; the pricing formula lives in `assets/js/customizer.js`
-(`orderTotal` / `ratePerM2`).
-
-## If you'd rather use the old Shopify store
-
-neotype.au was previously on Shopify. If that store still exists, this site can
-instead feed orders into Shopify (using its checkout and payments) rather than
-Snipcart. That's a different integration — tell the developer and share the
-Shopify store details.
+## Nice-to-have later
+- A branded order email to Ian with the artwork link (add a Stripe webhook to
+  the Worker: `checkout.session.completed`). Not needed for launch — Stripe's
+  own payment emails + dashboard already carry everything.
