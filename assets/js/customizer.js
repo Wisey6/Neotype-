@@ -155,9 +155,12 @@
   function showEditor(show) {
     if (els.editor) els.editor.hidden = !show;
   }
+  var XY_MAX = 200;
   function syncEditorInputs() {
     if (els.zoom) els.zoom.value = state.img.scale;
     if (els.rot) els.rot.value = state.img.rot;
+    if (els.x) els.x.value = Math.round(state.img.x);
+    if (els.y) els.y.value = Math.round(state.img.y);
   }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -184,8 +187,9 @@
       });
       art.addEventListener("pointermove", function (e) {
         if (!dragging) return;
-        state.img.x = ox + (e.clientX - startX);
-        state.img.y = oy + (e.clientY - startY);
+        state.img.x = clamp(ox + (e.clientX - startX), -XY_MAX, XY_MAX);
+        state.img.y = clamp(oy + (e.clientY - startY), -XY_MAX, XY_MAX);
+        syncEditorInputs();
         applyImgTransform();
       });
       function endDrag(e) {
@@ -213,9 +217,74 @@
     if (els.rot) els.rot.addEventListener("input", function () {
       state.img.rot = parseInt(els.rot.value, 10) || 0; applyImgTransform();
     });
+    if (els.x) els.x.addEventListener("input", function () {
+      state.img.x = clamp(parseInt(els.x.value, 10) || 0, -XY_MAX, XY_MAX); applyImgTransform();
+    });
+    if (els.y) els.y.addEventListener("input", function () {
+      state.img.y = clamp(parseInt(els.y.value, 10) || 0, -XY_MAX, XY_MAX); applyImgTransform();
+    });
     if (els.editor) els.editor.addEventListener("click", function (e) {
       var b = e.target.closest("button[data-fit]");
       if (b) resetPlacement(b.getAttribute("data-fit"));
+    });
+  }
+
+  // ---- Proof preview (loading -> mockup) --------------------------------
+  var proofTimer = null;
+  function chip(t) { return '<span class="proof-chip">' + t + '</span>'; }
+  function openProof() {
+    var m = els.proofModal; if (!m) return;
+    m.hidden = false; m.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    if (els.proofLoading) els.proofLoading.hidden = false;
+    if (els.proofResult) els.proofResult.hidden = true;
+    clearTimeout(proofTimer);
+    proofTimer = setTimeout(buildProofResult, 1700);
+  }
+  function buildProofResult() {
+    if (els.proofStage && els.artwork) {
+      els.proofStage.innerHTML = "";
+      var clone = els.artwork.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.classList.remove("dragging");
+      clone.style.transform = "scale(1.4)";
+      els.proofStage.appendChild(clone);
+    }
+    var r = compute();
+    if (els.proofSummary) {
+      els.proofSummary.innerHTML =
+        chip(FINISH[state.finish].label) +
+        chip(SHAPE_LABEL[state.shape]) +
+        chip(state.size + "×" + state.size + "″") +
+        chip(state.qty.toLocaleString() + " stickers") +
+        '<span class="proof-chip price"><b>$' + Math.round(r.total) + "</b> total</span>";
+    }
+    if (els.proofLoading) els.proofLoading.hidden = true;
+    if (els.proofResult) els.proofResult.hidden = false;
+  }
+  function closeProof() {
+    var m = els.proofModal; if (!m) return;
+    m.hidden = true; m.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    clearTimeout(proofTimer);
+  }
+  function wireProof() {
+    var open = $("previewSticker");
+    if (open) open.addEventListener("click", openProof);
+    var m = els.proofModal;
+    if (m) m.addEventListener("click", function (e) {
+      if (e.target.closest("[data-proof-close]")) closeProof();
+    });
+    var addInProof = $("proofAddCart");
+    if (addInProof) addInProof.addEventListener("click", function () {
+      var r = compute();
+      closeProof();
+      window.dispatchEvent(new CustomEvent("neotype:toast", {
+        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total)
+      }));
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && m && !m.hidden) closeProof();
     });
   }
 
@@ -251,20 +320,14 @@
     dz.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) accept(e.dataTransfer.files[0]); });
   }
 
-  // ---- Cart / proof -----------------------------------------------------
+  // ---- Cart -------------------------------------------------------------
   function wireActions() {
-    var add = $("addCart"), proof = $("getProof");
+    var add = $("addCart");
     if (add) add.addEventListener("click", function () {
       var r = compute();
       window.dispatchEvent(new CustomEvent("neotype:toast", {
         detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total)
       }));
-    });
-    if (proof) proof.addEventListener("click", function () {
-      var msg = state.fileName
-        ? "Proof requested for " + state.fileName + ", check your email within a day"
-        : "Upload artwork above and we'll send a free proof within a day";
-      window.dispatchEvent(new CustomEvent("neotype:toast", { detail: msg }));
     });
   }
 
@@ -274,7 +337,9 @@
       artwork: $("czArtwork"), artLabel: $("czArtLabel"),
       labelW: $("czLabelW"), labelH: $("czLabelH"),
       priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), savings: $("czSavings"),
-      editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"),
+      editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
+      proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
+      proofStage: $("proofStage"), proofSummary: $("proofSummary"),
     };
     wireGroup("finishOpts", "data-finish", function (v) { state.finish = v; renderAll(); });
     wireGroup("shapeOpts", "data-shape", function (v) { state.shape = v; renderAll(); });
@@ -283,6 +348,7 @@
     wireUpload();
     wireImageEditor();
     wireActions();
+    wireProof();
     renderAll();
   }
 

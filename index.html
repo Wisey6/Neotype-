@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=7" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=8" />
 </head>
 <body>
 
@@ -203,7 +203,7 @@
 
             <!-- image editor toolbar -->
             <div class="cz-editor" id="czEditor" hidden>
-              <div class="ce-hint">✥ Drag the art to move it · scroll to zoom</div>
+              <div class="ce-hint">✥ Drag the art, use the sliders, or scroll to zoom</div>
               <div class="ce-row">
                 <label for="ceZoom">Zoom</label>
                 <input type="range" id="ceZoom" min="0.2" max="4" step="0.01" value="1" aria-label="Zoom" />
@@ -211,6 +211,14 @@
               <div class="ce-row">
                 <label for="ceRot">Rotate</label>
                 <input type="range" id="ceRot" min="-180" max="180" step="1" value="0" aria-label="Rotate" />
+              </div>
+              <div class="ce-row">
+                <label for="ceX">Move ↔</label>
+                <input type="range" id="ceX" min="-180" max="180" step="1" value="0" aria-label="Move left and right" />
+              </div>
+              <div class="ce-row">
+                <label for="ceY">Move ↕</label>
+                <input type="range" id="ceY" min="-180" max="180" step="1" value="0" aria-label="Move up and down" />
               </div>
               <div class="ce-btns">
                 <button class="ce-mini" data-fit="fit">Fit</button>
@@ -298,8 +306,8 @@
                 </div>
               </div>
               <div class="cz-actions">
-                <button class="btn btn--accent" id="addCart">Add to cart</button>
-                <button class="btn btn--ghost" id="getProof">Get a free proof</button>
+                <button class="btn btn--holo" id="previewSticker">Preview my sticker</button>
+                <button class="btn btn--ghost" id="addCart">Add to cart</button>
               </div>
             </div>
           </div>
@@ -483,7 +491,32 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Added to cart</span></div>
 
-  <script src="assets/js/customizer.js?v=7" defer></script>
-  <script src="assets/js/main.js?v=7" defer></script>
+  <!-- ============================== PROOF PREVIEW MODAL ============================== -->
+  <div class="proof-modal" id="proofModal" hidden aria-hidden="true">
+    <div class="proof-backdrop" data-proof-close></div>
+    <div class="proof-box" role="dialog" aria-modal="true" aria-labelledby="proofTitle">
+      <button class="proof-x" data-proof-close aria-label="Close preview">✕</button>
+
+      <div class="proof-loading" id="proofLoading">
+        <div class="proof-spinner" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="proof-loading-txt">Creating your sticker<span class="dots"></span></div>
+        <div class="proof-loading-sub" id="proofLoadingSub">Laying down ink, adding the finish, cutting your contour</div>
+      </div>
+
+      <div class="proof-result" id="proofResult" hidden>
+        <span class="eyebrow">Your proof</span>
+        <h3 id="proofTitle">Here's your sticker</h3>
+        <div class="proof-stage" id="proofStage"></div>
+        <div class="proof-summary" id="proofSummary"></div>
+        <div class="proof-actions">
+          <button class="btn btn--accent" id="proofAddCart">Looks good, add to cart</button>
+          <button class="btn btn--ghost" data-proof-close>Keep editing</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/customizer.js?v=8" defer></script>
+  <script src="assets/js/main.js?v=8" defer></script>
 </body>
 </html>
