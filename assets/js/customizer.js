@@ -439,28 +439,9 @@
     document.body.style.overflow = "";
     clearTimeout(proofTimer);
   }
-  function wireProofTilt() {
-    var st = els.proofStage; if (!st) return;
-    st.addEventListener("pointermove", function (e) {
-      var c = st.querySelector(".cz-artwork"); if (!c) return;
-      var r = st.getBoundingClientRect();
-      var px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-      if (!reduceMotion) {
-        c.style.setProperty("--pry", ((px - 0.5) * 26).toFixed(2) + "deg");
-        c.style.setProperty("--prx", ((0.5 - py) * 26).toFixed(2) + "deg");
-      }
-      c.style.setProperty("--pmx", (px * 100).toFixed(1) + "%");
-      c.style.setProperty("--pmy", (py * 100).toFixed(1) + "%");
-    });
-    st.addEventListener("pointerleave", function () {
-      var c = st.querySelector(".cz-artwork"); if (!c) return;
-      c.style.setProperty("--prx", "0deg"); c.style.setProperty("--pry", "0deg");
-    });
-  }
   function wireProof() {
     var open = $("previewSticker");
     if (open) open.addEventListener("click", openProof);
-    wireProofTilt();
     var m = els.proofModal;
     if (m) m.addEventListener("click", function (e) {
       if (e.target.closest("[data-proof-close]")) closeProof();

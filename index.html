@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=13" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=14" />
 </head>
 <body>
 
@@ -28,13 +28,13 @@
       </a>
       <nav class="nav-links" id="navLinks" aria-label="Primary">
         <a href="#finishes">Finishes</a>
-        <a href="#customizer">Customizer</a>
+        <a href="customizer.html">Customizer</a>
         <a href="#how">How it works</a>
         <a href="#specimen">Gallery</a>
         <a href="#faq">FAQ</a>
       </nav>
       <div class="nav-cta">
-        <a href="#customizer" class="btn btn--holo">Start a proof <span class="arrow">→</span></a>
+        <a href="customizer.html" class="btn btn--holo">Custom sticker <span class="arrow">→</span></a>
         <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
@@ -58,7 +58,7 @@
             kiss-cut to any shape. Upload your art, drag it into place, approve a free proof, and we ship in four days.
           </p>
           <div class="hero-actions">
-            <a href="#customizer" class="btn btn--accent">Open the customizer <span class="arrow">→</span></a>
+            <a href="customizer.html" class="btn btn--accent">Make a sticker <span class="arrow">→</span></a>
             <a href="#finishes" class="btn btn--ghost">See finishes</a>
           </div>
           <div class="hero-trust">
@@ -180,156 +180,18 @@
       </div>
     </section>
 
-    <!-- ============================== CUSTOMIZER ============================== -->
-    <section class="section-pad panel scanlines" id="customizer" aria-labelledby="cz-h">
+    <!-- ============================== CUSTOMIZER TEASER ============================== -->
+    <section class="section-pad panel scanlines" id="customizer">
       <span class="regmark tl"></span><span class="regmark tr"></span>
       <span class="regmark bl"></span><span class="regmark br"></span>
-      <div class="wrap">
-        <div class="section-head reveal" style="max-width:720px">
-          <span class="eyebrow">Live customizer</span>
-          <h2 class="display-lg" id="cz-h">Build it, place it, watch the price move.</h2>
-          <p class="lead">Choose a finish, shape, size and quantity, then upload your art and <b class="tint-teal">drag, zoom and rotate</b> it until it sits exactly right. Free proof before anything prints.</p>
-        </div>
-
-        <div class="customizer reveal">
-          <!-- PREVIEW -->
-          <div class="cz-preview">
-            <div class="cz-paper" id="czPaper">
-              <div class="cz-artwork shape-die" id="czArtwork" style="width:180px;height:180px;background:linear-gradient(150deg, #06e4dd, #04a49f 45%, #764cd9);">
-                <span class="up-hint" id="czArtLabel">Your design here</span>
-              </div>
-              <span class="cz-scale-label w" id="czLabelW">3 in</span>
-              <span class="cz-scale-label h" id="czLabelH">3 in</span>
-            </div>
-
-            <div class="cz-bg-row" id="bgOpts" role="group" aria-label="Preview background">
-              <span class="cz-bg-label">Show on</span>
-              <button class="cz-bg" data-bg="studio" aria-pressed="true">Studio</button>
-              <button class="cz-bg" data-bg="white" aria-pressed="false">White</button>
-              <button class="cz-bg" data-bg="black" aria-pressed="false">Black</button>
-            </div>
-
-            <!-- image editor toolbar -->
-            <div class="cz-editor" id="czEditor" hidden>
-              <div class="ce-hint">✥ Drag the art, use the sliders, or scroll to zoom</div>
-              <div class="ce-row" id="ceBorderRow" hidden>
-                <label for="ceBorder">Border</label>
-                <input type="range" id="ceBorder" min="0" max="60" step="1" value="26" aria-label="Die-cut border thickness" />
-              </div>
-              <div class="ce-row" id="ceBorderColorRow" hidden>
-                <label>Cut colour</label>
-                <div class="ce-swatches" id="borderColorOpts">
-                  <button class="ce-sw" data-bcol="#ffffff" aria-pressed="true" title="White border" style="background:#fff"></button>
-                  <button class="ce-sw" data-bcol="#111318" aria-pressed="false" title="Black border" style="background:#111318"></button>
-                </div>
-              </div>
-              <div class="ce-row">
-                <label for="ceZoom">Zoom</label>
-                <input type="range" id="ceZoom" min="0.2" max="4" step="0.01" value="1" aria-label="Zoom" />
-              </div>
-              <div class="ce-row">
-                <label for="ceRot">Rotate</label>
-                <input type="range" id="ceRot" min="-180" max="180" step="1" value="0" aria-label="Rotate" />
-              </div>
-              <div class="ce-row">
-                <label for="ceX">Move ↔</label>
-                <input type="range" id="ceX" min="-180" max="180" step="1" value="0" aria-label="Move left and right" />
-              </div>
-              <div class="ce-row">
-                <label for="ceY">Move ↕</label>
-                <input type="range" id="ceY" min="-180" max="180" step="1" value="0" aria-label="Move up and down" />
-              </div>
-              <div class="ce-btns">
-                <button class="ce-mini" data-fit="fit">Fit</button>
-                <button class="ce-mini" data-fit="fill">Fill</button>
-                <button class="ce-mini" data-fit="center">Center</button>
-                <button class="ce-mini" data-fit="reset">Reset</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- CONTROLS -->
-          <div class="cz-controls">
-            <h3>Custom stickers</h3>
-            <p class="cz-sub">15 minimum · free digital proof · reorder-perfect guarantee</p>
-
-            <div class="field">
-              <label>Artwork <b id="czFileState">optional for now</b></label>
-              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload your artwork">
-                <span class="dz-ic" aria-hidden="true">↑</span>
-                <span class="dz-txt">
-                  <strong>Drop your file or browse</strong><br />
-                  <small>PNG, JPG, PDF, SVG or AI · 300 DPI · transparent background for die-cut</small>
-                  <div class="dz-file" id="dzFile" hidden></div>
-                </span>
-                <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" hidden />
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Finish <b id="czFinishVal">Vinyl · matte</b></label>
-              <div class="opt-row" id="finishOpts" role="group" aria-label="Finish">
-                <button class="opt" data-finish="vinyl-matte" aria-pressed="true">Vinyl · matte</button>
-                <button class="opt" data-finish="vinyl-gloss" aria-pressed="false">Vinyl · gloss</button>
-                <button class="opt" data-finish="holographic" aria-pressed="false">Holographic</button>
-                <button class="opt" data-finish="glitter" aria-pressed="false">Glitter</button>
-                <button class="opt" data-finish="chrome" aria-pressed="false">Chrome</button>
-                <button class="opt" data-finish="clear" aria-pressed="false">Clear</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Shape / cut <b id="czShapeVal">Die-cut</b></label>
-              <div class="opt-row" id="shapeOpts" role="group" aria-label="Shape">
-                <button class="opt" data-shape="die" aria-pressed="true">Die-cut</button>
-                <button class="opt" data-shape="circle" aria-pressed="false">Circle</button>
-                <button class="opt" data-shape="square" aria-pressed="false">Square</button>
-                <button class="opt" data-shape="rect" aria-pressed="false">Rectangle</button>
-                <button class="opt" data-shape="rounded" aria-pressed="false">Rounded</button>
-                <button class="opt" data-shape="sheet" aria-pressed="false">Sheet</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Size <b id="czSizeVal">3 × 3 in</b></label>
-              <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
-                <button class="opt sz" data-size="2" aria-pressed="false">2″</button>
-                <button class="opt sz" data-size="3" aria-pressed="true">3″</button>
-                <button class="opt sz" data-size="4" aria-pressed="false">4″</button>
-                <button class="opt sz" data-size="5" aria-pressed="false">5″</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Quantity <b id="czQtyVal">100 stickers</b></label>
-              <div class="opt-row" id="qtyOpts" role="group" aria-label="Quantity">
-                <button class="opt sz" data-qty="15" aria-pressed="false">15</button>
-                <button class="opt sz" data-qty="50" aria-pressed="false">50</button>
-                <button class="opt sz" data-qty="100" aria-pressed="true">100</button>
-                <button class="opt sz" data-qty="200" aria-pressed="false">200</button>
-                <button class="opt sz" data-qty="300" aria-pressed="false">300</button>
-                <button class="opt sz" data-qty="500" aria-pressed="false">500</button>
-                <button class="opt sz" data-qty="1000" aria-pressed="false">1000</button>
-              </div>
-            </div>
-
-            <div class="cz-price">
-              <div class="price-row">
-                <div>
-                  <div class="price-total"><sup>$</sup><span id="priceTotal">126</span></div>
-                  <span class="cz-savings" id="czSavings">You save 47% vs. 15-pack</span>
-                </div>
-                <div class="price-per">
-                  <div><b id="pricePer">$1.26</b> / sticker</div>
-                  <div id="priceQtyNote">100 × 3″ die-cut</div>
-                  <div>Ships in ~4 business days</div>
-                </div>
-              </div>
-              <div class="cz-actions">
-                <button class="btn btn--holo" id="previewSticker">Preview my sticker</button>
-                <button class="btn btn--ghost" id="addCart">Add to cart</button>
-              </div>
-            </div>
+      <div class="wrap" style="max-width:820px;text-align:center">
+        <div class="reveal">
+          <span class="eyebrow" style="justify-content:center;display:inline-flex">Live customizer</span>
+          <h2 class="display-lg" style="margin:16px 0 14px">Build your sticker in the browser.</h2>
+          <p class="lead" style="margin:0 auto 30px">Pick a finish, shape, size and quantity, upload your art and place it exactly right, then preview a proof and see the price, all before you buy.</p>
+          <div class="hero-actions" style="justify-content:center">
+            <a href="customizer.html" class="btn btn--holo">Custom sticker <span class="arrow">&#8594;</span></a>
+            <a href="#finishes" class="btn btn--ghost">Compare finishes</a>
           </div>
         </div>
       </div>
@@ -468,7 +330,7 @@
           <span class="eyebrow" style="justify-content:center;display:inline-flex">Ready when you are</span>
           <h2 class="display-lg" style="margin:18px 0 8px">Make your mark.</h2>
           <p class="lead" style="max-width:520px;margin:0 auto 30px">Start with a free proof, no account, no commitment. See your art on real stock before you spend a cent.</p>
-          <a href="#customizer" class="btn btn--accent">Open the customizer <span class="arrow">→</span></a>
+          <a href="customizer.html" class="btn btn--accent">Make a sticker <span class="arrow">→</span></a>
           <a href="#finishes" class="btn btn--ghost">Compare finishes</a>
         </div>
       </div>
@@ -499,7 +361,7 @@
         </div>
         <div>
           <h4>Support</h4>
-          <a href="#customizer">Start a proof</a><a href="#faq">Shipping</a><a href="#faq">Returns</a><a href="#top">Contact</a><a href="#top">File setup</a>
+          <a href="customizer.html">Custom sticker</a><a href="#faq">Shipping</a><a href="#faq">Returns</a><a href="#top">Contact</a><a href="#top">File setup</a>
         </div>
       </div>
       <div class="footer-bottom">
@@ -511,32 +373,6 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Added to cart</span></div>
 
-  <!-- ============================== PROOF PREVIEW MODAL ============================== -->
-  <div class="proof-modal" id="proofModal" hidden aria-hidden="true">
-    <div class="proof-backdrop" data-proof-close></div>
-    <div class="proof-box" role="dialog" aria-modal="true" aria-labelledby="proofTitle">
-      <button class="proof-x" data-proof-close aria-label="Close preview">✕</button>
-
-      <div class="proof-loading" id="proofLoading">
-        <div class="proof-spinner" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-        <div class="proof-loading-txt">Creating your sticker<span class="dots"></span></div>
-        <div class="proof-loading-sub" id="proofLoadingSub">Laying down ink, adding the finish, cutting your contour</div>
-      </div>
-
-      <div class="proof-result" id="proofResult" hidden>
-        <span class="eyebrow">Your proof</span>
-        <h3 id="proofTitle">Here's your sticker</h3>
-        <div class="proof-stage" id="proofStage"></div>
-        <div class="proof-summary" id="proofSummary"></div>
-        <div class="proof-actions">
-          <button class="btn btn--accent" id="proofAddCart">Looks good, add to cart</button>
-          <button class="btn btn--ghost" data-proof-close>Keep editing</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="assets/js/customizer.js?v=13" defer></script>
-  <script src="assets/js/main.js?v=13" defer></script>
+  <script src="assets/js/main.js?v=14" defer></script>
 </body>
 </html>

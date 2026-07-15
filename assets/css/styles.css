@@ -419,14 +419,22 @@ section { position: relative; }
 .proof-stage .cz-artwork.proofed {
   border: 6px solid #fff !important; border-style: solid !important;
   box-shadow: 0 24px 36px -12px rgba(0,0,0,.75), 0 3px 8px rgba(0,0,0,.4);
-  transform: rotateX(var(--prx, 0deg)) rotateY(var(--pry, 0deg)) scale(1.42);
-  transform-style: preserve-3d; transition: transform .12s ease-out;
+  transform-style: preserve-3d;
+  transform: rotateX(7deg) rotateY(-14deg) scale(1.4);
+  animation: proof-float 6.5s ease-in-out infinite;
 }
 .proof-stage .cz-artwork.proofed.die-live { border: none !important; box-shadow: none; overflow: visible; }
+/* gentle ambient 3D orbit so the finish catches the light without mouse-driven re-rasterizing */
+@keyframes proof-float {
+  0%, 100% { transform: rotateX(7deg) rotateY(-14deg) scale(1.4); }
+  50%      { transform: rotateX(-6deg) rotateY(14deg) scale(1.4); }
+}
 .proof-shine2 { position: absolute; inset: 0; z-index: 6; pointer-events: none;
-  background: radial-gradient(circle at var(--pmx, 50%) var(--pmy, 32%), rgba(255,255,255,.62), rgba(255,255,255,0) 44%);
-  mix-blend-mode: soft-light; }
-.cz-artwork.matte .proof-shine2 { opacity: .28; }
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.5) 50%, transparent 60%);
+  background-size: 260% 100%; mix-blend-mode: soft-light;
+  animation: proof-sweep 6.5s ease-in-out infinite; }
+@keyframes proof-sweep { 0%, 100% { background-position: 135% 0; } 50% { background-position: -35% 0; } }
+.cz-artwork.matte .proof-shine2 { opacity: .3; }
 .cz-artwork.proofed .up-hint { display: none; }
 
 /* image editor toolbar (below preview) */
