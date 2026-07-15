@@ -28,8 +28,8 @@
     "chrome":       { mult: 1.60, label: "Chrome" },
     "clear":        { mult: 1.15, label: "Clear" },
   };
-  var SHAPE_MULT = { die: 1.00, circle: 0.97, square: 0.95, rounded: 0.97, sheet: 1.10 };
-  var SHAPE_LABEL = { die: "Die-cut", circle: "Circle", square: "Square", rounded: "Rounded", sheet: "Sheet" };
+  var SHAPE_MULT = { die: 1.00, circle: 0.97, square: 0.95, rect: 0.96, rounded: 0.97, sheet: 1.10 };
+  var SHAPE_LABEL = { die: "Die-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" };
   var QTY_MULT = { 15: 1.90, 50: 1.35, 100: 1.00, 200: 0.82, 300: 0.72, 500: 0.60, 1000: 0.46 };
 
   function unitPrice(size, finish, shape, qty) {
@@ -69,32 +69,47 @@
     var art = els.artwork;
     if (!art) return;
 
-    art.className = "cz-artwork shape-" + state.shape;
-    var px = SIZE_PX[state.size] || 162;
-    art.style.width = px + "px";
-    art.style.height = (state.shape === "sheet" ? Math.round(px * 0.78) : px) + "px";
+    var hasImg = !!state.fileURL;
+    var die = state.shape === "die";
+    var dieEmpty = die && !hasImg;   // die-cut with no art -> prompt state
+    var dieLive = die && hasImg;     // die-cut with art -> cut around the art
 
-    // finish background (animated finishes get a helper class)
+    var cls = "cz-artwork shape-" + state.shape;
+    if (hasImg) cls += " has-img";
+    if (dieEmpty) cls += " die-empty";
+    if (dieLive) cls += " die-live";
+    art.className = cls;
+
+    var px = SIZE_PX[state.size] || 162;
+    var h = px;
+    if (state.shape === "sheet") h = Math.round(px * 0.78);
+    else if (state.shape === "rect") h = Math.round(px * 0.66);
+    art.style.width = px + "px";
+    art.style.height = h + "px";
+
+    // finish material: shown for fixed shapes; die-cut carries no fill (it is the art)
     art.classList.remove("cz-holo", "cz-chrome", "cz-glitter");
-    if (state.finish === "holographic") { art.style.background = ""; art.classList.add("cz-holo"); }
+    if (die) {
+      art.style.background = "";
+    } else if (state.finish === "holographic") { art.style.background = ""; art.classList.add("cz-holo"); }
     else if (state.finish === "chrome") { art.style.background = ""; art.classList.add("cz-chrome"); }
     else if (state.finish === "glitter") { art.style.background = FINISH_BG.glitter; art.classList.add("cz-glitter"); }
     else { art.style.background = FINISH_BG[state.finish] || FINISH_BG["vinyl-matte"]; }
 
     var img = art.querySelector("img.cz-img");
-    if (state.fileURL) {
-      art.classList.add("has-img");
+    if (hasImg) {
       if (!img) { img = document.createElement("img"); img.className = "cz-img"; img.alt = "Your artwork preview"; art.appendChild(img); }
       img.src = state.fileURL;
       applyImgTransform();
       if (els.artLabel) els.artLabel.style.display = "none";
     } else {
-      art.classList.remove("has-img");
       if (img) img.remove();
       if (els.artLabel) {
         els.artLabel.style.display = "";
-        els.artLabel.textContent = state.shape === "sheet" ? "Your designs here" : "Your design here";
-        els.artLabel.style.color = "#fff";
+        els.artLabel.textContent = dieEmpty
+          ? "Die-cut preview appears once you drop your file in ↑"
+          : (state.shape === "sheet" ? "Drop your designs to preview" : "Drop your art to preview");
+        els.artLabel.style.color = state.bg === "white" ? "rgba(10,12,14,.6)" : "rgba(255,255,255,.85)";
       }
     }
 

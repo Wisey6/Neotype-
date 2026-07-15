@@ -55,11 +55,11 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
-  /* ambient neon grid + glow */
+  /* ambient neon glow (non-fixed to avoid scroll repaint jank) */
   background-image:
     radial-gradient(1100px 620px at 80% -10%, rgba(118, 76, 217, 0.22), transparent 60%),
     radial-gradient(900px 560px at 0% 8%, rgba(6, 228, 221, 0.14), transparent 55%);
-  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 800; line-height: 1.03; letter-spacing: -0.02em; margin: 0; }
@@ -260,21 +260,21 @@ section { position: relative; }
 .est.holo { background: repeating-linear-gradient(112deg, #ff5ec9 0 9%, #ffd24a 15%, #37f2c3 24%, #3aa0ff 33%, #a24bff 42%, #ff5ec9 51%); background-size: 260% 260%; animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both, holo-shift 6s linear infinite; }
 .est.glit { background: radial-gradient(circle at 38% 30%, #b895ff, #6a3fd6 68%, #4b2bd4); }
 
-/* die-cut emoji stickers: white contour hugs the emoji's own shape */
+/* die-cut emoji stickers: white contour hugs the emoji's own shape.
+   text-shadow outline (cheap) + own compositing layer keeps hover snappy. */
 .dcst {
   position: absolute; line-height: 1; z-index: 4; cursor: default;
   font-size: var(--s, 60px);
-  transform: rotate(var(--r, 0deg));
-  filter:
-    drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff)
-    drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff)
-    drop-shadow(1.9px 1.9px 0 #fff) drop-shadow(-1.9px 1.9px 0 #fff)
-    drop-shadow(1.9px -1.9px 0 #fff) drop-shadow(-1.9px -1.9px 0 #fff)
-    drop-shadow(4px 9px 9px rgba(0,0,0,.5));
-  transition: transform .3s cubic-bezier(.2,.9,.3,1.2);
+  transform: rotate(var(--r, 0deg)) translateZ(0);
+  will-change: transform;
+  text-shadow:
+    2.4px 0 0 #fff, -2.4px 0 0 #fff, 0 2.4px 0 #fff, 0 -2.4px 0 #fff,
+    1.7px 1.7px 0 #fff, -1.7px 1.7px 0 #fff, 1.7px -1.7px 0 #fff, -1.7px -1.7px 0 #fff,
+    4px 9px 9px rgba(0,0,0,.5);
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.2);
   animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: var(--d, 0s);
 }
-.dcst:hover { transform: rotate(0deg) scale(1.14); z-index: 12; }
+.dcst:hover { transform: rotate(0deg) scale(1.14) translateZ(0); z-index: 12; }
 
 /* ---- Manifesto ------------------------------------------------------- */
 .manifesto { text-align: left; }
@@ -386,9 +386,22 @@ section { position: relative; }
 
 .shape-circle { border-radius: 50%; }
 .shape-square { border-radius: 6%; }
+.shape-rect { border-radius: 5%; }
 .shape-rounded { border-radius: 22%; }
-.shape-die { border-radius: 26% 74% 70% 30% / 30% 30% 70% 70%; }
+.shape-die { border-radius: 14px; }
 .shape-sheet { border-radius: 8%; border-style: solid; }
+
+/* die-cut: no fixed shape. Empty = prompt to upload; live = cut around art */
+.cz-artwork.die-empty { background: rgba(255,255,255,.03) !important; border: 2px dashed var(--line-strong); border-radius: 14px; }
+.cz-paper.pg-white .cz-artwork.die-empty { background: rgba(0,0,0,.03) !important; border-color: rgba(0,0,0,.25); }
+.cz-artwork.die-live { background: transparent !important; border: none !important; overflow: visible; }
+.cz-artwork.die-live img.cz-img {
+  text-shadow: none;
+  filter:
+    drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(1.5px 1.5px 0 #fff) drop-shadow(-1.5px 1.5px 0 #fff) drop-shadow(1.5px -1.5px 0 #fff) drop-shadow(-1.5px -1.5px 0 #fff)
+    drop-shadow(3px 7px 7px rgba(0,0,0,.5));
+}
 .cz-scale-label { position: absolute; font-family: var(--font-round); font-size: 11px; color: rgba(255,255,255,.5); }
 .cz-scale-label.w { bottom: 18px; left: 50%; transform: translateX(-50%); }
 .cz-scale-label.h { left: 18px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
@@ -414,6 +427,7 @@ section { position: relative; }
   transform: rotateX(var(--prx, 0deg)) rotateY(var(--pry, 0deg)) scale(1.42);
   transform-style: preserve-3d; transition: transform .12s ease-out;
 }
+.proof-stage .cz-artwork.proofed.die-live { border: none !important; box-shadow: none; overflow: visible; }
 .proof-shine2 { position: absolute; inset: 0; z-index: 6; pointer-events: none;
   background: radial-gradient(circle at var(--pmx, 50%) var(--pmy, 32%), rgba(255,255,255,.62), rgba(255,255,255,0) 44%);
   mix-blend-mode: soft-light; }
