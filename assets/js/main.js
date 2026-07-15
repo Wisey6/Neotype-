@@ -76,17 +76,25 @@
     });
   }
 
-  // ---- Hero sticker peel wobble on load --------------------------------
-  var main = document.querySelector(".hero-sticker-main");
-  if (main && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    main.addEventListener("mousemove", function (e) {
-      var r = main.getBoundingClientRect();
-      var dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-      var dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-      main.style.transform = "rotate(-7deg) rotateY(" + (dx * 10) + "deg) rotateX(" + (-dy * 10) + "deg)";
-    });
-    main.addEventListener("mouseleave", function () {
-      main.style.transform = "rotate(-7deg)";
-    });
+  // ---- Logo glitch: burst on load, replay on hover ---------------------
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function glitch(el) {
+    if (!el || reduce) return;
+    el.classList.remove("glitching");
+    // force reflow so the animation can restart
+    void el.offsetWidth;
+    el.classList.add("glitching");
   }
+
+  document.querySelectorAll("[data-glitch]").forEach(function (host) {
+    var target = host.classList.contains("glitch") ? host : host.querySelector(".glitch");
+    if (!target) return;
+    target.addEventListener("animationend", function () { target.classList.remove("glitching"); });
+    // hover replay
+    var hoverEl = host.hasAttribute("data-glitch-hover") ? host : target;
+    hoverEl.addEventListener("mouseenter", function () { glitch(target); });
+    // one burst shortly after load
+    if (!reduce) setTimeout(function () { glitch(target); }, 550);
+  });
 })();

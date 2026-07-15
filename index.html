@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neotype — Custom stickers, cut to your mark</title>
-  <meta name="description" content="Neotype prints premium custom stickers — vinyl, holographic, chrome, glitter and clear — kiss-cut to any shape. Upload once, approve a free proof, ship in 4 days." />
+  <title>Neotype Studio — Custom stickers, cut to your mark</title>
+  <meta name="description" content="Neotype Studio prints premium custom stickers — vinyl, holographic, chrome, glitter and clear — kiss-cut to any shape. Upload once, position it just right, approve a free proof, ship in 4 days." />
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23121016'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%232e2bf5'/%3E%3Ccircle cx='19' cy='19' r='7' fill='none' stroke='%23ec008c' stroke-width='2'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23212830'/%3E%3Ccircle cx='14' cy='16' r='7' fill='%2306E4DD'/%3E%3Ccircle cx='19' cy='16' r='7' fill='none' stroke='%23764CD9' stroke-width='2.5'/%3E%3C/svg%3E" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
@@ -19,9 +19,12 @@
   <!-- ============================== HEADER ============================== -->
   <header class="site-header">
     <div class="wrap nav">
-      <a class="brand" href="#top" aria-label="Neotype home">
-        <span class="die"><span></span></span>
-        Neotype
+      <a href="#top" aria-label="Neotype Studio home">
+        <span class="glitch" data-glitch>
+          <img class="brand-logo glitch-base" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
+          <img class="brand-logo glitch-layer gl-a" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+          <img class="brand-logo glitch-layer gl-b" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+        </span>
       </a>
       <nav class="nav-links" id="navLinks" aria-label="Primary">
         <a href="#finishes">Finishes</a>
@@ -38,7 +41,7 @@
       </div>
     </div>
   </header>
-  <div class="cmyk-bar"><span></span><span></span><span></span><span></span></div>
+  <div class="signal-bar"></div>
 
   <main id="top">
 
@@ -46,13 +49,13 @@
     <section class="hero wrap" aria-labelledby="hero-h">
       <div class="hero-grid">
         <div class="hero-copy">
-          <span class="eyebrow">Proof № 001 — Type specimen</span>
+          <span class="eyebrow">Custom sticker studio</span>
           <h1 id="hero-h" class="display-xl">
-            Turn your art into stickers worth <span class="peelword">peeling.</span>
+            Stickers with a <span class="tint-teal">signal</span> worth <span class="tint-purple">peeling.</span>
           </h1>
           <p class="lead">
-            Neotype prints premium custom stickers — vinyl, holographic, chrome, glitter and clear —
-            kiss-cut to any shape you draw. Upload once, approve a free proof, and we ship in four days.
+            Neotype Studio prints premium custom stickers — vinyl, holographic, chrome, glitter and clear —
+            kiss-cut to any shape. Upload your art, drag it into place, approve a free proof, and we ship in four days.
           </p>
           <div class="hero-actions">
             <a href="#customizer" class="btn btn--accent">Open the customizer <span class="arrow">→</span></a>
@@ -60,18 +63,25 @@
           </div>
           <div class="hero-trust">
             <span class="avatar-stack" aria-hidden="true">
-              <i style="background:#2e2bf5"></i><i style="background:#ec008c"></i><i style="background:#ffd400"></i><i style="background:#00aeef"></i>
+              <i style="background:#06e4dd"></i><i style="background:#764cd9"></i><i style="background:#00ff09"></i><i style="background:#30bfbb"></i>
             </span>
             <span><span class="stars">★★★★★</span> &nbsp;Trusted by 12,000+ creators &amp; small brands</span>
           </div>
         </div>
 
-        <div class="hero-stage" aria-hidden="true">
-          <div class="hero-backing"></div>
-          <div class="sticker hero-sticker-main" style="--r:-7deg">Neotype<small>KISS-CUT</small></div>
-          <div class="sticker hero-sticker-2" style="--r:10deg">HOLO</div>
-          <div class="sticker hero-sticker-3" style="--r:6deg">stay<br>weird</div>
-          <div class="sticker hero-sticker-4" style="--r:-12deg">★</div>
+        <div class="hero-stage">
+          <div class="hero-backing" aria-hidden="true"></div>
+          <div class="sticker hero-logo-sticker" data-glitch data-glitch-hover style="--r:-4deg" role="img" aria-label="Neotype Studio sticker">
+            <span class="cut" aria-hidden="true"></span>
+            <span class="glitch" style="width:100%">
+              <img class="glitch-base" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
+              <img class="glitch-layer gl-a" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+              <img class="glitch-layer gl-b" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+            </span>
+          </div>
+          <div class="sticker hero-sticker-2" aria-hidden="true" style="--r:10deg">HOLO</div>
+          <div class="sticker hero-sticker-3" aria-hidden="true" style="--r:6deg">stay<br>weird</div>
+          <div class="sticker hero-sticker-4" aria-hidden="true" style="--r:-12deg">★</div>
         </div>
       </div>
     </section>
@@ -121,26 +131,44 @@
     </section>
 
     <!-- ============================== CUSTOMIZER ============================== -->
-    <section class="section-pad on-ink" id="customizer" aria-labelledby="cz-h">
+    <section class="section-pad panel scanlines" id="customizer" aria-labelledby="cz-h">
       <span class="regmark tl"></span><span class="regmark tr"></span>
       <span class="regmark bl"></span><span class="regmark br"></span>
       <div class="wrap">
         <div class="section-head reveal" style="max-width:720px">
-          <span class="eyebrow on-ink">Live customizer</span>
-          <h2 class="display-lg" id="cz-h">Build your sticker. Watch the price move.</h2>
-          <p class="lead">Choose a finish, shape, size and quantity — the preview and the price update the moment you click. Free proof before anything prints.</p>
+          <span class="eyebrow">Live customizer</span>
+          <h2 class="display-lg" id="cz-h">Build it, place it, watch the price move.</h2>
+          <p class="lead">Choose a finish, shape, size and quantity — then upload your art and <b class="tint-teal">drag, zoom and rotate</b> it until it sits exactly right. Free proof before anything prints.</p>
         </div>
 
         <div class="customizer reveal">
           <!-- PREVIEW -->
           <div class="cz-preview">
-            <span class="regmark tl"></span><span class="regmark br"></span>
             <div class="cz-paper" id="czPaper">
-              <div class="cz-artwork shape-die" id="czArtwork" style="width:180px;height:180px;background:radial-gradient(circle at 32% 28%, #4b49ff, #2e2bf5 60%, #1a18b0);">
+              <div class="cz-artwork shape-die" id="czArtwork" style="width:180px;height:180px;background:linear-gradient(150deg, #06e4dd, #04a49f 45%, #764cd9);">
                 <span class="up-hint" id="czArtLabel">Your design here</span>
               </div>
               <span class="cz-scale-label w" id="czLabelW">3 in</span>
               <span class="cz-scale-label h" id="czLabelH">3 in</span>
+            </div>
+
+            <!-- image editor toolbar -->
+            <div class="cz-editor" id="czEditor" hidden>
+              <div class="ce-hint">✥ Drag the art to move it · scroll to zoom</div>
+              <div class="ce-row">
+                <label for="ceZoom">Zoom</label>
+                <input type="range" id="ceZoom" min="0.2" max="4" step="0.01" value="1" aria-label="Zoom" />
+              </div>
+              <div class="ce-row">
+                <label for="ceRot">Rotate</label>
+                <input type="range" id="ceRot" min="-180" max="180" step="1" value="0" aria-label="Rotate" />
+              </div>
+              <div class="ce-btns">
+                <button class="ce-mini" data-fit="fit">Fit</button>
+                <button class="ce-mini" data-fit="fill">Fill</button>
+                <button class="ce-mini" data-fit="center">Center</button>
+                <button class="ce-mini" data-fit="reset">Reset</button>
+              </div>
             </div>
           </div>
 
@@ -149,7 +177,6 @@
             <h3>Custom stickers</h3>
             <p class="cz-sub">15 minimum · free digital proof · reorder-perfect guarantee</p>
 
-            <!-- Upload -->
             <div class="field">
               <label>Artwork <b id="czFileState">optional for now</b></label>
               <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload your artwork">
@@ -163,7 +190,6 @@
               </div>
             </div>
 
-            <!-- Finish -->
             <div class="field">
               <label>Finish <b id="czFinishVal">Vinyl · matte</b></label>
               <div class="opt-row" id="finishOpts" role="group" aria-label="Finish">
@@ -176,7 +202,6 @@
               </div>
             </div>
 
-            <!-- Shape -->
             <div class="field">
               <label>Shape / cut <b id="czShapeVal">Die-cut</b></label>
               <div class="opt-row" id="shapeOpts" role="group" aria-label="Shape">
@@ -188,7 +213,6 @@
               </div>
             </div>
 
-            <!-- Size -->
             <div class="field">
               <label>Size <b id="czSizeVal">3 × 3 in</b></label>
               <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
@@ -199,7 +223,6 @@
               </div>
             </div>
 
-            <!-- Quantity -->
             <div class="field">
               <label>Quantity <b id="czQtyVal">100 stickers</b></label>
               <div class="opt-row" id="qtyOpts" role="group" aria-label="Quantity">
@@ -213,12 +236,11 @@
               </div>
             </div>
 
-            <!-- Price -->
             <div class="cz-price">
               <div class="price-row">
                 <div>
                   <div class="price-total"><sup>$</sup><span id="priceTotal">126</span></div>
-                  <span class="cz-savings" id="czSavings">You save 32%</span>
+                  <span class="cz-savings" id="czSavings">You save 47% vs. 15-pack</span>
                 </div>
                 <div class="price-per">
                   <div><b id="pricePer">$1.26</b> / sticker</div>
@@ -246,8 +268,8 @@
         <div class="steps">
           <div class="step reveal">
             <span class="num">STEP 01</span>
-            <h3>Upload your design</h3>
-            <p>Drop a PNG, PDF, SVG or AI file. We flag anything under 300 DPI before it ever reaches the press.</p>
+            <h3>Upload &amp; place</h3>
+            <p>Drop a PNG, PDF, SVG or AI file, then drag, zoom and rotate it until it sits exactly where you want.</p>
           </div>
           <div class="step reveal">
             <span class="num">STEP 02</span>
@@ -269,13 +291,13 @@
     </section>
 
     <!-- ============================== STATS ============================== -->
-    <section class="section-pad on-ink">
+    <section class="section-pad panel scanlines">
       <div class="wrap">
         <div class="section-head reveal" style="max-width:100%;margin-bottom:36px">
-          <span class="eyebrow on-ink">By the numbers</span>
+          <span class="eyebrow">By the numbers</span>
         </div>
         <div class="stats">
-          <div class="stat reveal"><div class="n" data-count="4">4-day</div><div class="l">avg. turnaround</div></div>
+          <div class="stat reveal"><div class="n">4-day</div><div class="l">avg. turnaround</div></div>
           <div class="stat reveal"><div class="n">4.9<span style="font-size:.5em">/5</span></div><div class="l">from 3,100+ reviews</div></div>
           <div class="stat reveal"><div class="n">12k+</div><div class="l">orders shipped</div></div>
           <div class="stat reveal"><div class="n">96%</div><div class="l">reorder rate</div></div>
@@ -292,24 +314,24 @@
           <p class="lead">Every order becomes a new type specimen. Here's a sample of the shapes, finishes and ideas that have come through the press.</p>
         </div>
         <div class="specimen" aria-hidden="true">
-          <div class="spec" style="background:radial-gradient(circle at 30% 25%,#4b49ff,#2e2bf5)">stay<br>weird</div>
-          <div class="spec" style="background:conic-gradient(from 0deg,#ff5ec9,#ffd400,#00aeef,#7b5cff,#ff5ec9)">HOLO</div>
-          <div class="spec" style="background:linear-gradient(135deg,#12b981,#0e9e6e)">good<br>coffee</div>
-          <div class="spec" style="background:linear-gradient(135deg,#ffb23e,#ff7a00)">★</div>
-          <div class="spec" style="background:linear-gradient(135deg,#ec008c,#a3005f)">band<br>merch</div>
+          <div class="spec" style="background:linear-gradient(135deg,#06e4dd,#04a49f)">stay<br>weird</div>
+          <div class="spec" style="background:conic-gradient(from 0deg,#ff5ec9,#ffd400,#06e4dd,#764cd9,#ff5ec9)">HOLO</div>
+          <div class="spec" style="background:linear-gradient(135deg,#00ff09,#04a49f);color:#063d02">good<br>coffee</div>
+          <div class="spec" style="background:linear-gradient(135deg,#764cd9,#4b2bd4)">★</div>
+          <div class="spec" style="background:linear-gradient(135deg,#ec008c,#764cd9)">band<br>merch</div>
           <div class="spec" style="background:linear-gradient(115deg,#d7dbe2,#8f97a6,#f4f6fa,#7d8494);color:#26232e">chrome</div>
-          <div class="spec" style="background:linear-gradient(135deg,#00aeef,#0077b6)">ship<br>it</div>
-          <div class="spec" style="background:linear-gradient(135deg,#7b5cff,#4b2bd4)">indie</div>
-          <div class="spec" style="background:radial-gradient(#ff8ad4,#d63aa0)">glitter</div>
-          <div class="spec" style="background:linear-gradient(135deg,#121016,#34303c)">▲</div>
-          <div class="spec" style="background:linear-gradient(135deg,#ffd400,#e0b400);color:#26232e">hello!</div>
-          <div class="spec" style="background:linear-gradient(135deg,#12b981,#2e2bf5)">game<br>on</div>
+          <div class="spec" style="background:linear-gradient(135deg,#06e4dd,#0077b6)">ship<br>it</div>
+          <div class="spec" style="background:linear-gradient(135deg,#8f6ce6,#4b2bd4)">indie</div>
+          <div class="spec" style="background:radial-gradient(#8f6ce6,#4b2bd4)">glitter</div>
+          <div class="spec" style="background:linear-gradient(135deg,#212830,#30bfbb)">▲</div>
+          <div class="spec" style="background:var(--green);color:#063d02">hello!</div>
+          <div class="spec" style="background:linear-gradient(135deg,#00ff09,#06e4dd);color:#063d02">game<br>on</div>
         </div>
       </div>
     </section>
 
     <!-- ============================== FAQ ============================== -->
-    <section class="section-pad" id="faq" style="background:var(--paper-2)">
+    <section class="section-pad panel" id="faq">
       <div class="wrap" style="max-width:860px">
         <div class="section-head reveal">
           <span class="eyebrow">Good to know</span>
@@ -319,6 +341,10 @@
           <div class="faq" data-open="false">
             <button aria-expanded="false"><span>What files do you accept?</span><span class="plus">+</span></button>
             <div class="faq-a"><p>PNG, JPG, PDF, SVG and AI. We recommend 300 DPI or higher, and a transparent background if you want a die-cut that follows your artwork's exact contour. If anything looks low-res, we'll tell you before printing.</p></div>
+          </div>
+          <div class="faq" data-open="false">
+            <button aria-expanded="false"><span>Can I move and resize my design on the sticker?</span><span class="plus">+</span></button>
+            <div class="faq-a"><p>Yes — that's what the live customizer is for. After you upload, drag the art to reposition it, scroll or use the zoom slider to scale, and rotate it to any angle. Use Fit, Fill, Center or Reset to snap back at any time. What you see in the preview is what we proof.</p></div>
           </div>
           <div class="faq" data-open="false">
             <button aria-expanded="false"><span>What's the minimum order?</span><span class="plus">+</span></button>
@@ -332,25 +358,21 @@
             <button aria-expanded="false"><span>Do I get a proof before you print?</span><span class="plus">+</span></button>
             <div class="faq-a"><p>Always, and it's free. Every order gets a digital proof from a real person, usually within a business day. Nothing goes to the press until you approve it, and revisions are on us.</p></div>
           </div>
-          <div class="faq" data-open="false">
-            <button aria-expanded="false"><span>Can I get a fully custom shape?</span><span class="plus">+</span></button>
-            <div class="faq-a"><p>Yes. Die-cut follows your design's outline exactly, so a sticker can be any shape you can draw. Prefer a clean circle, square or rounded rectangle? Those are one click in the customizer.</p></div>
-          </div>
         </div>
       </div>
     </section>
 
     <!-- ============================== CTA BAND ============================== -->
-    <section class="section-pad on-ink cta-band">
+    <section class="section-pad cta-band scanlines">
       <span class="regmark tl"></span><span class="regmark tr"></span>
       <span class="regmark bl"></span><span class="regmark br"></span>
       <div class="wrap">
         <div class="reveal">
-          <span class="eyebrow on-ink" style="justify-content:center;display:inline-flex">Ready when you are</span>
+          <span class="eyebrow" style="justify-content:center;display:inline-flex">Ready when you are</span>
           <h2 class="display-lg" style="margin:18px 0 8px">Make your mark.</h2>
           <p class="lead" style="max-width:520px;margin:0 auto 30px">Start with a free proof — no account, no commitment. See your art on real stock before you spend a cent.</p>
           <a href="#customizer" class="btn btn--accent">Open the customizer <span class="arrow">→</span></a>
-          <a href="#finishes" class="btn btn--ghost on-ink">Compare finishes</a>
+          <a href="#finishes" class="btn btn--ghost">Compare finishes</a>
         </div>
       </div>
     </section>
@@ -358,15 +380,12 @@
   </main>
 
   <!-- ============================== FOOTER ============================== -->
-  <div class="cmyk-bar"><span></span><span></span><span></span><span></span></div>
+  <div class="signal-bar"></div>
   <footer class="site-footer">
     <div class="wrap">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="brand" href="#top" style="color:var(--paper)">
-            <span class="die" style="background:var(--ink-soft);border-color:rgba(255,255,255,.4)"><span></span></span>
-            Neotype
-          </a>
+          <img class="footer-logo" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
           <p>Premium custom stickers, kiss-cut to your mark. Free proofs, four-day turnaround, reorder-perfect guarantee.</p>
           <form class="news" id="newsForm" novalidate>
             <input type="email" id="newsEmail" placeholder="Email for 15% off your first order" aria-label="Email address" required />
@@ -387,7 +406,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2026 Neotype — every sticker is a type specimen.</span>
+        <span>© 2026 Neotype Studio — every sticker is a type specimen.</span>
         <span><a href="#top">Terms</a> · <a href="#top">Privacy</a> · Mon–Fri, 7am–6pm MT</span>
       </div>
     </div>
