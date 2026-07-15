@@ -34,18 +34,27 @@
   };
   var SHAPE_MULT = { die: 1.00, circle: 0.97, square: 0.95, rect: 0.96, rounded: 0.97, sheet: 1.10 };
   var SHAPE_LABEL = { die: "Die-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" };
-  var QTY_MULT = { 15: 1.90, 50: 1.35, 100: 1.00, 200: 0.82, 300: 0.72, 500: 0.60, 1000: 0.46 };
 
-  function unitPrice(size, finish, shape, qty) {
-    var area = size * size;
-    var base = 0.21 * Math.pow(area, 0.82);
-    var u = base * FINISH[finish].mult * SHAPE_MULT[shape] * (QTY_MULT[qty] || 1);
-    return Math.max(u, 0.30);
+  // Area-based pricing in AUD, following eprintonline's "pay by the square
+  // metre" model: total = printed area (m²) × per-m² rate × finish, where the
+  // per-m² rate drops as total area grows (bulk discount). Rates approximate
+  // their guide (base ~A$36-45/m²); swap in the exact rate card when available.
+  var CURRENCY = "AUD";
+  var MIN_ORDER = 18; // A$ minimum order
+  function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }        // per sticker
+  function ratePerM2(totalArea) { return 85 + 120 * Math.exp(-totalArea / 0.5); }
+  function orderTotal(size, finish, shape, qty) {
+    var totalArea = areaM2(size) * qty;
+    var t = totalArea * ratePerM2(totalArea) * FINISH[finish].mult * SHAPE_MULT[shape];
+    return Math.max(MIN_ORDER, t);
   }
   function compute() {
-    var unit = unitPrice(state.size, state.finish, state.shape, state.qty);
-    var unitAtMin = unitPrice(state.size, state.finish, state.shape, 15);
-    return { unit: unit, total: unit * state.qty, savings: Math.round((1 - unit / unitAtMin) * 100) };
+    var totalArea = areaM2(state.size) * state.qty;
+    var total = orderTotal(state.size, state.finish, state.shape, state.qty);
+    var unit = total / state.qty;
+    var unit15 = orderTotal(state.size, state.finish, state.shape, 15) / 15;
+    var savings = Math.round((1 - unit / unit15) * 100);
+    return { unit: unit, total: total, savings: savings, area: totalArea };
   }
 
   // ---- Preview visuals --------------------------------------------------
@@ -266,6 +275,7 @@
     if (els.priceTotal) animateNumber(els.priceTotal, Math.round(r.total));
     if (els.pricePer) els.pricePer.textContent = "$" + r.unit.toFixed(2);
     if (els.priceNote) els.priceNote.textContent = state.qty + " × " + state.size + "″ " + SHAPE_LABEL[state.shape].toLowerCase();
+    if (els.priceArea) els.priceArea.textContent = r.area.toFixed(2) + " m² · " + CURRENCY;
     if (els.savings) {
       if (r.savings > 0) { els.savings.style.display = ""; els.savings.textContent = "You save " + r.savings + "% vs. 15-pack"; }
       else { els.savings.style.display = "none"; }
@@ -428,7 +438,7 @@
         chip(SHAPE_LABEL[state.shape]) +
         chip(state.size + "×" + state.size + "″") +
         chip(state.qty.toLocaleString() + " stickers") +
-        '<span class="proof-chip price"><b>$' + Math.round(r.total) + "</b> total</span>";
+        '<span class="proof-chip price"><b>$' + Math.round(r.total) + "</b> " + CURRENCY + "</span>";
     }
     if (els.proofLoading) els.proofLoading.hidden = true;
     if (els.proofResult) els.proofResult.hidden = false;
@@ -451,7 +461,7 @@
       var r = compute();
       closeProof();
       window.dispatchEvent(new CustomEvent("neotype:toast", {
-        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total)
+        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
       }));
     });
     document.addEventListener("keydown", function (e) {
@@ -500,7 +510,7 @@
     if (add) add.addEventListener("click", function () {
       var r = compute();
       window.dispatchEvent(new CustomEvent("neotype:toast", {
-        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total)
+        detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
       }));
     });
   }
@@ -510,7 +520,7 @@
     els = {
       artwork: $("czArtwork"), artLabel: $("czArtLabel"), paper: $("czPaper"),
       labelW: $("czLabelW"), labelH: $("czLabelH"),
-      priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), savings: $("czSavings"),
+      priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), priceArea: $("priceArea"), savings: $("czSavings"),
       editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
       border: $("ceBorder"), borderRow: $("ceBorderRow"), borderColorRow: $("ceBorderColorRow"),
       proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
