@@ -130,7 +130,7 @@ a { color: inherit; text-decoration: none; }
 /* ---- Header ---------------------------------------------------------- */
 .site-header { position: sticky; top: 0; z-index: 60; background: rgba(33, 40, 48, 0.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line-soft); }
 .nav { display: flex; align-items: center; justify-content: space-between; height: 76px; gap: 20px; }
-.brand-logo { height: 34px; display: block; }
+.glitch img.brand-logo { height: 26px; width: auto; display: block; }
 .nav-links { display: flex; gap: 26px; align-items: center; }
 .nav-links a { font-family: var(--font-round); font-size: 15px; color: var(--muted); transition: color .15s; position: relative; white-space: nowrap; }
 .nav-links a:hover { color: var(--teal); }
@@ -216,16 +216,15 @@ section { position: relative; }
 }
 .sticker:hover::after { width: 62px; height: 62px; }
 
-/* main hero sticker holds the glitch logo */
+/* main hero sticker = the die-cut sticker, floating and glitching */
 .hero-logo-sticker {
-  width: 340px; padding: 30px 26px; border-radius: 26px; z-index: 3;
-  background: linear-gradient(150deg, #283640, #1a2229);
-  border: 3px solid rgba(6,228,221,0.9); box-shadow: var(--shadow-peel), var(--glow-teal);
-  transform: rotate(-4deg); display: grid; place-items: center; cursor: pointer;
+  width: 400px; max-width: 88%; z-index: 3; position: relative;
+  transform: rotate(-4deg); cursor: pointer;
+  filter: drop-shadow(6px 12px 20px rgba(0,0,0,0.55)) drop-shadow(0 0 22px rgba(6,228,221,0.28));
   animation: drop-in .9s cubic-bezier(.2,.9,.25,1.2) both;
 }
 .hero-logo-sticker .glitch { width: 100%; }
-.hero-logo-sticker .cut { position:absolute; inset: 10px; border: 1.5px dashed rgba(6,228,221,0.5); border-radius: 20px; pointer-events:none; }
+.hero-logo-sticker img { width: 100%; height: auto; }
 .hero-sticker-2 { width: 118px; height: 118px; border-radius: 50%; background: conic-gradient(from 0deg, #ff5ec9, #ffd400, #06e4dd, #764cd9, #ff5ec9); position: absolute; top: 8px; right: 22px; z-index: 4; transform: rotate(10deg); font-size: 1rem; animation: drop-in 1s .12s cubic-bezier(.2,.9,.25,1.2) both; }
 .hero-sticker-3 { width: 132px; height: 88px; border-radius: 16px; background: linear-gradient(135deg, #764cd9, #4b2bd4); position: absolute; bottom: 22px; left: 0; z-index: 5; transform: rotate(6deg); font-size: .95rem; animation: drop-in 1s .24s cubic-bezier(.2,.9,.25,1.2) both; }
 .hero-sticker-4 { width: 84px; height: 84px; border-radius: 20px; background: var(--green); color: #063d02; position: absolute; bottom: 78px; right: -8px; z-index: 2; transform: rotate(-12deg); font-size: .8rem; animation: drop-in 1s .36s cubic-bezier(.2,.9,.25,1.2) both; }
@@ -236,27 +235,34 @@ section { position: relative; }
 .finish-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .finish-card { position: relative; background: var(--bg-card); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 22px; overflow: hidden; transition: transform .2s ease, box-shadow .2s ease, border-color .2s; }
 .finish-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-soft); border-color: var(--line-strong); }
-.finish-swatch { width: 100%; height: 128px; border-radius: 10px; margin-bottom: 18px; border: 2px dashed rgba(255,255,255,0.14); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+/* finish tile shows a real die-cut sticker with the finish applied */
+.finish-swatch { width: 100%; height: 156px; border-radius: 10px; margin-bottom: 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); position: relative; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 50% 38%, #2b3640, #171d23 76%); }
 .finish-card h3 { font-size: 1.25rem; display: flex; align-items: center; justify-content: space-between; }
 .finish-card p { font-size: 14.5px; color: var(--muted); margin: 8px 0 0; }
 .finish-tag { font-family: var(--font-round); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); border: 1px solid var(--line-strong); border-radius: 100px; padding: 3px 9px; }
 
-.sw-vinyl { background: linear-gradient(135deg, #06e4dd, #04a49f 45%, #764cd9); }
-.sw-holo { background: conic-gradient(from 0deg, #ff5ec9, #ffd400, #4ce0c0, #06e4dd, #764cd9, #ff5ec9); background-size: 200% 200%; animation: holo-shift 6s linear infinite; }
-.sw-glitter { background: radial-gradient(#8f6ce6, #4b2bd4); }
-.sw-glitter::after { content:""; position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.9) 1px, transparent 1.4px); background-size: 9px 9px; animation: sparkle 3s steps(2) infinite; }
-.sw-chrome { background: linear-gradient(115deg, #d7dbe2 0%, #8f97a6 22%, #f4f6fa 40%, #7d8494 55%, #c9cfd9 75%, #9aa2b1 100%); background-size: 220% 100%; animation: chrome-slide 5s ease-in-out infinite; }
-.sw-clear { background: repeating-conic-gradient(#2b3a44 0% 25%, #223038 0% 50%); background-size: 22px 22px; }
-.sw-clear::after { content:""; position:absolute; inset:0; background: linear-gradient(135deg, rgba(6,228,221,.4), rgba(118,76,217,.4)); }
-.sw-sheet { background: var(--bg-3); }
-.sw-sheet::after { content:""; position:absolute; inset:12px; background-image:
-    radial-gradient(circle at 25% 30%, #06e4dd 0 14px, transparent 15px),
-    radial-gradient(circle at 70% 28%, #764cd9 0 12px, transparent 13px),
-    radial-gradient(circle at 35% 72%, #00ff09 0 13px, transparent 14px),
-    radial-gradient(circle at 76% 70%, #30bfbb 0 11px, transparent 12px);
-  border: 1.5px dashed var(--line-strong); border-radius: 8px; }
+/* sticker + finish overlay (overlay masked to the sticker silhouette) */
+.sticker-shell { position: relative; display: inline-block; line-height: 0; }
+.sticker-shell img { display: block; width: 220px; max-width: 82%; height: auto; margin: 0 auto; filter: drop-shadow(3px 5px 7px rgba(0,0,0,0.55)); }
+.foil { position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask: center / contain no-repeat url("../img/neotype-sticker.png");
+  mask: center / contain no-repeat url("../img/neotype-sticker.png"); }
 
-@keyframes holo-shift { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+.foil-gloss { background: linear-gradient(118deg, transparent 42%, rgba(255,255,255,.22) 50%, transparent 58%); mix-blend-mode: screen; }
+.foil-holo { background: linear-gradient(60deg, #a24bff, #3aa0ff 20%, #37f2c3 40%, #ffd24a 60%, #ff3dd2 80%, #a24bff); background-size: 260% 260%; mix-blend-mode: screen; opacity: .72; animation: holo-shift 5s linear infinite; }
+.foil-glitter { background-image: radial-gradient(circle, rgba(255,255,255,.95) 0 1px, transparent 1.6px), radial-gradient(circle, rgba(190,160,255,.85) 0 1px, transparent 1.6px); background-size: 8px 8px, 12px 12px; background-position: 0 0, 4px 6px; mix-blend-mode: screen; opacity: .9; animation: sparkle 1s steps(2) infinite; }
+.foil-chrome { background: linear-gradient(118deg, #eef2f6 0%, #9aa3b2 20%, #ffffff 38%, #7d8696 55%, #c9d0da 72%, #8892a2 100%); background-size: 260% 100%; mix-blend-mode: overlay; opacity: .85; animation: chrome-slide 5s ease-in-out infinite; }
+
+/* clear finish: show the art with no white border, over a checker */
+.sw-clear-tile { background: repeating-conic-gradient(#2b3a44 0% 25%, #223038 0% 50%) 50% / 20px 20px; }
+.sw-clear-tile .sticker-shell img { filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4)); }
+
+/* sheet finish: several die-cut stickers on one backing sheet */
+.sw-sheet-tile { background: #12171c; }
+.mini-sheet { width: 82%; background: #eef0ea; border: 1.5px dashed rgba(0,0,0,.4); border-radius: 7px; padding: 12px 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 6px; box-shadow: var(--shadow-peel); }
+.mini-sheet img { width: 100%; height: auto; filter: drop-shadow(1px 2px 2px rgba(0,0,0,.25)); }
+
+@keyframes holo-shift { 0%{background-position:0% 50%} 100%{background-position:260% 50%} }
 @keyframes chrome-slide { 0%,100%{background-position:0% 0} 50%{background-position:100% 0} }
 @keyframes sparkle { 0%{opacity:.5} 100%{opacity:1} }
 
