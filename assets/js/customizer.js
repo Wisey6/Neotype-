@@ -13,9 +13,11 @@
     qty: 100,
     fileName: null,
     fileURL: null,
+    bg: "studio",
     // image placement
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false },
   };
+  var reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---- Pricing model ----------------------------------------------------
   var FINISH = {
@@ -99,6 +101,12 @@
     var sizeText = state.size + " in";
     if (els.labelW) els.labelW.textContent = state.shape === "sheet" ? "sheet" : sizeText;
     if (els.labelH) els.labelH.textContent = sizeText;
+
+    if (els.paper) {
+      els.paper.classList.remove("pg-white", "pg-black");
+      if (state.bg === "white") els.paper.classList.add("pg-white");
+      else if (state.bg === "black") els.paper.classList.add("pg-black");
+    }
   }
 
   // ---- Price render -----------------------------------------------------
@@ -244,10 +252,19 @@
   function buildProofResult() {
     if (els.proofStage && els.artwork) {
       els.proofStage.innerHTML = "";
+      els.proofStage.classList.remove("pg-white", "pg-black");
+      if (state.bg === "white") els.proofStage.classList.add("pg-white");
+      else if (state.bg === "black") els.proofStage.classList.add("pg-black");
+
       var clone = els.artwork.cloneNode(true);
       clone.removeAttribute("id");
       clone.classList.remove("dragging");
-      clone.style.transform = "scale(1.4)";
+      clone.classList.add("proofed");
+      if (state.finish === "vinyl-matte" || state.finish === "clear") clone.classList.add("matte");
+      clone.style.transform = "";
+      var shine = document.createElement("span");
+      shine.className = "proof-shine2";
+      clone.appendChild(shine);
       els.proofStage.appendChild(clone);
     }
     var r = compute();
@@ -268,9 +285,28 @@
     document.body.style.overflow = "";
     clearTimeout(proofTimer);
   }
+  function wireProofTilt() {
+    var st = els.proofStage; if (!st) return;
+    st.addEventListener("pointermove", function (e) {
+      var c = st.querySelector(".cz-artwork"); if (!c) return;
+      var r = st.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      if (!reduceMotion) {
+        c.style.setProperty("--pry", ((px - 0.5) * 26).toFixed(2) + "deg");
+        c.style.setProperty("--prx", ((0.5 - py) * 26).toFixed(2) + "deg");
+      }
+      c.style.setProperty("--pmx", (px * 100).toFixed(1) + "%");
+      c.style.setProperty("--pmy", (py * 100).toFixed(1) + "%");
+    });
+    st.addEventListener("pointerleave", function () {
+      var c = st.querySelector(".cz-artwork"); if (!c) return;
+      c.style.setProperty("--prx", "0deg"); c.style.setProperty("--pry", "0deg");
+    });
+  }
   function wireProof() {
     var open = $("previewSticker");
     if (open) open.addEventListener("click", openProof);
+    wireProofTilt();
     var m = els.proofModal;
     if (m) m.addEventListener("click", function (e) {
       if (e.target.closest("[data-proof-close]")) closeProof();
@@ -334,7 +370,7 @@
   // ---- Init -------------------------------------------------------------
   function init() {
     els = {
-      artwork: $("czArtwork"), artLabel: $("czArtLabel"),
+      artwork: $("czArtwork"), artLabel: $("czArtLabel"), paper: $("czPaper"),
       labelW: $("czLabelW"), labelH: $("czLabelH"),
       priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), savings: $("czSavings"),
       editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
@@ -345,6 +381,7 @@
     wireGroup("shapeOpts", "data-shape", function (v) { state.shape = v; renderAll(); });
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
     wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
+    wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });
     wireUpload();
     wireImageEditor();
     wireActions();

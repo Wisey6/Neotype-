@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Neotype Studio — custom sticker studio
+   Neotype Studio - custom sticker studio
    Dark synthwave / glitch identity built on the brand kit
    (Tailwind handles layout utilities; this file owns the identity)
    ========================================================================== */
@@ -260,6 +260,22 @@ section { position: relative; }
 .est.holo { background: repeating-linear-gradient(112deg, #ff5ec9 0 9%, #ffd24a 15%, #37f2c3 24%, #3aa0ff 33%, #a24bff 42%, #ff5ec9 51%); background-size: 260% 260%; animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both, holo-shift 6s linear infinite; }
 .est.glit { background: radial-gradient(circle at 38% 30%, #b895ff, #6a3fd6 68%, #4b2bd4); }
 
+/* die-cut emoji stickers: white contour hugs the emoji's own shape */
+.dcst {
+  position: absolute; line-height: 1; z-index: 4; cursor: default;
+  font-size: var(--s, 60px);
+  transform: rotate(var(--r, 0deg));
+  filter:
+    drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff)
+    drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff)
+    drop-shadow(1.9px 1.9px 0 #fff) drop-shadow(-1.9px 1.9px 0 #fff)
+    drop-shadow(1.9px -1.9px 0 #fff) drop-shadow(-1.9px -1.9px 0 #fff)
+    drop-shadow(4px 9px 9px rgba(0,0,0,.5));
+  transition: transform .3s cubic-bezier(.2,.9,.3,1.2);
+  animation: drop-in .8s cubic-bezier(.2,.9,.25,1.2) both; animation-delay: var(--d, 0s);
+}
+.dcst:hover { transform: rotate(0deg) scale(1.14); z-index: 12; }
+
 /* ---- Manifesto ------------------------------------------------------- */
 .manifesto { text-align: left; }
 .manifesto .wrap { max-width: 960px; }
@@ -376,6 +392,33 @@ section { position: relative; }
 .cz-scale-label { position: absolute; font-family: var(--font-round); font-size: 11px; color: rgba(255,255,255,.5); }
 .cz-scale-label.w { bottom: 18px; left: 50%; transform: translateX(-50%); }
 .cz-scale-label.h { left: 18px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+/* preview background (studio / white / black) */
+.cz-paper.pg-white { background: #f1f1ec; box-shadow: var(--shadow-soft), inset 0 0 0 1px rgba(0,0,0,.06); }
+.cz-paper.pg-white .cz-scale-label { color: rgba(10,12,14,.5); }
+.cz-paper.pg-black { background: #0b0c0e; box-shadow: var(--shadow-soft), inset 0 0 0 1px rgba(255,255,255,.06); }
+
+.cz-bg-row { display: flex; align-items: center; gap: 8px; }
+.cz-bg-label { font-family: var(--font-round); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+.cz-bg { font-family: var(--font-round); font-size: 12.5px; font-weight: 600; color: var(--text); background: var(--bg-3); border: 1.5px solid var(--line-soft); border-radius: 100px; padding: 7px 14px; cursor: pointer; transition: .15s; }
+.cz-bg:hover { border-color: var(--line-strong); }
+.cz-bg[aria-pressed="true"] { background: var(--teal); color: #06231f; border-color: var(--teal); }
+
+/* realistic proof sticker: solid white die-cut border + pointer tilt + shine */
+.proof-stage { perspective: 820px; }
+.proof-stage.pg-white { background: #f1f1ec; }
+.proof-stage.pg-black { background: #0b0c0e; }
+.proof-stage .cz-artwork.proofed {
+  border: 6px solid #fff !important; border-style: solid !important;
+  box-shadow: 0 24px 36px -12px rgba(0,0,0,.75), 0 3px 8px rgba(0,0,0,.4);
+  transform: rotateX(var(--prx, 0deg)) rotateY(var(--pry, 0deg)) scale(1.42);
+  transform-style: preserve-3d; transition: transform .12s ease-out;
+}
+.proof-shine2 { position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background: radial-gradient(circle at var(--pmx, 50%) var(--pmy, 32%), rgba(255,255,255,.62), rgba(255,255,255,0) 44%);
+  mix-blend-mode: soft-light; }
+.cz-artwork.matte .proof-shine2 { opacity: .28; }
+.cz-artwork.proofed .up-hint { display: none; }
 
 /* image editor toolbar (below preview) */
 .cz-editor { width: 100%; max-width: 340px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(0,0,0,0.22); padding: 14px 16px; }
