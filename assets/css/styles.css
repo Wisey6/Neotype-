@@ -435,6 +435,10 @@ section { position: relative; }
 .cz-editor .ce-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .cz-editor .ce-row label { font-family: var(--font-round); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); width: 78px; flex: none; }
 .cz-editor input[type="range"] { flex: 1; accent-color: var(--teal); height: 4px; }
+.ce-swatches { display: flex; gap: 8px; flex: 1; }
+.ce-sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line-soft); cursor: pointer; padding: 0; transition: .15s; }
+.ce-sw:hover { transform: scale(1.08); }
+.ce-sw[aria-pressed="true"] { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(6,228,221,.35); }
 .cz-editor .ce-btns { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
 .ce-mini { font-family: var(--font-round); font-size: 12px; font-weight: 600; color: var(--text); background: var(--bg-3); border: 1px solid var(--line-soft); border-radius: 8px; padding: 7px 11px; cursor: pointer; transition: .14s; }
 .ce-mini:hover { border-color: var(--teal); color: var(--teal); }

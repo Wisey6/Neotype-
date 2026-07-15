@@ -13,8 +13,9 @@
     qty: 100,
     fileName: null,
     fileURL: null,
-    dieCutURL: null,   // canvas-generated die-cut (image + smooth white contour)
+    dieCutURL: null,   // canvas-generated die-cut (image + smooth contour)
     dieBorder: 26,     // perimeter offset in px (at processing scale)
+    dieBorderColor: "#ffffff", // die-cut contour colour (white or black)
     bg: "studio",
     // image placement
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false },
@@ -100,7 +101,14 @@
     return out;
   }
 
-  function makeDieCut(url, border, cb) {
+  function hexRGB(h) {
+    h = (h || "#ffffff").replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  function makeDieCut(url, border, color, cb) {
+    var rgb = hexRGB(color);
     var im = new Image();
     im.onload = function () {
       var maxDim = 520;
@@ -129,12 +137,12 @@
       m = boxBlur(m, W, H, smooth);       // smooth the corners
       m = boxBlur(m, W, H, Math.ceil(smooth / 2));
 
-      // white border layer with anti-aliased edge (threshold with a soft ramp)
+      // coloured border layer with anti-aliased edge (threshold with a soft ramp)
       var out = ctx.createImageData(W, H), t = 128, ramp = 30, v, alpha;
       for (i = 0; i < W * H; i++) {
         v = m[i];
         alpha = clampi((v - (t - ramp / 2)) / ramp * 255, 0, 255);
-        out.data[i * 4] = 255; out.data[i * 4 + 1] = 255; out.data[i * 4 + 2] = 255; out.data[i * 4 + 3] = alpha;
+        out.data[i * 4] = rgb[0]; out.data[i * 4 + 1] = rgb[1]; out.data[i * 4 + 2] = rgb[2]; out.data[i * 4 + 3] = alpha;
       }
       ctx.clearRect(0, 0, W, H);
       ctx.putImageData(out, 0, 0);
@@ -150,7 +158,7 @@
     if (!state.fileURL) { state.dieCutURL = null; return; }
     clearTimeout(dieTimer);
     var run = function () {
-      makeDieCut(state.fileURL, state.dieBorder, function (dataUrl) {
+      makeDieCut(state.fileURL, state.dieBorder, state.dieBorderColor, function (dataUrl) {
         state.dieCutURL = dataUrl;
         if (state.shape === "die") renderPreview();
       });
@@ -226,6 +234,7 @@
     }
 
     if (els.borderRow) els.borderRow.hidden = !(die && hasImg);
+    if (els.borderColorRow) els.borderColorRow.hidden = !(die && hasImg);
   }
 
   // ---- Price render -----------------------------------------------------
@@ -498,7 +507,7 @@
       labelW: $("czLabelW"), labelH: $("czLabelH"),
       priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), savings: $("czSavings"),
       editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
-      border: $("ceBorder"), borderRow: $("ceBorderRow"),
+      border: $("ceBorder"), borderRow: $("ceBorderRow"), borderColorRow: $("ceBorderColorRow"),
       proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
       proofStage: $("proofStage"), proofSummary: $("proofSummary"),
     };
@@ -511,6 +520,7 @@
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
     wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
     wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });
+    wireGroup("borderColorOpts", "data-bcol", function (v) { state.dieBorderColor = v; regenDieCut(true); });
     wireUpload();
     wireImageEditor();
     wireActions();

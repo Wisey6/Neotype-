@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=11" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=12" />
 </head>
 <body>
 
@@ -215,6 +215,13 @@
               <div class="ce-row" id="ceBorderRow" hidden>
                 <label for="ceBorder">Border</label>
                 <input type="range" id="ceBorder" min="0" max="60" step="1" value="26" aria-label="Die-cut border thickness" />
+              </div>
+              <div class="ce-row" id="ceBorderColorRow" hidden>
+                <label>Cut colour</label>
+                <div class="ce-swatches" id="borderColorOpts">
+                  <button class="ce-sw" data-bcol="#ffffff" aria-pressed="true" title="White border" style="background:#fff"></button>
+                  <button class="ce-sw" data-bcol="#111318" aria-pressed="false" title="Black border" style="background:#111318"></button>
+                </div>
               </div>
               <div class="ce-row">
                 <label for="ceZoom">Zoom</label>
@@ -529,7 +536,7 @@
     </div>
   </div>
 
-  <script src="assets/js/customizer.js?v=11" defer></script>
-  <script src="assets/js/main.js?v=11" defer></script>
+  <script src="assets/js/customizer.js?v=12" defer></script>
+  <script src="assets/js/main.js?v=12" defer></script>
 </body>
 </html>
