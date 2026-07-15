@@ -32,8 +32,17 @@
     "chrome":       { mult: 1.60, label: "Chrome" },
     "clear":        { mult: 1.15, label: "Clear" },
   };
-  var SHAPE_MULT = { die: 1.00, circle: 0.97, square: 0.95, rect: 0.96, rounded: 0.97, sheet: 1.10 };
-  var SHAPE_LABEL = { die: "Die-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" };
+  var SHAPE_MULT = { die: 1.00, kiss: 1.02, circle: 0.97, square: 0.95, rect: 0.96, rounded: 0.97, sheet: 1.10 };
+  var SHAPE_LABEL = { die: "Die-cut", kiss: "Kiss-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" };
+  var SHAPE_HELP = {
+    die: "Cut tight to the exact edge of your artwork, with a clean contour border.",
+    kiss: "Your artwork on a peel-off square backing, the vinyl is scored to your shape so it lifts off easily.",
+    circle: "A perfect circle around your art.",
+    square: "A square with lightly softened corners.",
+    rect: "A wide rectangle, great for wordmarks and banners.",
+    rounded: "A rounded-corner rectangle, the classic sticker shape.",
+    sheet: "Multiple designs laid out on one peel-off sheet."
+  };
 
   // Area-based pricing in AUD, following eprintonline's "pay by the square
   // metre" model: total = printed area (m²) × per-m² rate × finish, where the
@@ -192,7 +201,7 @@
     var run = function () {
       makeDieCut(state.fileURL, state.dieBorder, state.dieBorderColor, state.isVector, function (dataUrl) {
         state.dieCutURL = dataUrl;
-        if (state.shape === "die") renderPreview();
+        if (state.shape === "die" || state.shape === "kiss") renderPreview();
       });
     };
     if (immediate) run(); else dieTimer = setTimeout(run, 180);
@@ -212,14 +221,17 @@
     if (!art) return;
 
     var hasImg = !!state.fileURL;
-    var die = state.shape === "die";
-    var dieEmpty = die && !hasImg;   // die-cut with no art -> prompt state
-    var dieLive = die && hasImg;     // die-cut with art -> cut around the art
+    var contour = state.shape === "die" || state.shape === "kiss"; // both cut around the art
+    var die = contour;
+    var kiss = state.shape === "kiss";
+    var dieEmpty = contour && !hasImg;   // contour cut with no art -> prompt state
+    var dieLive = contour && hasImg;     // contour cut with art -> cut around the art
 
     var cls = "cz-artwork shape-" + state.shape;
     if (hasImg) cls += " has-img";
     if (dieEmpty) cls += " die-empty";
     if (dieLive) cls += " die-live";
+    if (kiss) cls += " is-kiss";
     art.className = cls;
 
     var px = SIZE_PX[state.size] || 162;
@@ -249,7 +261,7 @@
       if (els.artLabel) {
         els.artLabel.style.display = "";
         els.artLabel.textContent = dieEmpty
-          ? "Die-cut preview appears once you drop your file in ↑"
+          ? (kiss ? "Kiss-cut preview appears once you drop your file in ↑" : "Die-cut preview appears once you drop your file in ↑")
           : (state.shape === "sheet" ? "Drop your designs to preview" : "Drop your art to preview");
         els.artLabel.style.color = state.bg === "white" ? "rgba(10,12,14,.6)" : "rgba(255,255,255,.85)";
       }
@@ -302,6 +314,8 @@
     setTxt("czShapeVal", SHAPE_LABEL[state.shape]);
     setTxt("czSizeVal", state.size + " × " + state.size + " in");
     setTxt("czQtyVal", state.qty.toLocaleString() + " stickers");
+    var help = document.getElementById("shapeHelp");
+    if (help) help.textContent = SHAPE_HELP[state.shape] || "";
   }
   function setTxt(id, t) { var e = $(id); if (e) e.textContent = t; }
   function renderAll() { renderPreview(); renderPrice(); renderLabels(); }
@@ -529,7 +543,7 @@
     wireGroup("finishOpts", "data-finish", function (v) { state.finish = v; renderAll(); });
     wireGroup("shapeOpts", "data-shape", function (v) {
       state.shape = v;
-      if (v === "die" && state.fileURL && !state.dieCutURL) regenDieCut(true);
+      if ((v === "die" || v === "kiss") && state.fileURL && !state.dieCutURL) regenDieCut(true);
       renderAll();
     });
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });

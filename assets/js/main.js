@@ -120,3 +120,89 @@
     card.addEventListener("pointerleave", reset);
   });
 })();
+
+/* ==========================================================================
+   Specimen marquee: build a rolling wall of realistic die-cut stickers.
+   Each chip is a white "cut" face hugging the shape with a coloured fill,
+   gloss and drop shadow, so it reads as a physical peeled sticker.
+   ========================================================================== */
+(function () {
+  "use strict";
+  var top = document.getElementById("mqTop");
+  var bot = document.getElementById("mqBot");
+  if (!top || !bot) return;
+
+  // shape, fill, and content (emoji chips or short text) — mixed for variety
+  var STICKERS = [
+    { s: "star",     f: "holo",    e: "⭐" },
+    { s: "blobA",    f: "teal",    t: "stay|weird" },
+    { s: "circle",   f: "purple",  e: "👾" },
+    { s: "pill",     f: "green",   t: "good vibes", w: 236 },
+    { s: "squircle", f: "pink",    t: "band|merch" },
+    { s: "hex",      f: "blue",    e: "🎮" },
+    { s: "blobB",    f: "glitter", t: "glitter" },
+    { s: "round",    f: "chrome",  t: "chrome" },
+    { s: "diamond",  f: "sun",     e: "⚡" },
+    { s: "circle",   f: "coral",   e: "🌈" },
+    { s: "burst",    f: "lime",    t: "new|drop" },
+    { s: "shield",   f: "dark",    e: "🛸" },
+    { s: "blobA",    f: "holo",    e: "🍄" },
+    { s: "square",   f: "teal",    t: "ship|it" },
+    { s: "pentagon", f: "purple",  e: "👽" },
+    { s: "circle",   f: "green",   t: "hello!" },
+    { s: "banner",   f: "pink",    t: "off grid", w: 214 },
+    { s: "blobB",    f: "blue",    e: "🚀" },
+    { s: "star",     f: "sun",     e: "🌟" },
+    { s: "squircle", f: "glitter", t: "indie" },
+    { s: "hex",      f: "coral",   e: "🔥" },
+    { s: "circle",   f: "chrome",  e: "💿" },
+    { s: "round",    f: "lime",    t: "game|on" },
+    { s: "blobA",    f: "dark",    e: "🌌" },
+    { s: "pill",     f: "holo",    t: "keep going", w: 244 },
+    { s: "diamond",  f: "teal",    e: "🔺" },
+    { s: "burst",    f: "purple",  e: "✨" },
+    { s: "squircle", f: "blue",    t: "good|coffee" },
+    { s: "blobB",    f: "pink",    e: "💀" },
+    { s: "circle",   f: "sun",     t: "no rules" },
+  ];
+
+  var ROT = [-6, -3, 4, -5, 2, 6, -4, 3, -2, 5];
+
+  function chip(item, i) {
+    var st = document.createElement("div");
+    st.className = "mk-st shp-" + item.s + " fill-" + item.f;
+    st.style.setProperty("--rot", ROT[i % ROT.length] + "deg");
+    if (item.w) st.style.setProperty("--w", item.w + "px");
+    var face = document.createElement("div");
+    face.className = "mk-face";
+    var fill = document.createElement("div");
+    fill.className = "mk-fill";
+    if (item.e) {
+      var em = document.createElement("span");
+      em.className = "mk-emoji";
+      em.textContent = item.e;
+      fill.appendChild(em);
+    } else {
+      fill.innerHTML = item.t.split("|").join("<br>");
+    }
+    face.appendChild(fill);
+    st.appendChild(face);
+    return st;
+  }
+
+  // split into two rows, then duplicate each row's content for a seamless loop
+  function fillRow(track, items) {
+    var pass, i, el;
+    for (pass = 0; pass < 2; pass++) {
+      for (i = 0; i < items.length; i++) {
+        el = chip(items[i], i);
+        if (pass === 1) el.setAttribute("aria-hidden", "true");
+        track.appendChild(el);
+      }
+    }
+  }
+
+  var half = Math.ceil(STICKERS.length / 2);
+  fillRow(top, STICKERS.slice(0, half));
+  fillRow(bot, STICKERS.slice(half));
+})();
