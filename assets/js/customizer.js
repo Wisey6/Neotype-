@@ -14,6 +14,7 @@
     fileName: null,
     fileURL: null,
     dieCutURL: null,   // canvas-generated die-cut (image + smooth contour)
+    cutLineURL: null,  // proof-only green cut-line traced from the die-cut edge
     dieBorder: 26,     // perimeter offset in px (at processing scale)
     dieBorderColor: "#ffffff", // die-cut contour colour (white or black)
     isVector: false,   // uploaded artwork is an SVG (render die-cut at high res)
@@ -194,14 +195,55 @@
     im.src = url;
   }
 
+  // Trace a proof-only cut line from a die-cut PNG's alpha edge. Runs at low
+  // res (fast) and is scaled up in the proof; dashed so it reads as a cut mark.
+  function makeCutLine(url, cb) {
+    var im = new Image();
+    im.onload = function () {
+      try {
+        var ar = (im.naturalWidth || 1) / (im.naturalHeight || 1);
+        var W = ar >= 1 ? 460 : Math.round(460 * ar), H = ar >= 1 ? Math.round(460 / ar) : 460;
+        W = Math.max(1, W); H = Math.max(1, H);
+        var c = document.createElement("canvas"); c.width = W; c.height = H;
+        var cx = c.getContext("2d"); cx.drawImage(im, 0, 0, W, H);
+        var a = cx.getImageData(0, 0, W, H).data;
+        var oc = document.createElement("canvas"); oc.width = W; oc.height = H;
+        var octx = oc.getContext("2d"); var od = octx.createImageData(W, H), o = od.data;
+        var T = 45, r = 2, x, y, dx, dy, i, here, edge, nx, ny;
+        for (y = 0; y < H; y++) {
+          for (x = 0; x < W; x++) {
+            i = y * W + x; here = a[i * 4 + 3] > T ? 1 : 0; edge = false;
+            for (dy = -r; dy <= r && !edge; dy++) {
+              for (dx = -r; dx <= r; dx++) {
+                ny = y + dy; nx = x + dx;
+                if (ny < 0 || nx < 0 || ny >= H || nx >= W) continue;
+                if ((a[(ny * W + nx) * 4 + 3] > T ? 1 : 0) !== here) { edge = true; break; }
+              }
+            }
+            // dashed: skip every other run along the diagonal
+            if (edge && (((x + y) >> 2) & 1)) {
+              o[i * 4] = 57; o[i * 4 + 1] = 255; o[i * 4 + 2] = 20; o[i * 4 + 3] = 255;
+            }
+          }
+        }
+        octx.putImageData(od, 0, 0);
+        cb(oc.toDataURL("image/png"));
+      } catch (e) { cb(null); }
+    };
+    im.onerror = function () { cb(null); };
+    im.src = url;
+  }
+
   var dieTimer = null;
   function regenDieCut(immediate) {
-    if (!state.fileURL) { state.dieCutURL = null; return; }
+    if (!state.fileURL) { state.dieCutURL = null; state.cutLineURL = null; return; }
     clearTimeout(dieTimer);
     var run = function () {
       makeDieCut(state.fileURL, state.dieBorder, state.dieBorderColor, state.isVector, function (dataUrl) {
         state.dieCutURL = dataUrl;
         if (state.shape === "die" || state.shape === "kiss") renderPreview();
+        if (dataUrl) makeCutLine(dataUrl, function (cl) { state.cutLineURL = cl; });
+        else state.cutLineURL = null;
       });
     };
     if (immediate) run(); else dieTimer = setTimeout(run, 180);
@@ -428,6 +470,7 @@
     proofTimer = setTimeout(buildProofResult, 1700);
   }
   function buildProofResult() {
+    var contour = state.shape === "die" || state.shape === "kiss";
     if (els.proofStage && els.artwork) {
       els.proofStage.innerHTML = "";
       els.proofStage.classList.remove("pg-white", "pg-black");
@@ -439,12 +482,38 @@
       clone.classList.remove("dragging");
       clone.classList.add("proofed");
       if (state.finish === "vinyl-matte" || state.finish === "clear") clone.classList.add("matte");
-      clone.style.transform = "";
+      clone.style.transform = "scale(1.3)";
+
+      // for a contour cut, auto-fit: show the whole die-cut centred and sized
+      // to the sticker (mirrors an automated proof render). Fixed shapes keep
+      // the placement the user set, so their crop is honoured.
+      if (contour) {
+        var cImg = clone.querySelector("img.cz-img");
+        if (cImg) cImg.style.transform = "translate(-50%, -50%)";
+      }
+
+      // light-sweep flash, masked to the sticker silhouette for die/kiss cuts
       var shine = document.createElement("span");
       shine.className = "proof-shine2";
+      if (contour && state.dieCutURL) {
+        shine.style.webkitMaskImage = "url(" + state.dieCutURL + ")";
+        shine.style.maskImage = "url(" + state.dieCutURL + ")";
+      }
       clone.appendChild(shine);
+
+      // green cut line: traced overlay for die/kiss, dashed frame for fixed shapes
+      if (contour && state.cutLineURL) {
+        var cut = document.createElement("img");
+        cut.className = "proof-cut"; cut.alt = ""; cut.src = state.cutLineURL;
+        clone.appendChild(cut);
+      } else if (!contour) {
+        var line = document.createElement("span");
+        line.className = "proof-cutline";
+        clone.appendChild(line);
+      }
       els.proofStage.appendChild(clone);
     }
+    if (els.proofResult) els.proofResult.classList.add("has-cut");
     var r = compute();
     if (els.proofSummary) {
       els.proofSummary.innerHTML =
