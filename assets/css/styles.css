@@ -573,6 +573,33 @@ section { position: relative; }
 .stat:nth-child(3) .n { color: var(--green); }
 .stat:nth-child(4) .n { color: var(--text); }
 
+/* ---- Product cards --------------------------------------------------- */
+.product-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 44px; }
+.product-card { display: flex; flex-direction: column; border: 1px solid var(--line-soft); border-radius: 18px;
+  overflow: hidden; background: var(--bg-2); text-decoration: none; color: inherit;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.product-card:hover { transform: translateY(-6px); border-color: var(--teal); box-shadow: 0 22px 44px -20px rgba(0,0,0,.75); }
+.pc-visual { height: 176px; display: grid; place-items: center; position: relative; overflow: hidden; gap: 4px; grid-auto-flow: column; }
+.pc-stickers { background: radial-gradient(circle at 50% 38%, #2a3440, #171d24); }
+.pc-stickers span { font-size: 2.5rem; filter: drop-shadow(0 5px 7px rgba(0,0,0,.45)); }
+.pc-stickers span:nth-child(1) { transform: rotate(-10deg); } .pc-stickers span:nth-child(3) { transform: rotate(10deg); }
+.pc-banners { background: linear-gradient(135deg, #212830, #14323a); }
+.pc-corflute { background: linear-gradient(135deg, #14231b, #212830); }
+.pc-mock { font-family: var(--font-display); font-weight: 900; font-size: 1.5rem; line-height: 1; text-align: center; letter-spacing: .02em;
+  color: #fff; padding: 16px 26px; border-radius: 6px; box-shadow: 0 10px 22px -8px rgba(0,0,0,.6); }
+.pc-banners .pc-mock { background: linear-gradient(120deg, #06e4dd, #764cd9); border-radius: 4px; transform: rotate(-2deg); }
+.pc-corflute .pc-mock { background: var(--green); color: #063d02; border: 3px solid #fff; }
+.pc-body { padding: 20px 22px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.pc-tag { align-self: flex-start; font-family: var(--font-round); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: #063d02; background: var(--green); border-radius: 100px; padding: 3px 11px; }
+.pc-body h3 { font-family: var(--font-display); font-weight: 800; font-size: 1.32rem; }
+.pc-body p { color: var(--muted); font-size: 14px; line-height: 1.5; flex: 1; }
+.pc-price { font-family: var(--font-round); color: var(--muted); font-size: 14px; margin-top: 4px; }
+.pc-price b { font-family: var(--font-display); font-weight: 900; font-size: 1.55rem; color: var(--text); letter-spacing: -.02em; }
+.pc-cta { font-family: var(--font-display); font-weight: 700; color: var(--teal); margin-top: 8px; }
+.product-card:hover .pc-cta .arrow { transform: translateX(4px); }
+@media (max-width: 860px) { .product-cards { grid-template-columns: 1fr; max-width: 440px; margin-left: auto; margin-right: auto; } }
+
 /* ---- Specimen sticker marquee --------------------------------------- */
 .section-specimen { overflow: hidden; }
 .sticker-marquee { margin-top: 48px; display: flex; flex-direction: column; gap: 26px;
