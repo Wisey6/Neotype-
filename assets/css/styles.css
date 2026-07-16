@@ -520,6 +520,33 @@ section { position: relative; }
 .cz-actions { display: flex; gap: 10px; margin-top: 20px; }
 .cz-actions .btn { flex: 1; justify-content: center; padding: 14px 16px; }
 
+/* ---- Enquiry form ---------------------------------------------------- */
+.enquiry-form { display: grid; gap: 14px; margin-top: 8px; }
+.enquiry-form .ef-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ef-field { display: grid; gap: 7px; }
+.ef-field > span { font-family: var(--font-round); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ef-field input, .ef-field select, .ef-field textarea { width: 100%; padding: 12px 13px; border-radius: 10px;
+  border: 1px solid var(--line-strong); background: rgba(255,255,255,.04); color: var(--text);
+  font-family: var(--font-round); font-size: 15px; }
+.ef-field textarea { resize: vertical; min-height: 96px; }
+.ef-field input:focus, .ef-field select:focus, .ef-field textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.18); }
+.enquiry-form > .btn { justify-self: start; margin-top: 4px; }
+@media (max-width: 640px) { .enquiry-form .ef-row { grid-template-columns: 1fr; } }
+
+/* ---- Large-format builder (banners / corflute) ----------------------- */
+.lf-rect { position: relative; display: grid; place-items: center; overflow: hidden;
+  background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 12px, rgba(255,255,255,.05) 12px 24px);
+  border: 2px dashed var(--line-strong); border-radius: 6px; box-shadow: var(--shadow-peel);
+  transition: width .18s ease, height .18s ease; }
+.lf-rect img.lf-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.lf-size-cap { margin-top: 14px; font-family: var(--font-round); font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); text-align: center; }
+.lf-dims { display: flex; gap: 12px; flex-wrap: wrap; }
+.lf-dims span { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-round); font-size: 13px; color: var(--muted); }
+.lf-dims input { width: 84px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line-strong);
+  background: rgba(255,255,255,.04); color: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+.lf-dims input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.18); }
+
 /* ---- Process --------------------------------------------------------- */
 .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .step { position: relative; padding-top: 26px; }

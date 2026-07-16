@@ -38,19 +38,14 @@
   };
 
   // ---- checkout ---------------------------------------------------------
+  // order = { file, fileName, payload }  where payload carries product + options
   api.checkout = function (order) {
     toast("Preparing secure checkout…");
     api.uploadArtwork(order.file).then(function (url) {
-      var payload = {
-        finish: order.raw.finish,
-        shape: order.raw.shape,
-        size: order.raw.size,
-        qty: order.raw.qty,
-        background: order.raw.background,
-        cutColour: order.raw.cutColour,
+      var payload = Object.assign({}, order.payload, {
         artwork: url || "",
         artworkName: order.fileName || ""
-      };
+      });
       return fetch(CFG.workerUrl.replace(/\/$/, "") + "/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

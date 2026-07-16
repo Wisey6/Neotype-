@@ -600,30 +600,19 @@
   }
 
   // ---- Cart -------------------------------------------------------------
-  // A full structured order: everything Ian needs to quote, proof and print.
+  // The payload is what the checkout Worker prices server-side.
   function buildOrder() {
-    var r = compute();
     return {
-      id: ["neotype", state.finish, state.shape, state.size, state.qty].join("-"),
-      name: SHAPE_LABEL[state.shape] + " sticker · " + state.size + "″ · " + FINISH[state.finish].label,
-      price: Math.round(r.total * 100) / 100,
-      qty: state.qty,
-      currency: CURRENCY,
       file: state.file,
       fileName: state.fileName,
-      raw: {
-        finish: state.finish, shape: state.shape, size: state.size, qty: state.qty,
+      payload: {
+        product: "stickers",
+        finish: state.finish,
+        shape: state.shape,
+        size: state.size,
+        qty: state.qty,
         background: state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
         cutColour: state.dieBorderColor
-      },
-      fields: {
-        "Finish": FINISH[state.finish].label,
-        "Cut": SHAPE_LABEL[state.shape],
-        "Size": state.size + " in",
-        "Quantity": state.qty + " stickers",
-        "Background": state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
-        "Cut colour": state.dieBorderColor,
-        "Area": r.area.toFixed(3) + " m²"
       }
     };
   }

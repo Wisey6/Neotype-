@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom banners — Neotype Studio</title>
+  <meta name="description" content="Order custom weatherproof banners: pick a size, material and finishing, upload your art, see the price and check out." />
+  <link rel="icon" type="image/png" href="assets/img/favicon.png?v=21" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=22" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a href="index.html" aria-label="Neotype Studio home">
+        <span class="glitch" data-glitch>
+          <img class="brand-logo glitch-base" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
+          <img class="brand-logo glitch-layer gl-a" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+          <img class="brand-logo glitch-layer gl-b" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+        </span>
+      </a>
+      <nav class="nav-links" id="navLinks" aria-label="Primary">
+        <a href="customizer.html">Stickers</a>
+        <a href="banners.html">Banners</a>
+        <a href="corflute.html">Corflute</a>
+        <a href="index.html#faq">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="index.html" class="btn btn--ghost">← Home</a>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+  <div class="signal-bar"></div>
+
+  <main id="top">
+    <section class="section-pad panel scanlines" id="build">
+      <span class="regmark tl"></span><span class="regmark tr"></span>
+      <span class="regmark bl"></span><span class="regmark br"></span>
+      <div class="wrap">
+        <div class="section-head" style="max-width:720px">
+          <span class="eyebrow">Large format</span>
+          <h2 class="display-lg">Custom banners.</h2>
+          <p class="lead">Big, bold and weatherproof. Pick a size, material and finishing, <b class="tint-teal">upload your art</b>, and see the price before you buy.</p>
+        </div>
+        <div id="lfRoot"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="signal-bar"></div>
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-bottom">
+        <span>© 2026 Neotype Studio, every sticker is a type specimen.</span>
+        <span><a href="index.html">Terms</a> · <a href="index.html">Privacy</a> · Mon–Fri, 7am–6pm MT</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Added to cart</span></div>
+
+  <script>
+    window.LF_PRODUCT = {
+      key: "banner", label: "Banner", title: "Custom banners",
+      blurb: "Weatherproof, priced by the square metre (AUD) · free digital proof",
+      rate: 32, min: 45,
+      wRange: [0.3, 5], hRange: [0.3, 3], defaultW: 2, defaultH: 1,
+      presets: [
+        { label: "2 × 1 m", w: 2, h: 1 },
+        { label: "3 × 1 m", w: 3, h: 1 },
+        { label: "1 × 0.5 m", w: 1, h: 0.5 },
+        { label: "5 × 1 m", w: 5, h: 1 }
+      ],
+      choices: {
+        material: { label: "Material", opts: {
+          "vinyl-440": { label: "440gsm vinyl", mult: 1.00 },
+          "mesh": { label: "Mesh (windy sites)", mult: 1.10 }
+        } },
+        finishing: { label: "Finishing", opts: {
+          "hem-eyelets": { label: "Hemmed + eyelets", mult: 1.00 },
+          "none": { label: "Raw edge", mult: 0.92 }
+        } }
+      },
+      qtys: [1, 2, 3, 5, 10, 25]
+    };
+    window.NEOTYPE_CHECKOUT = { workerUrl: "", uploadcareKey: "", currency: "aud" };
+  </script>
+  <script src="assets/js/checkout.js?v=22" defer></script>
+  <script src="assets/js/largeformat.js?v=22" defer></script>
+  <script src="assets/js/main.js?v=22" defer></script>
+</body>
+</html>

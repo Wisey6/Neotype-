@@ -61,6 +61,29 @@ If you add a size/qty here, add the matching button in `customizer.html`.
 | 15 × 4″ vinyl matte, circle | ~A$26 |
 | 15 × anything (hits the floor) | A$18 |
 
+## Banners & corflute (large format)
+
+These are priced by area: `price = width_m × height_m × rate × option-multipliers
+× quantity` (never below a minimum). The knobs live in **two** places that must
+match: the page (`banners.html` / `corflute.html`, in the `window.LF_PRODUCT`
+block) and `worker/src/index.js` (the `LF` table).
+
+Per product you can set:
+- `rate` — A$ per square metre (banner default **32**, corflute default **48**)
+- `min` — minimum charge (banner **45**, corflute **30**)
+- `wRange` / `hRange` — allowed size range in metres
+- `presets` — the "common sizes" buttons
+- `choices` — the option groups and each option's price multiplier
+  (banner: material, finishing · corflute: thickness, print sides)
+- `qtys` — the quantity buttons
+
+Example — make double-sided corflute cost more: change `sides.double.mult`
+from `1.60` to `1.80` in **both** `corflute.html` and `worker/src/index.js`,
+then `wrangler deploy`.
+
+> These rates are sensible placeholders. Send Ian's real large-format rate card
+> and we'll set the exact numbers.
+
 ## Want to switch to your printer's exact rate card?
 If eprintonline (or whoever prints) gives you a fixed A$/m² table, we can drop
 the formula entirely and use their exact numbers per size/quantity. Send the

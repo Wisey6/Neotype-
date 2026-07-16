@@ -76,6 +76,45 @@
     });
   }
 
+  // ---- Enquiry form -----------------------------------------------------
+  var contactForm = document.getElementById("contactForm");
+  if (contactForm) {
+    contactForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var name = (document.getElementById("cfName") || {}).value || "";
+      var email = (document.getElementById("cfEmail") || {}).value || "";
+      var topic = (document.getElementById("cfTopic") || {}).value || "";
+      var msg = (document.getElementById("cfMsg") || {}).value || "";
+      if (!name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || !msg.trim()) {
+        showToast("Please add your name, a valid email and a message");
+        return;
+      }
+      var cfg = window.NEOTYPE_CONTACT || {};
+      var btn = contactForm.querySelector("button[type=submit]");
+      if (!cfg.web3formsKey) {
+        // demo mode: no delivery wired yet
+        showToast("Thanks " + name.trim().split(" ")[0] + ", we'll be in touch soon");
+        contactForm.reset();
+        return;
+      }
+      if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          access_key: cfg.web3formsKey,
+          subject: "Neotype enquiry: " + topic,
+          from_name: "Neotype website",
+          name: name, email: email, topic: topic, message: msg
+        })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.success) { showToast("Thanks " + name.trim().split(" ")[0] + ", your enquiry is on its way"); contactForm.reset(); }
+        else { showToast("Couldn't send just now, please email us directly"); }
+      }).catch(function () { showToast("Couldn't send just now, please email us directly"); })
+        .then(function () { if (btn) { btn.disabled = false; btn.innerHTML = "Send enquiry <span class=\"arrow\">→</span>"; } });
+    });
+  }
+
   // ---- Logo glitch: burst on load, replay on hover ---------------------
   var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 

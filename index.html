@@ -27,11 +27,12 @@
         </span>
       </a>
       <nav class="nav-links" id="navLinks" aria-label="Primary">
+        <a href="customizer.html">Stickers</a>
+        <a href="banners.html">Banners</a>
+        <a href="corflute.html">Corflute</a>
         <a href="#finishes">Finishes</a>
-        <a href="customizer.html">Customizer</a>
-        <a href="#how">How it works</a>
-        <a href="#specimen">Gallery</a>
         <a href="#faq">FAQ</a>
+        <a href="#contact">Contact</a>
       </nav>
       <div class="nav-cta">
         <a href="customizer.html" class="btn btn--holo">Custom sticker <span class="arrow">→</span></a>
@@ -311,6 +312,31 @@
       </div>
     </section>
 
+    <!-- ============================== CONTACT / ENQUIRIES ============================== -->
+    <section class="section-pad" id="contact">
+      <div class="wrap" style="max-width:720px">
+        <div class="section-head reveal">
+          <span class="eyebrow">Get in touch</span>
+          <h2 class="display-lg">Have a project or a question?</h2>
+          <p class="lead">Bulk order, custom shape, artwork help or something not on the site? Send us a note and a real person will get back to you.</p>
+        </div>
+        <form class="enquiry-form reveal" id="contactForm" novalidate>
+          <div class="ef-row">
+            <label class="ef-field"><span>Name</span><input type="text" id="cfName" name="name" autocomplete="name" required /></label>
+            <label class="ef-field"><span>Email</span><input type="email" id="cfEmail" name="email" autocomplete="email" required /></label>
+          </div>
+          <label class="ef-field"><span>What do you need?</span>
+            <select id="cfTopic" name="topic">
+              <option>Custom stickers</option><option>Banners</option><option>Corflute signs</option>
+              <option>Bulk / wholesale</option><option>Artwork help</option><option>Something else</option>
+            </select>
+          </label>
+          <label class="ef-field"><span>Message</span><textarea id="cfMsg" name="message" rows="4" required></textarea></label>
+          <button type="submit" class="btn btn--accent">Send enquiry <span class="arrow">→</span></button>
+        </form>
+      </div>
+    </section>
+
     <!-- ============================== CTA BAND ============================== -->
     <section class="section-pad cta-band scanlines">
       <span class="regmark tl"></span><span class="regmark tr"></span>
@@ -363,6 +389,9 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Added to cart</span></div>
 
-  <script src="assets/js/main.js?v=18" defer></script>
+  <!-- Enquiry form delivery. Empty = demo (just a thank-you). To go live, paste
+       a free Web3Forms access key (web3forms.com) tied to Ian's email. -->
+  <script>window.NEOTYPE_CONTACT = { web3formsKey: "" };</script>
+  <script src="assets/js/main.js?v=22" defer></script>
 </body>
 </html>

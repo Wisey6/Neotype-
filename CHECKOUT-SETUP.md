@@ -80,6 +80,21 @@ The price formula lives in **two** places that must match:
 (what Stripe charges). If you change pricing, update both and re-deploy the
 Worker, or Stripe will charge a different amount than the site showed.
 
+## Banners & corflute
+The banner and corflute pages check out through the **same Worker and Stripe
+account** — no extra setup. Once `workerUrl` is configured in each page's
+`NEOTYPE_CHECKOUT` block, all three products take payment.
+
+## Enquiry form (contact form → Ian's email)
+The homepage contact form is off until you connect **Web3Forms** (free):
+1. Sign up at **web3forms.com**, enter Ian's email, copy the **access key**.
+2. In `index.html`, set:
+   ```js
+   window.NEOTYPE_CONTACT = { web3formsKey: "PASTE_WEB3FORMS_ACCESS_KEY" };
+   ```
+3. Push. Enquiries now email Ian. (Until then, the form just shows a friendly
+   thank-you and sends nothing.)
+
 ## Nice-to-have later
 - A branded order email to Ian with the artwork link (add a Stripe webhook to
   the Worker: `checkout.session.completed`). Not needed for launch — Stripe's
