@@ -12,7 +12,8 @@
 
   var state = {
     w: CFG.defaultW, h: CFG.defaultH, qty: CFG.qtys[0],
-    choices: {}, file: null, fileName: null, fileURL: null
+    choices: {}, file: null, fileName: null, fileURL: null,
+    img: { x: 0, y: 0, scale: 1, rot: 0, fill: false }
   };
   Object.keys(CFG.choices).forEach(function (k) { state.choices[k] = Object.keys(CFG.choices[k].opts)[0]; });
 
@@ -63,6 +64,14 @@
           '<small>PNG, JPG, PDF, SVG or AI · print-ready at final size</small>' +
           '<div class="dz-file" id="lfFile" hidden></div></span>' +
           '<input type="file" id="lfInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" hidden></div>' +
+        '<div class="cz-editor" id="lfEditor" hidden>' +
+          '<div class="ce-hint">✥ Drag the art, use the sliders, or scroll to zoom</div>' +
+          '<div class="ce-row"><label for="lfZoom">Zoom</label><input type="range" id="lfZoom" min="0.2" max="4" step="0.01" value="1"></div>' +
+          '<div class="ce-row"><label for="lfRotr">Rotate</label><input type="range" id="lfRotr" min="-180" max="180" step="1" value="0"></div>' +
+          '<div class="ce-row"><label for="lfMx">Move ↔</label><input type="range" id="lfMx" min="-220" max="220" step="1" value="0"></div>' +
+          '<div class="ce-row"><label for="lfMy">Move ↕</label><input type="range" id="lfMy" min="-220" max="220" step="1" value="0"></div>' +
+          '<div class="ce-btns"><button class="ce-mini" data-lffit="fit">Fit</button><button class="ce-mini" data-lffit="fill">Fill</button><button class="ce-mini" data-lffit="center">Center</button><button class="ce-mini" data-lffit="reset">Reset</button></div>' +
+        '</div>' +
       '</div>' +
       '<div class="cz-controls">' +
         '<h3>' + CFG.title + '</h3><p class="cz-sub">' + CFG.blurb + '</p>' +
@@ -115,10 +124,27 @@
       if (!img) { img = document.createElement("img"); img.className = "lf-img"; img.alt = "Your artwork"; rect.appendChild(img); }
       img.src = state.fileURL;
       if (hint) hint.style.display = "none";
+      applyImgTransform();
     } else {
       if (img) img.remove();
       if (hint) hint.style.display = "";
     }
+    showEditor(!!state.fileURL);
+  }
+
+  function applyImgTransform() {
+    var img = document.querySelector("#lfRect img.lf-img");
+    if (!img) return;
+    var i = state.img;
+    img.style.objectFit = i.fill ? "cover" : "contain";
+    img.style.transform = "translate(-50%, -50%) translate(" + i.x + "px, " + i.y + "px) scale(" + i.scale + ") rotate(" + i.rot + "deg)";
+  }
+  function showEditor(on) { var e = document.getElementById("lfEditor"); if (e) e.hidden = !on; }
+  function syncEditor() {
+    var z = document.getElementById("lfZoom"), r = document.getElementById("lfRotr"),
+        x = document.getElementById("lfMx"), y = document.getElementById("lfMy");
+    if (z) z.value = state.img.scale; if (r) r.value = state.img.rot;
+    if (x) x.value = state.img.x; if (y) y.value = state.img.y;
   }
 
   // ---- wiring -----------------------------------------------------------
@@ -167,7 +193,9 @@
       if (state.fileURL) { try { URL.revokeObjectURL(state.fileURL); } catch (_) {} }
       state.file = file; state.fileName = file.name;
       state.fileURL = /^image\//.test(file.type) ? URL.createObjectURL(file) : null;
+      state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
       if (fileLine) { fileLine.hidden = false; fileLine.textContent = "✓ " + file.name; }
+      syncEditor();
       showArt();
       if (!state.fileURL) window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Got " + file.name + ", we'll proof it for you" }));
     }
@@ -177,6 +205,48 @@
     ["dragenter", "dragover"].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add("drag"); }); });
     ["dragleave", "drop"].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove("drag"); }); });
     dz.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) accept(e.dataTransfer.files[0]); });
+
+    // image editor: sliders
+    function onSlider(id, apply) { var el = document.getElementById(id); if (el) el.addEventListener("input", function () { apply(parseFloat(el.value)); applyImgTransform(); }); }
+    onSlider("lfZoom", function (v) { state.img.scale = v; });
+    onSlider("lfRotr", function (v) { state.img.rot = v; });
+    onSlider("lfMx", function (v) { state.img.x = v; });
+    onSlider("lfMy", function (v) { state.img.y = v; });
+
+    // fit / fill / center / reset
+    root.addEventListener("click", function (e) {
+      var f = e.target.closest("button[data-lffit]");
+      if (!f) return;
+      var mode = f.getAttribute("data-lffit");
+      if (mode === "fit") state.img.fill = false;
+      else if (mode === "fill") state.img.fill = true;
+      else if (mode === "center") { state.img.x = 0; state.img.y = 0; }
+      else if (mode === "reset") state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
+      syncEditor(); applyImgTransform();
+    });
+
+    // drag to move + scroll to zoom, on the preview rectangle
+    var rect = document.getElementById("lfRect");
+    var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    rect.addEventListener("pointerdown", function (e) {
+      if (!state.fileURL) return;
+      dragging = true; sx = e.clientX; sy = e.clientY; ox = state.img.x; oy = state.img.y;
+      rect.setPointerCapture && rect.setPointerCapture(e.pointerId); rect.classList.add("dragging");
+    });
+    rect.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      state.img.x = ox + (e.clientX - sx); state.img.y = oy + (e.clientY - sy);
+      syncEditor(); applyImgTransform();
+    });
+    function endDrag() { dragging = false; rect.classList.remove("dragging"); }
+    rect.addEventListener("pointerup", endDrag);
+    rect.addEventListener("pointercancel", endDrag);
+    rect.addEventListener("wheel", function (e) {
+      if (!state.fileURL) return;
+      e.preventDefault();
+      state.img.scale = clamp(state.img.scale * (e.deltaY < 0 ? 1.06 : 0.94), 0.2, 4);
+      syncEditor(); applyImgTransform();
+    }, { passive: false });
 
     // checkout
     document.getElementById("lfCheckout").addEventListener("click", function () {
