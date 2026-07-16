@@ -255,7 +255,10 @@
     var img = els.artwork && els.artwork.querySelector("img.cz-img");
     if (!img) return;
     var i = state.img;
-    img.style.objectFit = i.fill ? "cover" : "contain";
+    // fill covers the shape with no gaps; die/kiss always contain so the whole
+    // cut shows (the contour is traced from the full artwork)
+    var contour = state.shape === "die" || state.shape === "kiss";
+    img.style.objectFit = (i.fill && !contour) ? "cover" : "contain";
     img.style.transform =
       "translate(-50%, -50%) translate(" + i.x + "px, " + i.y + "px) scale(" + i.scale + ") rotate(" + i.rot + "deg)";
   }
@@ -579,7 +582,8 @@
       if (fileLine) { fileLine.hidden = false; fileLine.textContent = "✓ " + file.name; }
       if (fileState) fileState.textContent = "uploaded";
       // reset placement for the new image
-      state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
+      // default to Fill so fixed shapes cover with no gaps (die/kiss ignore this)
+      state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: true };
       state.dieCutURL = null;
       syncEditorInputs();
       renderPreview();

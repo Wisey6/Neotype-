@@ -199,7 +199,8 @@
       if (state.fileURL) { try { URL.revokeObjectURL(state.fileURL); } catch (_) {} }
       state.file = file; state.fileName = file.name;
       state.fileURL = /^image\//.test(file.type) ? URL.createObjectURL(file) : null;
-      state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
+      // default to Fill so the art covers the whole area with no gaps
+      state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: true };
       if (fileLine) { fileLine.hidden = false; fileLine.textContent = "✓ " + file.name; }
       syncEditor();
       showArt();
