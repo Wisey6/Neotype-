@@ -68,9 +68,14 @@ These are priced by area: `price = width_m × height_m × rate × option-multipl
 match: the page (`banners.html` / `corflute.html`, in the `window.LF_PRODUCT`
 block) and `worker/src/index.js` (the `LF` table).
 
+These rates are calibrated against real AU vendors (banner: eprintonline —
+a 3×1 m hemmed banner ≈ A$87; corflute: Vistaprint AU sizes & options). Large
+format also gets a **bulk discount**: the per-unit price falls as quantity rises
+(`lfQtyMult` in both files — keep them identical).
+
 Per product you can set:
-- `rate` — A$ per square metre (banner default **32**, corflute default **48**)
-- `min` — minimum charge (banner **45**, corflute **30**)
+- `rate` — A$ per square metre (banner default **29**, corflute default **58**)
+- `min` — minimum charge (banner **35**, corflute **30**)
 - `wRange` / `hRange` — allowed size range in metres
 - `presets` — the "common sizes" buttons
 - `choices` — the option groups and each option's price multiplier

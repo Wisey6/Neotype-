@@ -20,6 +20,9 @@
   function fmt(n) { return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
+  // bulk discount: per-unit price falls as quantity rises (matches the trade
+  // quantity breaks). qty 1 -> 1.00, 10 -> ~0.85, 25 -> ~0.72, 50 -> ~0.63.
+  function qtyMult(q) { return 0.6 + 0.4 * Math.exp(-(q - 1) / 20); }
   function price() {
     var mult = 1;
     Object.keys(CFG.choices).forEach(function (k) {
@@ -27,7 +30,7 @@
       if (o) mult *= o.mult;
     });
     var area = state.w * state.h;
-    return Math.max(CFG.min, area * CFG.rate * mult * state.qty);
+    return Math.max(CFG.min, area * CFG.rate * mult * state.qty * qtyMult(state.qty));
   }
 
   // ---- markup -----------------------------------------------------------
@@ -260,8 +263,12 @@
   }
 
   build();
-  // default: select first preset if it matches default size
   render();
   showArt();
   wire();
+  // highlight the preset that matches the default size, if any
+  (CFG.presets || []).some(function (p, i) {
+    if (Math.abs(p.w - state.w) < 1e-6 && Math.abs(p.h - state.h) < 1e-6) { pressGroup("lfPresets", "data-lfpreset", String(i)); return true; }
+    return false;
+  });
 })();

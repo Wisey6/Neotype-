@@ -51,20 +51,26 @@ function priceStickers(b) {
 // rate = A$/m²; mults multiply; price = w*h*rate*mults*qty (>= min)
 const LF = {
   banner: {
-    label: "Banner", rate: 32, min: 45, wRange: [0.3, 5], hRange: [0.3, 3], qtyMax: 500,
+    label: "Banner", rate: 29, min: 35, wRange: [0.3, 6], hRange: [0.3, 3], qtyMax: 500,
     choices: {
-      material: { label: "Material", opts: { "vinyl-440": { label: "440gsm vinyl", mult: 1.00 }, "mesh": { label: "Mesh", mult: 1.10 } } },
-      finishing: { label: "Finishing", opts: { "hem-eyelets": { label: "Hemmed + eyelets", mult: 1.00 }, "none": { label: "Raw edge", mult: 0.92 } } },
+      material: { label: "Material", opts: { "vinyl-440": { label: "440gsm PVC", mult: 1.00 }, "mesh": { label: "Mesh", mult: 1.12 } } },
+      finishing: { label: "Finishing", opts: {
+        "hem-eyelets": { label: "Hemmed + eyelets", mult: 1.00 },
+        "trim-eyelets": { label: "Trimmed + eyelets", mult: 0.95 },
+        "trim": { label: "Trimmed to size", mult: 0.90 },
+        "pole": { label: "Pole pockets", mult: 1.06 } } },
     },
   },
   corflute: {
-    label: "Corflute sign", rate: 48, min: 30, wRange: [0.3, 2.4], hRange: [0.3, 1.2], qtyMax: 500,
+    label: "Corflute sign", rate: 58, min: 30, wRange: [0.3, 2.4], hRange: [0.3, 1.2], qtyMax: 500,
     choices: {
-      thickness: { label: "Thickness", opts: { "3mm": { label: "3 mm", mult: 1.00 }, "5mm": { label: "5 mm", mult: 1.15 } } },
-      sides: { label: "Print sides", opts: { "single": { label: "Single-sided", mult: 1.00 }, "double": { label: "Double-sided", mult: 1.60 } } },
+      thickness: { label: "Thickness", opts: { "3mm": { label: "3 mm", mult: 1.00 }, "5mm": { label: "5 mm", mult: 1.18 } } },
+      sides: { label: "Print sides", opts: { "single": { label: "Single-sided", mult: 1.00 }, "double": { label: "Double-sided", mult: 1.65 } } },
+      eyelets: { label: "Eyelets", opts: { "none": { label: "None", mult: 1.00 }, "corners": { label: "4 corner eyelets", mult: 1.05 } } },
     },
   },
 };
+const lfQtyMult = (q) => 0.6 + 0.4 * Math.exp(-(q - 1) / 20);
 
 function priceLargeFormat(product, b) {
   const cfg = LF[product];
@@ -80,7 +86,7 @@ function priceLargeFormat(product, b) {
     mult *= opt.mult;
     metaChoices[key] = opt.label;
   }
-  const total = Math.max(cfg.min, w * h * cfg.rate * mult * qty);
+  const total = Math.max(cfg.min, w * h * cfg.rate * mult * qty * lfQtyMult(qty));
   const dims = w.toFixed(2) + " × " + h.toFixed(2) + " m";
   return {
     amount: Math.round(total * 100),

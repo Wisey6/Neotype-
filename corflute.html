@@ -66,23 +66,30 @@
   <script>
     window.LF_PRODUCT = {
       key: "corflute", label: "Corflute sign", title: "Corflute signs",
-      blurb: "Rigid weatherproof signboard, priced by the square metre (AUD) · free digital proof",
-      rate: 48, min: 30,
+      blurb: "5mm & 3mm weatherproof signboard · priced by the square metre (AUD) · free digital proof",
+      rate: 58, min: 30,
       wRange: [0.3, 2.4], hRange: [0.3, 1.2], defaultW: 0.9, defaultH: 0.6,
       presets: [
+        { label: "600 × 400 mm", w: 0.6, h: 0.4 },
+        { label: "600 × 450 mm", w: 0.6, h: 0.45 },
+        { label: "A2 · 420 × 594", w: 0.42, h: 0.594 },
         { label: "900 × 600 mm", w: 0.9, h: 0.6 },
         { label: "600 × 900 mm", w: 0.6, h: 0.9 },
-        { label: "1200 × 900 mm", w: 1.2, h: 0.9 },
-        { label: "600 × 450 mm", w: 0.6, h: 0.45 }
+        { label: "A1 · 594 × 841", w: 0.594, h: 0.841 },
+        { label: "1200 × 900 mm", w: 1.2, h: 0.9 }
       ],
       choices: {
         thickness: { label: "Thickness", opts: {
           "3mm": { label: "3 mm", mult: 1.00 },
-          "5mm": { label: "5 mm", mult: 1.15 }
+          "5mm": { label: "5 mm", mult: 1.18 }
         } },
         sides: { label: "Print sides", opts: {
           "single": { label: "Single-sided", mult: 1.00 },
-          "double": { label: "Double-sided", mult: 1.60 }
+          "double": { label: "Double-sided", mult: 1.65 }
+        } },
+        eyelets: { label: "Eyelets", opts: {
+          "none": { label: "None", mult: 1.00 },
+          "corners": { label: "4 corner eyelets", mult: 1.05 }
         } }
       },
       qtys: [1, 2, 5, 10, 25, 50, 100]
@@ -90,7 +97,7 @@
     window.NEOTYPE_CHECKOUT = { workerUrl: "", uploadcareKey: "", currency: "aud" };
   </script>
   <script src="assets/js/checkout.js?v=22" defer></script>
-  <script src="assets/js/largeformat.js?v=23" defer></script>
+  <script src="assets/js/largeformat.js?v=24" defer></script>
   <script src="assets/js/main.js?v=22" defer></script>
 </body>
 </html>
