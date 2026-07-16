@@ -127,7 +127,7 @@ a { color: inherit; text-decoration: none; }
 .btn--holo {
   border: none; color: #0a0a12; position: relative; overflow: hidden;
   background: linear-gradient(100deg, #ff5ec9, #ffd24a 22%, #37f2c3 44%, #3aa0ff 64%, #a24bff 84%, #ff5ec9);
-  background-size: 280% 100%; animation: holo-shift 6s linear infinite;
+  background-size: 260% 100%; animation: holo-shift 6s linear infinite;
   box-shadow: 0 0 18px rgba(58,160,255,.35);
 }
 .btn--holo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%); background-size: 250% 100%; animation: holo-shine 3.6s linear infinite; pointer-events: none; }
