@@ -99,9 +99,12 @@
 
   // ---- render -----------------------------------------------------------
   function render() {
-    // preview rectangle sized to aspect, capped
+    // preview rectangle sized to aspect, fit to the space the panel can give
     var rect = document.getElementById("lfRect");
-    var maxW = 320, maxH = 300;
+    var prev = document.querySelector(".cz-preview");
+    // subtract the preview padding (34*2) and the panel padding (26*2)
+    var avail = prev ? prev.clientWidth - 68 - 52 : 300;
+    var maxW = Math.max(180, Math.min(300, avail)), maxH = 220;
     var ar = state.w / state.h;
     var pw = maxW, ph = maxW / ar;
     if (ph > maxH) { ph = maxH; pw = maxH * ar; }

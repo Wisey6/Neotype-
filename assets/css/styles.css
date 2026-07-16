@@ -535,6 +535,10 @@ section { position: relative; }
 @media (max-width: 640px) { .enquiry-form .ef-row { grid-template-columns: 1fr; } }
 
 /* ---- Large-format builder (banners / corflute) ----------------------- */
+/* large-format: let the outer panel hug the preview + caption with even padding
+   so the dashed box always sits neatly inside it */
+#lfPaper { width: auto; height: auto; min-height: 300px; max-width: 100%; padding: 26px; gap: 12px; }
+#lfPaper .lf-size-cap { margin-top: 0; }
 .lf-rect { position: relative; display: grid; place-items: center; overflow: hidden;
   background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 12px, rgba(255,255,255,.05) 12px 24px);
   border: 2px dashed var(--line-strong); border-radius: 6px; box-shadow: var(--shadow-peel);
