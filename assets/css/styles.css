@@ -90,7 +90,18 @@ a { color: inherit; text-decoration: none; }
 .tint-green { color: var(--green); }
 
 /* ---- Signal bar (recurring divider) ---------------------------------- */
-.signal-bar { height: 4px; width: 100%; background: linear-gradient(90deg, var(--teal), var(--teal-3) 34%, var(--purple) 68%, var(--green)); box-shadow: 0 0 18px rgba(6, 228, 221, 0.4); }
+.signal-bar { position: relative; height: 5px; width: 100%; z-index: 1;
+  background: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #00ff5e, #00e5ff, #3a86ff, #a24bff, #ff004c);
+  background-size: 200% 100%; animation: signal-flow 7s linear infinite; }
+/* neon bloom that flows in sync with the bar */
+.signal-bar::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #00ff5e, #00e5ff, #3a86ff, #a24bff, #ff004c);
+  background-size: 200% 100%; animation: signal-flow 7s linear infinite;
+  filter: blur(8px); opacity: .9; }
+@keyframes signal-flow { from { background-position: 0% 50%; } to { background-position: 200% 50%; } }
+@media (prefers-reduced-motion: reduce) {
+  .signal-bar, .signal-bar::after { animation: none; }
+}
 
 /* ---- Registration / crop marks --------------------------------------- */
 .regmark { position: absolute; width: 18px; height: 18px; pointer-events: none; opacity: 0.55; }
