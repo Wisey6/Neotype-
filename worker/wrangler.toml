@@ -10,4 +10,13 @@ CANCEL_URL = "https://neotype.au/customizer.html"
 
 # STRIPE_SECRET_KEY is a SECRET, not a var. Set it with:
 #   wrangler secret put STRIPE_SECRET_KEY
-# (never commit the secret key to the repo)
+# ADMIN_PASSWORD is also a SECRET (protects the pricing admin):
+#   wrangler secret put ADMIN_PASSWORD
+# (never commit secrets to the repo)
+
+# KV store that holds the editable price list (admin.html reads/writes it).
+# Create it, then paste the printed id below:
+#   wrangler kv namespace create PRICING_KV
+[[kv_namespaces]]
+binding = "PRICING_KV"
+id = "PASTE_KV_NAMESPACE_ID_HERE"

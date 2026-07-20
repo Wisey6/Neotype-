@@ -266,10 +266,33 @@
     });
   }
 
+  // Apply a live price list (admin-editable) fetched from the checkout Worker.
+  // Overrides this product's rate, min and option multipliers; falls back to the
+  // page defaults if no Worker is configured or the fetch fails.
+  function applyPricing(p) {
+    if (!p) return;
+    if (typeof p.rate === "number") CFG.rate = p.rate;
+    if (typeof p.min === "number") CFG.min = p.min;
+    Object.keys(CFG.choices).forEach(function (group) {
+      if (!p[group]) return;
+      Object.keys(CFG.choices[group].opts).forEach(function (opt) {
+        if (typeof p[group][opt] === "number") CFG.choices[group].opts[opt].mult = p[group][opt];
+      });
+    });
+  }
+  function fetchLivePricing() {
+    var cfg = window.NEOTYPE_CHECKOUT || {};
+    if (!cfg.workerUrl) return;
+    fetch(cfg.workerUrl.replace(/\/$/, "") + "/pricing").then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d[CFG.key]) { applyPricing(d[CFG.key]); render(); } })
+      .catch(function () {});
+  }
+
   build();
   render();
   showArt();
   wire();
+  fetchLivePricing();
   // highlight the preset that matches the default size, if any
   (CFG.presets || []).some(function (p, i) {
     if (Math.abs(p.w - state.w) < 1e-6 && Math.abs(p.h - state.h) < 1e-6) { pressGroup("lfPresets", "data-lfpreset", String(i)); return true; }

@@ -54,6 +54,27 @@ Commit + push. The customizer's checkout button now sends customers to Stripe.
 4. Swap the Worker secret for the **live** `sk_live_…` key
    (`wrangler secret put STRIPE_SECRET_KEY` again) and you're live.
 
+## Pricing admin (client edits prices, no redeploy)
+
+`admin.html` lets Ian change any price from the browser. It reads/writes the
+price list in a Cloudflare **KV** store via this Worker. To enable it:
+
+```bash
+# 1. Create the KV store, then paste the printed id into wrangler.toml
+wrangler kv namespace create PRICING_KV
+
+# 2. Set the admin password (guards saving)
+wrangler secret put ADMIN_PASSWORD
+
+# 3. Deploy
+wrangler deploy
+```
+
+Then set `workerUrl` in **admin.html** (same Worker URL as checkout). Ian opens
+`neotype.au/admin.html`, enters the password, edits numbers, hits Save — the
+site and checkout use the new prices immediately. Until KV is set up, everything
+uses the built-in DEFAULT_PRICING and the site is unaffected.
+
 ## Keeping the price in sync
 The pricing constants at the top of `src/index.js` **must match**
 `assets/js/customizer.js` (`FINISH`, `SHAPE`, `SIZES`, `QTYS`, `MIN_ORDER`,

@@ -53,8 +53,27 @@
   // their guide (base ~A$36-45/m²); swap in the exact rate card when available.
   var CURRENCY = "AUD";
   var MIN_ORDER = 18; // A$ minimum order
+  var RATE = { base: 85, extra: 120, decay: 0.5 };
   function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }        // per sticker
-  function ratePerM2(totalArea) { return 85 + 120 * Math.exp(-totalArea / 0.5); }
+  function ratePerM2(totalArea) { return RATE.base + RATE.extra * Math.exp(-totalArea / RATE.decay); }
+
+  // Apply a live price list fetched from the checkout Worker (admin-editable).
+  // Only overrides numbers; labels and options are unchanged. Falls back to the
+  // built-in defaults above if no Worker is configured or the fetch fails.
+  function applyPricing(s) {
+    if (!s) return;
+    if (typeof s.min === "number") MIN_ORDER = s.min;
+    if (s.rate) { if (typeof s.rate.base === "number") RATE.base = s.rate.base; if (typeof s.rate.extra === "number") RATE.extra = s.rate.extra; if (typeof s.rate.decay === "number") RATE.decay = s.rate.decay; }
+    if (s.finish) Object.keys(s.finish).forEach(function (k) { if (FINISH[k] && typeof s.finish[k] === "number") FINISH[k].mult = s.finish[k]; });
+    if (s.shape) Object.keys(s.shape).forEach(function (k) { if (typeof SHAPE_MULT[k] === "number" && typeof s.shape[k] === "number") SHAPE_MULT[k] = s.shape[k]; });
+  }
+  function fetchLivePricing() {
+    var cfg = window.NEOTYPE_CHECKOUT || {};
+    if (!cfg.workerUrl) return;
+    fetch(cfg.workerUrl.replace(/\/$/, "") + "/pricing").then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.stickers) { applyPricing(d.stickers); if (typeof renderAll === "function") renderAll(); } })
+      .catch(function () {});
+  }
   function orderTotal(size, finish, shape, qty) {
     var totalArea = areaM2(size) * qty;
     var t = totalArea * ratePerM2(totalArea) * FINISH[finish].mult * SHAPE_MULT[shape];
@@ -681,6 +700,7 @@
     wireActions();
     wireProof();
     renderAll();
+    fetchLivePricing();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

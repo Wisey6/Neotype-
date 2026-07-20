@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Pricing admin — Neotype Studio</title>
+  <link rel="icon" type="image/png" href="assets/img/favicon.png?v=21" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=27" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap nav">
+      <a href="index.html" aria-label="Neotype Studio home">
+        <span class="glitch" data-glitch>
+          <img class="brand-logo glitch-base" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
+          <img class="brand-logo glitch-layer gl-a" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+          <img class="brand-logo glitch-layer gl-b" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
+        </span>
+      </a>
+      <div class="nav-cta"><span class="adm-badge">Pricing admin</span></div>
+    </div>
+  </header>
+  <div class="signal-bar"></div>
+
+  <main id="top">
+    <section class="section-pad">
+      <div class="wrap" style="max-width:820px">
+        <div id="admRoot"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Saved</span></div>
+
+  <!-- Point this at the deployed Worker URL (same one used for checkout). -->
+  <script>window.NEOTYPE_ADMIN = { workerUrl: "" };</script>
+  <script src="assets/js/admin.js?v=27" defer></script>
+  <script src="assets/js/main.js?v=26" defer></script>
+</body>
+</html>

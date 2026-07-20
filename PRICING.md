@@ -1,5 +1,19 @@
 # Adjusting prices
 
+**Two ways to change prices:**
+
+1. **No code — the admin page (recommended for the client).** Once the Worker +
+   KV are set up (see `worker/README.md`), Ian opens `neotype.au/admin.html`,
+   enters the admin password, edits any number, and hits Save. Prices update on
+   the site and at checkout immediately — no developer, no redeploy. Those saved
+   values override the code defaults below.
+
+2. **In code (the defaults / fallback).** The numbers below are the built-in
+   defaults used until the admin saves an override (and whenever the Worker
+   isn't configured).
+
+---
+
 All sticker pricing is driven by a few numbers. To change prices you edit those
 numbers — no formulas to untangle. **Two files must stay in sync** so the price
 the customer sees matches what Stripe charges:
