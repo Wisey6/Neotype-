@@ -132,6 +132,12 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // --- admin login check ---
+    if (path.endsWith("/verify") && request.method === "POST") {
+      const pass = request.headers.get("X-Admin-Password") || "";
+      if (!env.ADMIN_PASSWORD || pass !== env.ADMIN_PASSWORD) return json({ error: "Unauthorized" }, 401, cors);
+      return json({ ok: true }, 200, cors);
+    }
     // --- pricing read ---
     if (path.endsWith("/pricing") && request.method === "GET") {
       return json(await getPricing(env), 200, cors);
