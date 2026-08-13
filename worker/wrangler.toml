@@ -19,4 +19,4 @@ CANCEL_URL = "https://neotype.au/customizer.html"
 #   wrangler kv namespace create PRICING_KV
 [[kv_namespaces]]
 binding = "PRICING_KV"
-id = "PASTE_KV_NAMESPACE_ID_HERE"
+id = "da828cc8c1b34e71bd1b26c9c567b145"
