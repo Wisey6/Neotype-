@@ -1,0 +1,9 @@
+{
+  "name": "neotype-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Neotype Studio — custom stickers, banners and corflute signs. Static site with a Netlify Function for pricing, admin and Stripe checkout.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

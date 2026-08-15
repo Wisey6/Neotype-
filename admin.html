@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/styles.css?v=28" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=30" />
 </head>
 <body>
   <header class="site-header">
@@ -36,9 +36,9 @@
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Saved</span></div>
 
-  <!-- Point this at the deployed Worker URL (same one used for checkout). -->
-  <script>window.NEOTYPE_ADMIN = { workerUrl: "" };</script>
-  <script src="assets/js/admin.js?v=29" defer></script>
-  <script src="assets/js/main.js?v=26" defer></script>
+  <!-- The admin talks to this site's own /api function. Nothing to configure. -->
+  <script>window.NEOTYPE_ADMIN = {};</script>
+  <script src="assets/js/admin.js?v=30" defer></script>
+  <script src="assets/js/main.js?v=30" defer></script>
 </body>
 </html>

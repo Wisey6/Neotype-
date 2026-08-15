@@ -1,31 +1,28 @@
 /* ==========================================================================
-   Neotype checkout — Stripe-direct via a Cloudflare Worker.
+   Neotype checkout — Stripe payments via the site's own /api function.
 
-   Inert until configured in customizer.html:
-     window.NEOTYPE_CHECKOUT = { workerUrl: "...", uploadcareKey: "...", currency: "aud" }
-   With no workerUrl, window.NeotypeCheckout.enabled === false and the customizer
-   keeps its demo "added to cart" toast — the live site is untouched.
+   No configuration needed: the API lives on the same domain, so there are no
+   URLs or keys to paste in. If the API isn't reachable (e.g. viewing the files
+   locally, or before the site is deployed) the builders fall back to their demo
+   "added to cart" message instead of erroring.
 
-   When configured it:
-     1. uploads the customer's artwork to a file host and gets a shareable link,
-     2. sends the chosen options to the Worker (which recomputes the price
-        server-side and creates a Stripe Checkout Session),
-     3. redirects the customer to Stripe's secure payment page.
-   Only Stripe's card fee applies — no platform markup. See CHECKOUT-SETUP.md.
+   Artwork is uploaded to a file host first so the order carries a link to the
+   customer's print file. Set the Uploadcare public key below to enable that.
    ========================================================================== */
 (function () {
   "use strict";
   var CFG = window.NEOTYPE_CHECKOUT || {};
-  var api = { enabled: false, checkout: function () {}, uploadArtwork: function () { return Promise.resolve(null); } };
+  var API = (CFG.apiBase || "/api").replace(/\/$/, "");
+  var api = { enabled: true, checkout: checkout, uploadArtwork: uploadArtwork };
   window.NeotypeCheckout = api;
 
-  if (!CFG.workerUrl) return; // not configured yet — stay inert
-  api.enabled = true;
+  // opening the files directly from disk can't reach an API
+  if (location.protocol === "file:") api.enabled = false;
 
   function toast(msg) { window.dispatchEvent(new CustomEvent("neotype:toast", { detail: msg })); }
 
   // ---- artwork file hosting (Uploadcare) --------------------------------
-  api.uploadArtwork = function (file) {
+  function uploadArtwork(file) {
     if (!CFG.uploadcareKey || !file) return Promise.resolve(null);
     var fd = new FormData();
     fd.append("UPLOADCARE_PUB_KEY", CFG.uploadcareKey);
@@ -35,30 +32,34 @@
       .then(function (r) { return r.json(); })
       .then(function (d) { return d && d.file ? "https://ucarecdn.com/" + d.file + "/" + encodeURIComponent(file.name || "artwork") : null; })
       .catch(function () { return null; });
-  };
+  }
 
   // ---- checkout ---------------------------------------------------------
-  // order = { file, fileName, payload }  where payload carries product + options
-  api.checkout = function (order) {
+  // order = { file, fileName, payload, demoLabel }
+  function checkout(order) {
+    if (!api.enabled) { demo(order); return; }
     toast("Preparing secure checkout…");
-    api.uploadArtwork(order.file).then(function (url) {
+    uploadArtwork(order.file).then(function (url) {
       var payload = Object.assign({}, order.payload, {
         artwork: url || "",
         artworkName: order.fileName || ""
       });
-      return fetch(CFG.workerUrl.replace(/\/$/, "") + "/create-checkout", {
+      return fetch(API + "/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-    }).then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (d && d.url) { window.location.href = d.url; }
-        else { toast(d && d.error ? d.error : "Checkout unavailable — please try again"); }
-      })
-      .catch(function (e) {
-        console.error("Neotype checkout failed", e);
-        toast("Couldn't reach checkout — please try again");
-      });
-  };
+    }).then(function (r) {
+      if (r.status === 404) { demo(order); return null; }   // API not deployed yet
+      return r.json();
+    }).then(function (d) {
+      if (!d) return;
+      if (d.url) { window.location.href = d.url; return; }
+      toast(d.error || "Checkout unavailable — please try again");
+    }).catch(function () { demo(order); });
+  }
+
+  function demo(order) {
+    toast(order && order.demoLabel ? order.demoLabel : "Added to your order");
+  }
 })();

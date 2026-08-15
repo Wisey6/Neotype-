@@ -57,9 +57,9 @@
   function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }        // per sticker
   function ratePerM2(totalArea) { return RATE.base + RATE.extra * Math.exp(-totalArea / RATE.decay); }
 
-  // Apply a live price list fetched from the checkout Worker (admin-editable).
+  // Apply a live price list fetched from the site's /api (admin-editable).
   // Only overrides numbers; labels and options are unchanged. Falls back to the
-  // built-in defaults above if no Worker is configured or the fetch fails.
+  // built-in defaults above if the API isn't reachable.
   function applyPricing(s) {
     if (!s) return;
     if (typeof s.min === "number") MIN_ORDER = s.min;
@@ -68,9 +68,10 @@
     if (s.shape) Object.keys(s.shape).forEach(function (k) { if (typeof SHAPE_MULT[k] === "number" && typeof s.shape[k] === "number") SHAPE_MULT[k] = s.shape[k]; });
   }
   function fetchLivePricing() {
+    if (location.protocol === "file:") return;
     var cfg = window.NEOTYPE_CHECKOUT || {};
-    if (!cfg.workerUrl) return;
-    fetch(cfg.workerUrl.replace(/\/$/, "") + "/pricing").then(function (r) { return r.json(); })
+    var api = (cfg.apiBase || "/api").replace(/\/$/, "");
+    fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) { if (d && d.stickers) { applyPricing(d.stickers); if (typeof renderAll === "function") renderAll(); } })
       .catch(function () {});
   }
@@ -623,7 +624,7 @@
   }
 
   // ---- Cart -------------------------------------------------------------
-  // The payload is what the checkout Worker prices server-side.
+  // The payload is what the /api function prices server-side.
   function buildOrder() {
     return {
       file: state.file,

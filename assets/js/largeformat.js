@@ -1,8 +1,8 @@
 /* ==========================================================================
    Neotype large-format builder (banners, corflute). One module, driven by
    window.LF_PRODUCT set on each page. Renders a live preview + options + price
-   and checks out through the same Stripe Worker as the sticker customizer.
-   Pricing here MUST match worker/src/index.js (LF table). See PRICING.md.
+   and checks out through the site's /api function, same as the sticker builder.
+   Pricing here MUST match netlify/functions/api.mjs. See PRICING.md.
    ========================================================================== */
 (function () {
   "use strict";
@@ -266,9 +266,9 @@
     });
   }
 
-  // Apply a live price list (admin-editable) fetched from the checkout Worker.
+  // Apply a live price list (admin-editable) fetched from the site's /api.
   // Overrides this product's rate, min and option multipliers; falls back to the
-  // page defaults if no Worker is configured or the fetch fails.
+  // page defaults if the API isn't reachable (e.g. viewing files locally).
   function applyPricing(p) {
     if (!p) return;
     if (typeof p.rate === "number") CFG.rate = p.rate;
@@ -281,9 +281,10 @@
     });
   }
   function fetchLivePricing() {
+    if (location.protocol === "file:") return;
     var cfg = window.NEOTYPE_CHECKOUT || {};
-    if (!cfg.workerUrl) return;
-    fetch(cfg.workerUrl.replace(/\/$/, "") + "/pricing").then(function (r) { return r.json(); })
+    var api = (cfg.apiBase || "/api").replace(/\/$/, "");
+    fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) { if (d && d[CFG.key]) { applyPricing(d[CFG.key]); render(); } })
       .catch(function () {});
   }

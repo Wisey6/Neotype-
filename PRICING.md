@@ -2,15 +2,15 @@
 
 **Two ways to change prices:**
 
-1. **No code — the admin page (recommended for the client).** Once the Worker +
-   KV are set up (see `worker/README.md`), Ian opens `neotype.au/admin.html`,
+1. **No code — the admin page (recommended for the client).** Once the site is
+   deployed to Netlify (see `SETUP.md`), Ian opens `neotype.au/admin`,
    enters the admin password, edits any number, and hits Save. Prices update on
    the site and at checkout immediately — no developer, no redeploy. Those saved
    values override the code defaults below.
 
 2. **In code (the defaults / fallback).** The numbers below are the built-in
-   defaults used until the admin saves an override (and whenever the Worker
-   isn't configured).
+   defaults used until the admin saves an override (and whenever the site
+   isn't deployed yet).
 
 ---
 
@@ -19,9 +19,9 @@ numbers — no formulas to untangle. **Two files must stay in sync** so the pric
 the customer sees matches what Stripe charges:
 
 1. `assets/js/customizer.js` — what the customer sees (top of file, "Pricing model")
-2. `worker/src/index.js` — what Stripe charges (top of file, same constants)
+2. `netlify/functions/api.mjs` — what Stripe charges (top of file, same constants)
 
-Change both to the same values and re-deploy the Worker (`cd worker && wrangler deploy`).
+Change both to the same values and redeploy the site.
 
 > Tip: keep this simple — if you only ever change the numbers below and keep the
 > two files identical, pricing stays correct.
@@ -80,7 +80,7 @@ If you add a size/qty here, add the matching button in `customizer.html`.
 These are priced by area: `price = width_m × height_m × rate × option-multipliers
 × quantity` (never below a minimum). The knobs live in **two** places that must
 match: the page (`banners.html` / `corflute.html`, in the `window.LF_PRODUCT`
-block) and `worker/src/index.js` (the `LF` table).
+block) and `netlify/functions/api.mjs` (the `LF_META` / DEFAULT_PRICING tables).
 
 These rates are calibrated against real AU vendors (banner: eprintonline —
 a 3×1 m hemmed banner ≈ A$87; corflute: Vistaprint AU sizes & options). Large
@@ -97,8 +97,8 @@ Per product you can set:
 - `qtys` — the quantity buttons
 
 Example — make double-sided corflute cost more: change `sides.double.mult`
-from `1.60` to `1.80` in **both** `corflute.html` and `worker/src/index.js`,
-then `wrangler deploy`.
+from `1.60` to `1.80` in **both** `corflute.html` and `netlify/functions/api.mjs`,
+then redeploy the site.
 
 > These rates are sensible placeholders. Send Ian's real large-format rate card
 > and we'll set the exact numbers.

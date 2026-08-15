@@ -1,0 +1,31 @@
+# Neotype Studio — Netlify configuration
+# Static site (no build step) + one serverless function that handles pricing,
+# the admin login and Stripe checkout at /api/*
+
+[build]
+  publish = "."
+  command = ""
+  functions = "netlify/functions"
+
+# Never publish these to the live site
+[build.processing]
+  skip_processing = false
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+# The admin page should never be indexed by search engines
+[[headers]]
+  for = "/admin*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+# Friendly URL for the pricing admin
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200

@@ -2,11 +2,12 @@
    Neotype pricing admin — plain-English editor for the owner.
    Prices are shown as dollars and % uplift, with a LIVE example price next to
    everything so the effect of a change is obvious. Loads/saves the price list
-   through the checkout Worker (guarded by a password). No developer needed.
+   through the site's /api function (guarded by a password). No developer needed.
    ========================================================================== */
 (function () {
   "use strict";
   var CFG = window.NEOTYPE_ADMIN || {};
+  var API = (CFG.apiBase || "/api").replace(/\/$/, "");
   var root = document.getElementById("admRoot");
   if (!root) return;
 
@@ -72,7 +73,7 @@
   function set(path, v) { var ks = path.split("."), c = D; for (var i = 0; i < ks.length - 1; i++) c = c[ks[i]]; c[ks[ks.length - 1]] = v; }
   function money(n) { return "$" + Math.round(n).toLocaleString(); }
 
-  // ---- price maths (mirrors the site & Worker) --------------------------
+  // ---- price maths (mirrors the site & the API) -------------------------
   function stickerPrice(size, qty, finish, shape) {
     var a = Math.pow(size * 0.0254, 2) * qty;
     var r = D.stickers.rate.base + D.stickers.rate.extra * Math.exp(-a / D.stickers.rate.decay);
@@ -176,16 +177,15 @@
 
   // ---- load / save ------------------------------------------------------
   function load() {
-    if (!CFG.workerUrl) { lockScreen("No Worker URL configured in admin.html yet."); return; }
     root.innerHTML = '<p class="lead">Loading current prices…</p>';
-    fetch(CFG.workerUrl.replace(/\/$/, "") + "/pricing").then(function (r) { return r.json(); })
+    fetch(API + "/pricing").then(function (r) { return r.json(); })
       .then(function (d) { buildForm(d || {}); })
-      .catch(function () { lockScreen("Couldn't reach the pricing service. Check the Worker URL."); });
+      .catch(function () { lockScreen("Couldn't reach the pricing service — is the site deployed?"); });
   }
   function save() {
     var btn = document.getElementById("admSave");
     if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
-    fetch(CFG.workerUrl.replace(/\/$/, "") + "/pricing", {
+    fetch(API + "/pricing", {
       method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Password": password }, body: JSON.stringify(D)
     }).then(function (r) { if (r.status === 401) { toast("Incorrect password — nothing was saved"); return null; } return r.json(); })
       .then(function (d) { if (d && d.ok) { toast("Saved — new prices are live"); } else if (d) { toast(d.error || "Couldn't save"); } })
@@ -197,21 +197,19 @@
     root.innerHTML =
       '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Pricing</h1>' +
       '<p class="lead">Enter the admin password to view and change your prices.</p></div>' +
-      (CFG.workerUrl ? "" : '<p class="opt-help" style="color:#ff8a5b">⚠ Set <code>workerUrl</code> in admin.html once the checkout Worker is deployed.</p>') +
       '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +
       (msg ? '<p class="opt-help" style="color:#ff8a5b">' + msg + "</p>" : "");
     var pass = document.getElementById("admPass");
     function go() {
       password = pass.value || "";
       if (!password) { toast("Enter the password"); return; }
-      if (!CFG.workerUrl) { lockScreen("No Worker URL configured in admin.html yet."); return; }
       var btn = document.getElementById("admUnlock");
       if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
       // real login: verify the password before showing anything
-      fetch(CFG.workerUrl.replace(/\/$/, "") + "/verify", { method: "POST", headers: { "X-Admin-Password": password } })
+      fetch(API + "/verify", { method: "POST", headers: { "X-Admin-Password": password } })
         .then(function (r) { if (r.status === 401) { lockScreen("Incorrect password — please try again."); return null; } return r.json(); })
         .then(function (d) { if (d && d.ok) load(); })
-        .catch(function () { lockScreen("Couldn't reach the admin service. Check the Worker URL."); });
+        .catch(function () { lockScreen("Couldn't reach the admin service — is the site deployed?"); });
     }
     document.getElementById("admUnlock").addEventListener("click", go);
     pass.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
