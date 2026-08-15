@@ -31,28 +31,65 @@ automatically.
 
 **Site settings → Environment variables.** Add:
 
-| Key | Value |
-|---|---|
-| `ADMIN_PASSWORD` | the password for the pricing admin page |
-| `SITE_URL` | `https://neotype.au` |
-| `STRIPE_SECRET_KEY` | Stripe secret key — **add this last**, see step 5 |
+| Key | Value | When |
+|---|---|---|
+| `ADMIN_PASSWORD` | the password for the pricing admin page | now |
+| `STRIPE_SECRET_KEY` | Stripe secret key | last — see the Stripe step |
+| `SITE_URL` | `https://neotype.au` | **only after** the domain points at Netlify |
 
 Redeploy after adding them.
 
-## 3. Point the domain at Netlify
+> Leave `SITE_URL` unset until the domain has moved. The function falls back to
+> whatever address is serving it, so Stripe's return pages work correctly on the
+> `.netlify.app` URL while you're still testing. Setting it early would send
+> customers back to a domain that isn't live yet.
 
-**Domain management → Add a domain → `neotype.au`.** Netlify shows the DNS
-records to use. In GoDaddy, replace the current GitHub Pages records with those
-(Netlify will either give you an A record or ask you to use their nameservers —
-either is fine; nameservers are simpler).
+## 3. Make the site public
 
-Netlify issues the HTTPS certificate automatically, so the "Not secure" warning
-goes away on its own.
+New Netlify projects can be **password/member protected**. If the site shows
+_"This project is private. Only project members can view this site"_, turn that
+off before pointing the domain at it — otherwise visitors hit an access wall.
 
-> The old GitHub Pages setup can be switched off once the domain resolves to
-> Netlify. Keep the repo — it's still the source of truth for the code.
+**Site configuration → Access & security → Visitor access → set to public.**
 
-## 4. Turn on enquiry emails
+## 4. Point the domain at Netlify
+
+> ### ⚠️ Do NOT switch to Netlify nameservers
+> `neotype.au` runs **Microsoft 365 email** (`kiko@neotype.au`). Its MX,
+> SPF/verification TXT and `autodiscover` records live at GoDaddy. Moving
+> nameservers to Netlify drops all of them and **Ian's email stops working**.
+> Keep DNS at GoDaddy and change only the website records, as below.
+
+In Netlify: **Domain management → Add a domain → `neotype.au`**. When it offers
+"Use Netlify DNS / nameservers", decline it and choose the **external DNS**
+option so it shows you records instead.
+
+Then in **GoDaddy → DNS**, change only these:
+
+| Type | Name | Change to |
+|---|---|---|
+| A | `@` | the single IP Netlify shows (currently `75.2.60.5`) — **delete the four `185.199.108–111.153` GitHub records** |
+| CNAME | `www` | your Netlify subdomain (e.g. `beamish-biscotti-7be2b5.netlify.app`) — replaces `wisey6.github.io` |
+
+**Leave every other record alone** — MX, both TXT records, `autodiscover`,
+`email`, `lyncdiscover`, `msoid`, `_domainconnect`. Those are mail and Microsoft
+services, nothing to do with the website.
+
+Netlify issues the HTTPS certificate automatically once the records resolve, so
+the "Not secure" warning clears itself.
+
+## 5. Only after Netlify is serving the domain
+
+Check `https://neotype.au` actually shows the Netlify version (the products
+section and `/api/pricing` returning JSON are good tells). **Then**, and not
+before:
+
+1. Repo **Settings → Pages → Unpublish site** (turns off GitHub Pages).
+2. Delete the `CNAME` file from the repo — it only exists for GitHub Pages.
+
+Doing either of these *before* DNS has moved leaves the site 404ing in the gap.
+
+## 6. Turn on enquiry emails
 
 Enquiries are handled by **Netlify Forms** — already wired into the contact
 form, nothing to configure in the code.
@@ -61,7 +98,7 @@ Go to **Forms → enquiry → Settings → Form notifications → Add notificati
 Email notification**, and enter Ian's address. Every enquiry now arrives in his
 inbox (and is stored in the dashboard as a backup).
 
-## 5. Connect Stripe and test
+## 7. Connect Stripe and test
 
 1. Ian creates the **Stripe** account and completes verification (business
    details + the bank account he gets paid into).
@@ -73,7 +110,7 @@ inbox (and is stored in the dashboard as a backup).
    artwork link in its **metadata**.
 5. Swap in the **live** key (`sk_live_…`) and redeploy. You're taking orders.
 
-## 6. Artwork uploads (optional but recommended)
+## 8. Artwork uploads (optional but recommended)
 
 Create a free **uploadcare.com** account, copy the **Public key**, and paste it
 into the `uploadcareKey` field near the bottom of `customizer.html`,
