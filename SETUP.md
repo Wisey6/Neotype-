@@ -91,12 +91,23 @@ Doing either of these *before* DNS has moved leaves the site 404ing in the gap.
 
 ## 6. Turn on enquiry emails
 
-Enquiries are handled by **Netlify Forms** — already wired into the contact
-form, nothing to configure in the code.
+Enquiries are handled by **Netlify Forms**. The contact form is already wired in
+code (`name="enquiry"`, `data-netlify="true"`, honeypot) — but two switches in
+the dashboard have to be on or submissions silently go nowhere.
 
-Go to **Forms → enquiry → Settings → Form notifications → Add notification →
-Email notification**, and enter Ian's address. Every enquiry now arrives in his
-inbox (and is stored in the dashboard as a backup).
+**a. Enable form detection.** New projects often ship with it off; the Forms page
+then shows an _"Enable form detection"_ button instead of your form. Turn it on,
+then **trigger a redeploy** — Netlify only scans for forms at deploy time, so
+without a fresh deploy the form stays unregistered. When it's working, Forms
+lists `enquiry` as active.
+
+**b. Add an email notification.** Detection alone only stores submissions in the
+dashboard — nobody gets told. Go to **Forms → enquiry → Settings → Form
+notifications → Add notification → Email notification** and enter the address
+that should receive enquiries (`kiko@neotype.au`).
+
+> Worth doing in that order, then sending one real test submission — it proves
+> capture *and* delivery in a single check.
 
 ## 7. Connect Stripe and test
 
