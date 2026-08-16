@@ -7,6 +7,13 @@
   command = ""
   functions = "netlify/functions"
 
+# Netlify's secret scanner matches env-var NAMES as well as values, and the
+# @netlify/blobs README uses ADMIN_PASSWORD as an example. That false positive
+# fails the build once ADMIN_PASSWORD is set, so skip scanning dependencies.
+# Our own source is still scanned.
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "node_modules/**"
+
 # Never publish these to the live site
 [build.processing]
   skip_processing = false
