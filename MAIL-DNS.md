@@ -40,19 +40,39 @@ sent *from* the domain.
 
 ## The fix (in GoDaddy DNS)
 
-**1. Correct the SPF record.** Replace the existing TXT:
+**1. Correct the SPF record — but soft-fail first.** Replace the existing TXT
+with this, note the `~all` (tilde), not `-all`:
 
 ```
-v=spf1 include:spf.protection.outlook.com -all
+v=spf1 include:spf.protection.outlook.com ~all
 ```
 
-If anything else legitimately sends as `@neotype.au` (a CRM, a newsletter tool),
-add its include before the `-all` rather than creating a second SPF record —
-a domain must have exactly one.
+`~all` is *softfail*: unrecognised senders are delivered but marked, rather than
+rejected outright. That matters because nobody has yet audited what else sends
+as `@neotype.au` — an invoicing tool, a proofing system, a booking platform.
+Going straight to `-all` before DKIM exists means any legitimate-but-unlisted
+sender disappears silently, which is the exact failure this document is trying
+to prevent.
+
+This is also strictly safer than today: the domain is *already* on `-all`, so
+anything other than GoDaddy is already hard-failing. `~all` relaxes that while
+the correct senders are identified.
+
+Watch for about a week (the DMARC reports in step 3 will show you what's
+sending), add an `include:` for anything legitimate you find, and only then
+tighten the tail to `-all`.
+
+A domain must have exactly **one** SPF record — add includes to this line rather
+than creating a second TXT.
 
 **2. Turn on DKIM.** In the Microsoft 365 Defender portal
 (Email & collaboration → Policies → Email authentication → DKIM), enable signing
-for `neotype.au`. It will give two CNAME records to add:
+for `neotype.au`. It then gives you two CNAME records to add.
+
+The targets are **tenant-specific** and cannot be worked out in advance — they
+contain Ian's Microsoft tenant name, so they only exist once DKIM is switched
+on. They look like this, with `<tenant>` replaced by the real value the portal
+displays:
 
 ```
 selector1._domainkey  →  selector1-neotype-au._domainkey.<tenant>.onmicrosoft.com
@@ -70,8 +90,13 @@ Once SPF and DKIM are confirmed passing (the reports will tell you), tighten to
 
 ## Order
 
-Do SPF first — it's the one actively hard-failing. DKIM next. DMARC last, and
-leave it at `p=none` for a few weeks before tightening.
+1. **SPF with `~all`** — fixes the active hard-fail immediately and safely.
+2. **DMARC at `p=none`** — start collecting reports so you can see every source
+   sending as `@neotype.au`. (Bring this forward of DKIM: it's the instrument
+   that tells you what else is out there.)
+3. **DKIM** — enable in the Defender portal and add the two CNAMEs it gives you.
+4. **Then tighten**: SPF `~all` → `-all`, and DMARC `p=none` → `p=quarantine` →
+   `p=reject`, one step at a time, checking reports between each.
 
 > If Ian has an IT provider managing his Microsoft 365, hand them this page —
 > it's a routine change for them.
