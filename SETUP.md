@@ -27,6 +27,12 @@ No build settings needed — `netlify.toml` already sets `publish = "."` and poi
 at the functions folder. Netlify installs the one dependency (`@netlify/blobs`)
 automatically.
 
+> **Check the production branch is `main`.** Site configuration → Build & deploy
+> → Branches. If Netlify picked up a feature branch when the repo was connected,
+> the live site rebuilds from that branch — so deleting it during cleanup would
+> stop deploys, and anyone inheriting the repo would reasonably assume `main` is
+> production.
+
 ## 2. Set the environment variables
 
 **Site settings → Environment variables.** Add:
