@@ -35,14 +35,15 @@ automatically.
 |---|---|---|
 | `ADMIN_PASSWORD` | the password for the pricing admin page | now |
 | `STRIPE_SECRET_KEY` | Stripe secret key | last — see the Stripe step |
-| `SITE_URL` | `https://neotype.au` | **only after** the domain points at Netlify |
 
-Redeploy after adding them.
+Redeploy after adding them. Environment variables are read at build time, so a
+change only takes effect on the next deploy.
 
-> Leave `SITE_URL` unset until the domain has moved. The function falls back to
-> whatever address is serving it, so Stripe's return pages work correctly on the
-> `.netlify.app` URL while you're still testing. Setting it early would send
-> customers back to a domain that isn't live yet.
+> **Do not set a `SITE_URL`.** Stripe's return pages use the origin each request
+> actually arrived on, so production returns to `neotype.au` and a deploy
+> preview returns to its own preview URL. Hardcoding a site URL (or using
+> Netlify's built-in `URL`, which is production even inside previews) would send
+> preview test orders to the live site.
 
 ## 3. Make the site public
 

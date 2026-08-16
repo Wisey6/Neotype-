@@ -13,7 +13,10 @@
    Environment variables (set in Netlify → Site settings → Environment variables):
      STRIPE_SECRET_KEY   Stripe secret key (sk_test_… then sk_live_…)
      ADMIN_PASSWORD      password for the pricing admin page
-     SITE_URL            e.g. https://neotype.au   (used for the return pages)
+
+   Stripe's return pages use the origin the request actually arrived on, so
+   deploy previews return to the preview URL and production returns to
+   neotype.au. Nothing to configure.
    ========================================================================== */
 import { getStore } from "@netlify/blobs";
 
@@ -177,7 +180,8 @@ export default async (request) => {
     const artwork = str(body.artwork, 480);
     line.meta.artwork = artwork || str(body.artworkName, 200) || "none supplied";
 
-    const site = (process.env.SITE_URL || url.origin).replace(/\/$/, "");
+    // return to whichever host served this request (production or a preview)
+    const site = url.origin.replace(/\/$/, "");
     const p = new URLSearchParams();
     p.append("mode", "payment");
     p.append("success_url", `${site}/success.html?status=paid&session_id={CHECKOUT_SESSION_ID}`);
