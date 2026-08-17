@@ -1,4 +1,13 @@
-# Cloudflare Pages redirects (replaces the [[redirects]] block in netlify.toml)
-
-# Friendly URL for the pricing admin — serves admin.html without changing the URL
-/admin  /admin.html  200
+# Cloudflare Pages redirects
+#
+# Intentionally empty of an /admin rule.
+#
+# Netlify needed `/admin  /admin.html  200` to serve the admin page at a clean
+# URL. On Pages that rule causes an INFINITE REDIRECT LOOP: Pages already serves
+# /admin from admin.html by itself, and its built-in HTML handling rewrites the
+# rule's own target /admin.html back to /admin — so the rule bounces the request
+# between the two forever (verified: 50 redirects, never resolves).
+#
+# Pages' default behaviour is what we want, so there is nothing to declare here.
+# If you add rules later, avoid targeting a *.html path that Pages will itself
+# redirect to its extension-less form.
