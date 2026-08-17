@@ -171,12 +171,41 @@ Settings → Variables and Secrets. Add to **Production** *and* **Preview**:
 |---|---|---|
 | `ADMIN_PASSWORD` | Secret | the `/admin` password — **pick a new one**, the old one was pasted in chat |
 | `STRIPE_SECRET_KEY` | Secret | `sk_test_…` first, `sk_live_…` when going live |
+| `STRIPE_WEBHOOK_SECRET` | Secret | `whsec_…` — see "Order recording" below |
 | `RESEND_API_KEY` | Secret | optional — enables enquiry emails |
 | `ENQUIRY_TO` | Plain | `kiko@neotype.au` |
 | `ENQUIRY_FROM` | Plain | verified sender, e.g. `site@send.neotype.au` |
 
 Cloudflare has no secret scanner, so the `SECRETS_SCAN_OMIT_PATHS` workaround
 that was needed on Netlify is gone.
+
+### 3b. Order recording — set up the Stripe webhook
+
+Orders are recorded by two independent paths, and **you want both**:
+
+1. **The webhook** (reliable). Stripe tells the site, server to server, so an
+   order is recorded even when the customer pays on a phone and closes the tab
+   immediately. Without it, that order is invisible in `/admin`.
+2. **The success page** (fallback). It confirms the payment so it can show a real
+   receipt, and records the order as a side effect. Only works if the customer
+   stays on the page.
+
+Both write the same key, so whichever lands first wins — no duplicates.
+
+**To set it up:** Stripe → Developers → **Webhooks** → Add endpoint
+
+- URL: `https://www.neotype.au/api/stripe-webhook`
+- Events: `checkout.session.completed` **and** `checkout.session.async_payment_succeeded`
+- Then copy the endpoint's **signing secret** (`whsec_…`) into
+  `STRIPE_WEBHOOK_SECRET` in Cloudflare, and redeploy.
+
+The endpoint verifies Stripe's HMAC signature and rejects anything unsigned,
+wrongly signed, tampered with, or replayed after 5 minutes. Without the secret
+set, it returns 503 and only the success-page path records orders — so an order
+paid on a closed tab would be missed. Set it before going live.
+
+> Do this **again** when you switch from test to live keys: test and live mode
+> have separate webhook endpoints and separate signing secrets.
 
 ### 4. Enquiry email
 Netlify Forms has no Cloudflare equivalent, so `/api/enquiry` now handles it:
