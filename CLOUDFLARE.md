@@ -94,21 +94,29 @@ to send bare `neotype.au` → `https://www.neotype.au`.
 - Costs one redirect hop on the bare domain, and the bare domain then depends on
   GoDaddy's forwarding service.
 
-**My recommendation: Option B**, unless you specifically want the bare domain
-served directly. The credit problem we're solving is a billing problem; it isn't
-worth putting the client's business email in the blast radius to fix it. You can
-always move nameservers later, calmly, once the site is stable on Pages.
+**Option B is what was done** (17 Aug 2026): `www.neotype.au` is a CNAME to
+`neotype.pages.dev` and is Active in Pages with a valid Cloudflare certificate;
+the bare apex uses GoDaddy forwarding. Mail was never touched.
+
+Treat the apex forwarding as a **bridge, not the end state**. It costs a redirect
+hop and leaves `https://neotype.au` dependent on GoDaddy's forwarding certificate.
+Moving nameservers to Cloudflare (Option A) removes both — and doing it *now that
+`www` already points at Pages* is zero-downtime, because GoDaddy's zone and
+Cloudflare's would both serve a working site throughout propagation. Do it on a
+quiet day, with the verification in Option A step 4, not under pressure.
 
 ---
 
-## Full DNS inventory (as it stands today)
+## Full DNS inventory
 
-Anything marked **KEEP** must survive the move untouched or mail breaks.
+**Live state as of 17 Aug 2026** — verified against GoDaddy's authoritative
+nameservers, not a public resolver. Anything marked **KEEP** must survive any
+future change or mail breaks.
 
 | Type | Name | Value | Purpose |
 |---|---|---|---|
-| A | `@` | `75.2.60.5` | Netlify — replaced by Pages |
-| CNAME | `www` | `beamish-biscotti-7be2b5.netlify.app` | Netlify — replaced by Pages |
+| A | `@` | `15.197.142.173`, `3.33.152.147` | GoDaddy forwarding → `https://www.neotype.au` |
+| CNAME | `www` | `neotype.pages.dev` | **the live site** — Cloudflare Pages |
 | MX | `@` | `neotype-au.mail.protection.outlook.com` (priority 0) | **KEEP — M365 mail** |
 | TXT | `@` | `MS=ms80978019` | **KEEP — M365 domain verification** |
 | TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | **KEEP — fixed 17 Aug** |
