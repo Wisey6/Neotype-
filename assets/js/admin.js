@@ -157,6 +157,7 @@
           n.icon + "</span>" + n.label + "</button>";
       }).join("") +
       '<a class="adm-navbtn adm-navbtn--out" href="index.html"><span class="adm-navic" aria-hidden="true">↗</span>View site</a>' +
+      '<button class="adm-navbtn" id="admSignOut"><span class="adm-navic" aria-hidden="true">⏻</span>Sign out</button>' +
       "</nav>";
   }
 
@@ -254,6 +255,7 @@
       if (nav) { showView(nav.getAttribute("data-view")); return; }
       var adv = t.closest && t.closest(".pipe-adv");
       if (adv) { advance(adv.getAttribute("data-key"), adv.getAttribute("data-stage"), adv); return; }
+      if (t.closest && t.closest("#admSignOut")) { signOut(); return; }
       if (t.closest && t.closest("#admManualSave")) { saveManual(t.closest("#admManualSave")); return; }
       var jump = t.closest && t.closest("[data-goto]");
       if (jump) showView(jump.getAttribute("data-goto"));
@@ -803,11 +805,37 @@
       .then(function () { if (btn) { btn.disabled = false; btn.textContent = "Save prices"; } });
   }
 
+  /* Staying signed in is OPT-IN and per-device. Ian checks orders from his
+     phone at the bench several times a day, and retyping a password each time
+     is the difference between a tool he uses and one he doesn't.
+
+     The trade-off, stated plainly rather than hidden: ticking the box keeps the
+     password in this browser's localStorage, so anyone with the unlocked device
+     can open /admin. That's the right call for his own phone and the wrong one
+     for a shared or public computer, which is why it is off by default and the
+     checkbox says so. "Sign out" clears it. */
+  var REMEMBER_KEY = "neotype.admin.key";
+
+  function rememberedPassword() {
+    try { return window.localStorage.getItem(REMEMBER_KEY) || ""; } catch (_) { return ""; }
+  }
+  function remember(pw) {
+    try { pw ? window.localStorage.setItem(REMEMBER_KEY, pw) : window.localStorage.removeItem(REMEMBER_KEY); } catch (_) {}
+  }
+  function signOut() {
+    remember("");
+    password = "";
+    lockScreen("Signed out on this device.");
+  }
+
   function lockScreen(msg) {
+    root.className = "";
     root.innerHTML =
-      '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Pricing</h1>' +
-      '<p class="lead">Enter the admin password to view and change your prices.</p></div>' +
-      '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +
+      '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Neotype dashboard</h1>' +
+      '<p class="lead">Enter your password to see orders, enquiries and pricing.</p></div>' +
+      '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password" autocomplete="current-password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +
+      '<label class="adm-remember"><input type="checkbox" id="admRemember" ' + (rememberedPassword() ? "checked" : "") + ' />' +
+      '<span>Stay signed in on this device <em>— only tick this on your own phone or computer</em></span></label>' +
       (msg ? '<p class="opt-help" style="color:#ff8a5b">' + msg + "</p>" : "");
     var pass = document.getElementById("admPass");
     function go() {
@@ -815,15 +843,31 @@
       if (!password) { toast("Enter the password"); return; }
       var btn = document.getElementById("admUnlock");
       if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
-      // real login: verify the password before showing anything
-      fetch(API + "/verify", { method: "POST", headers: { "X-Admin-Password": password } })
-        .then(function (r) { if (r.status === 401) { lockScreen("Incorrect password — please try again."); return null; } return r.json(); })
-        .then(function (d) { if (d && d.ok) load(); })
-        .catch(function () { lockScreen("Couldn't reach the admin service — is the site deployed?"); });
+      var keep = document.getElementById("admRemember");
+      unlock(password, keep && keep.checked);
     }
     document.getElementById("admUnlock").addEventListener("click", go);
     pass.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+    pass.focus();
   }
 
-  lockScreen();
+  // real login: verify the password before showing anything
+  function unlock(pw, keep, silent) {
+    password = pw;
+    return fetch(API + "/verify", { method: "POST", headers: { "X-Admin-Password": pw } })
+      .then(function (r) {
+        if (r.status === 401) {
+          remember("");                       // a saved password that stopped working is useless
+          lockScreen(silent ? "" : "Incorrect password — please try again.");
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (d) { if (d && d.ok) { remember(keep ? pw : ""); load(); } })
+      .catch(function () { lockScreen("Couldn't reach the admin service — check your connection."); });
+  }
+
+  // If this device is remembered, go straight in; otherwise ask.
+  var saved = rememberedPassword();
+  if (saved) { lockScreen(); unlock(saved, true, true); } else { lockScreen(); }
 })();

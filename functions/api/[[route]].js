@@ -351,6 +351,75 @@ async function saveOrder(env, session, status) {
   const next = toOrder(session, status);
   if (existing && existing.stage) next.stage = existing.stage;
   await env.NEOTYPE.put(key, JSON.stringify(next));
+  return next;
+}
+
+/* ---- the work-order email ------------------------------------------------
+   Stripe's own notification is a payment receipt: it says money arrived, not
+   what to print. This is the email Ian actually works from — the spec, the
+   customer, when it's due, and a link to the artwork file.
+
+   Two rules it must obey:
+     • It can never break a payment. Every failure is swallowed; an order that
+       is recorded but unannounced is recoverable, a webhook that 500s because
+       an email provider was down is not.
+     • It must not send twice. `completed` and `async_payment_succeeded` can
+       both fire for one order, so a KV flag marks a session as announced. */
+function orderEmailHtml(o, site) {
+  const row = (k, v) => v
+    ? `<tr><td style="padding:6px 14px 6px 0;color:#6c7f86;font-size:14px">${k}</td>
+         <td style="padding:6px 0;font-weight:600;font-size:14px">${escapeHtml(v)}</td></tr>`
+    : "";
+  const spec = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ");
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;color:#1b2228">
+    <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#04a49f;margin:0 0 4px">New order</p>
+    <h1 style="font-size:22px;margin:0 0 4px">${escapeHtml(spec || o.product || "Order")}</h1>
+    <p style="font-size:26px;font-weight:700;margin:0 0 18px">$${((o.amount || 0) / 100).toFixed(2)} ${escapeHtml(o.currency || "AUD")}</p>
+    <table style="border-collapse:collapse;margin-bottom:20px">
+      ${row("Reference", o.ref)}${row("Customer", o.name)}${row("Email", o.email)}
+      ${row("Phone", o.phone)}${row("Turnaround", o.turnaround)}
+    </table>
+    ${/^https?:\/\//.test(o.artwork || "")
+      ? `<p style="margin:0 0 18px"><a href="${escapeHtml(o.artwork)}"
+           style="background:#04a49f;color:#fff;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">
+           Download the artwork</a></p>`
+      : `<p style="margin:0 0 18px;color:#b8811d;font-weight:600">⚠ No artwork file — chase the customer for it.</p>`}
+    <p style="margin:0 0 6px"><a href="${site}/admin" style="color:#04a49f">Open the dashboard →</a></p>
+    <p style="font-size:12px;color:#8ea4ab;margin:18px 0 0">
+      Sent by neotype.au when the payment cleared. Stripe holds the money record.</p>
+  </div>`;
+}
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function notifyOrder(env, order, site) {
+  if (!env.RESEND_API_KEY || !order) return;
+  // don't announce the same order twice
+  const flag = `notified:${order.session}`;
+  try {
+    if (env.NEOTYPE && (await env.NEOTYPE.get(flag))) return;
+  } catch (_) { /* if the check fails, a duplicate is better than a silent miss */ }
+
+  const spec = [order.quantity, order.size, order.finish].filter(Boolean).join(" · ");
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: env.ENQUIRY_FROM || "Neotype orders <orders@send.neotype.au>",
+        to: [env.ENQUIRY_TO || "kiko@neotype.au"],
+        reply_to: order.email || undefined,
+        subject: `New order ${order.ref} — ${spec || order.product} — $${((order.amount || 0) / 100).toFixed(0)}`,
+        html: orderEmailHtml(order, site),
+      }),
+    });
+    if (res.ok && env.NEOTYPE) {
+      // keep the flag well past any retry window, but not forever
+      await env.NEOTYPE.put(flag, "1", { expirationTtl: 60 * 60 * 24 * 30 });
+    }
+  } catch (_) { /* an order recorded but unannounced is recoverable; a 500 here is not */ }
 }
 
 // The success-page URL carries the session id, so it ends up in browser history,
@@ -397,7 +466,13 @@ async function handleOrder(request, env) {
   // processing, so Ian needs to see it coming.
   const order = toOrder(s, state);
   // a storage failure must not break the customer's confirmation
-  try { await saveOrder(env, s, state); } catch (_) {}
+  try {
+    const saved = await saveOrder(env, s, state);
+    // Belt and braces: if the webhook secret isn't configured, this is the only
+    // path that will ever tell Ian an order came in. notifyOrder de-duplicates,
+    // so when the webhook IS live this is a no-op rather than a second email.
+    if (state === "paid") await notifyOrder(env, saved, url.origin);
+  } catch (_) {}
   // `paid` is kept alongside `state` so an older cached success.html still works
   return json({ state: state, paid: state === "paid", order: publicOrder(order) });
 }
@@ -461,7 +536,11 @@ async function handleWebhook(request, env) {
     }
   }
   if (status) {
-    try { await saveOrder(env, s, status); } catch { return json({ error: "Storage failed" }, 500); }
+    let saved;
+    try { saved = await saveOrder(env, s, status); } catch { return json({ error: "Storage failed" }, 500); }
+    // Announce only once the money is real. A pending order isn't work yet, and
+    // emailing "new order" for one that later fails would be worse than silence.
+    if (status === "paid") await notifyOrder(env, saved, new URL(request.url).origin);
   }
   // Anything else is acknowledged so Stripe stops retrying it.
   return json({ received: true, recorded: status || null });

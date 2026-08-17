@@ -1,0 +1,14 @@
+# neotype.au
+User-agent: *
+Allow: /
+
+# The owner dashboard is not for search engines. This is a courtesy signal to
+# well-behaved crawlers, not a security control — /admin is protected by a
+# password, which is what actually keeps it private.
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /api/
+Disallow: /success
+Disallow: /success.html
+
+Sitemap: https://www.neotype.au/sitemap.xml

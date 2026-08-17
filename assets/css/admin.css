@@ -138,3 +138,9 @@
 /* A week with no revenue: a baseline tick, never a short bar. A stub for zero
    would read as a small amount of money, which is a different answer. */
 .rev-zero { display: block; height: 1px; width: 100%; background: var(--line-soft); }
+
+/* ---- sign-in ------------------------------------------------------------ */
+.adm-remember { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; max-width: 460px; cursor: pointer; }
+.adm-remember input { margin-top: 3px; accent-color: var(--teal); flex: none; }
+.adm-remember span { font-size: .92rem; color: var(--muted); }
+.adm-remember em { display: block; font-style: normal; font-size: .84rem; color: var(--muted-2); }
