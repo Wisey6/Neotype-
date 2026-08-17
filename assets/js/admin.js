@@ -161,10 +161,52 @@
       '<button class="btn btn--ghost" id="admReload">Undo changes</button>' +
       '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>';
 
+    // enquiry inbox, filled in once it loads
+    html += '<section class="adm-card" id="admEnq"><div class="adm-card-h"><h2>Enquiries</h2>' +
+      '<span class="adm-note">from the contact form on the website</span></div>' +
+      '<p class="lead" id="admEnqBody">Loading…</p></section>';
+
     root.innerHTML = html;
     document.getElementById("admSave").addEventListener("click", save);
     document.getElementById("admReload").addEventListener("click", load);
     root.addEventListener("input", onEdit);
+    loadEnquiries();
+  }
+
+  // ---- enquiry inbox ------------------------------------------------------
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function whenLabel(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " · " +
+      d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function loadEnquiries() {
+    var box = document.getElementById("admEnqBody");
+    if (!box) return;
+    fetch(API + "/enquiries", { headers: { "X-Admin-Password": password } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) { box.textContent = "Couldn't load enquiries."; return; }
+        var list = d.enquiries || [];
+        if (!list.length) { box.textContent = "No enquiries yet. They'll appear here as soon as someone uses the contact form."; return; }
+        var html = '<div class="adm-enq-list">';
+        list.forEach(function (e) {
+          html += '<div class="adm-enq">' +
+            '<div class="adm-enq-top"><b>' + esc(e.name) + "</b>" +
+            '<span class="adm-enq-topic">' + esc(e.topic || "General") + "</span>" +
+            '<span class="adm-enq-when">' + esc(whenLabel(e.when)) + "</span></div>" +
+            '<a class="adm-enq-mail" href="mailto:' + esc(e.email) +
+              "?subject=" + encodeURIComponent("Re: your Neotype enquiry") + '">' + esc(e.email) + "</a>" +
+            '<p class="adm-enq-msg">' + esc(e.message) + "</p></div>";
+        });
+        box.outerHTML = html + "</div>";
+      })
+      .catch(function () { box.textContent = "Couldn't load enquiries."; });
   }
 
   function onEdit(e) {

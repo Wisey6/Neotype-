@@ -6,8 +6,8 @@
    locally, or before the site is deployed) the builders fall back to their demo
    "added to cart" message instead of erroring.
 
-   Artwork is uploaded to a file host first so the order carries a link to the
-   customer's print file. Set the Uploadcare public key below to enable that.
+   Artwork is uploaded to our own storage first, so the order Ian receives always
+   carries a link to the customer's actual print file. Nothing to configure.
    ========================================================================== */
 (function () {
   "use strict";
@@ -21,16 +21,17 @@
 
   function toast(msg) { window.dispatchEvent(new CustomEvent("neotype:toast", { detail: msg })); }
 
-  // ---- artwork file hosting (Uploadcare) --------------------------------
+  // ---- artwork file hosting (our own /api/upload → R2) -------------------
+  // Returns the stored file's URL, or null if it couldn't be stored. Checkout
+  // still proceeds on null — a lost file is recoverable, a lost sale isn't —
+  // and the order then carries the filename so Ian knows to chase it.
   function uploadArtwork(file) {
-    if (!CFG.uploadcareKey || !file) return Promise.resolve(null);
+    if (!file) return Promise.resolve(null);
     var fd = new FormData();
-    fd.append("UPLOADCARE_PUB_KEY", CFG.uploadcareKey);
-    fd.append("UPLOADCARE_STORE", "auto");
-    fd.append("file", file);
-    return fetch("https://upload.uploadcare.com/base/", { method: "POST", body: fd })
-      .then(function (r) { return r.json(); })
-      .then(function (d) { return d && d.file ? "https://ucarecdn.com/" + d.file + "/" + encodeURIComponent(file.name || "artwork") : null; })
+    fd.append("file", file, file.name || "artwork");
+    return fetch(API + "/upload", { method: "POST", body: fd })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { return d && d.url ? d.url : null; })
       .catch(function () { return null; });
   }
 

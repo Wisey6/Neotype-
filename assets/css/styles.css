@@ -851,3 +851,21 @@ section { position: relative; }
 
 /* ---- Focus ----------------------------------------------------------- */
 :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+
+/* ---- admin: enquiry inbox ------------------------------------------------ */
+.adm-enq-list { display: grid; gap: 12px; }
+.adm-enq {
+  border: 1px solid var(--line, rgba(255,255,255,.14));
+  border-radius: 12px; padding: 14px 16px;
+  background: rgba(255,255,255,.02);
+}
+.adm-enq-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.adm-enq-top b { font-size: 1.05rem; }
+.adm-enq-topic {
+  font-size: .74rem; letter-spacing: .04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(0,174,239,.14); color: var(--teal, #5ad1c8);
+}
+.adm-enq-when { font-size: .8rem; opacity: .6; margin-left: auto; font-variant-numeric: tabular-nums; }
+.adm-enq-mail { display: inline-block; margin: 4px 0 8px; font-size: .9rem; }
+.adm-enq-msg { margin: 0; white-space: pre-wrap; line-height: 1.55; opacity: .92; }

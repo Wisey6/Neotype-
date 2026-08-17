@@ -6,7 +6,10 @@
      POST /api/verify    → check the admin password (login)
      POST /api/checkout  → validate options, price them SERVER-SIDE, and create
                            a Stripe Checkout Session
+     POST /api/upload    → store the customer's artwork in R2, return its link
+     GET  /api/art/:key  → serve a stored artwork file (random unguessable keys)
      POST /api/enquiry   → contact form: store the enquiry, email Ian
+     GET  /api/enquiries → the enquiry inbox for /admin (password guarded)
 
    All pricing maths and every allowed option live in assets/js/pricing-core.js,
    which the browser loads too — so the price a customer sees is the price this
@@ -18,6 +21,7 @@
    Bindings — all set in the dashboard (Workers & Pages → project → Settings).
    There is no wrangler.toml on purpose: it would lock these out of the UI.
      KV namespace  NEOTYPE      the price store and the enquiry log
+     R2 bucket     ART          customers' uploaded artwork
      Secret        ADMIN_PASSWORD     password for the pricing admin page
      Secret        STRIPE_SECRET_KEY  Stripe secret key (sk_test_… then sk_live_…)
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
@@ -85,6 +89,55 @@ function describe(product, quote) {
   };
 }
 
+// ---- artwork ---------------------------------------------------------------
+// The customer's print file is the whole job — without it Ian has a paid order
+// and nothing to print. It goes into R2 before checkout, and the order carries a
+// link. Keys are random so a stored file can't be guessed by URL.
+const ART_TYPES = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+  pdf: "application/pdf", svg: "image/svg+xml", ai: "application/postscript",
+};
+const ART_MAX = 50 * 1024 * 1024;   // 50 MB — comfortably inside the Workers limit
+
+async function handleUpload(request, env) {
+  if (!env.ART) return json({ error: "File storage isn't set up yet" }, 503);
+
+  let form;
+  try { form = await request.formData(); } catch { return json({ error: "Bad request" }, 400); }
+  const file = form.get("file");
+  if (!file || typeof file === "string") return json({ error: "No file supplied" }, 400);
+  if (file.size > ART_MAX) return json({ error: "That file is over 50 MB — please send it to us directly." }, 413);
+  if (file.size === 0) return json({ error: "That file is empty" }, 400);
+
+  const name = str(file.name || "artwork", 120);
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  if (!ART_TYPES[ext]) return json({ error: "Please upload a PNG, JPG, PDF, SVG or AI file." }, 415);
+
+  // An unguessable key, and a readable filename kept for Ian's benefit.
+  const safe = name.replace(/[^A-Za-z0-9._-]+/g, "-").slice(-60);
+  const key = `${crypto.randomUUID()}/${safe}`;
+  try {
+    await env.ART.put(key, file.stream(), { httpMetadata: { contentType: ART_TYPES[ext] } });
+  } catch {
+    return json({ error: "Couldn't store that file — please try again" }, 502);
+  }
+  return json({ url: `${new URL(request.url).origin}/api/art/${key}`, key });
+}
+
+async function serveArt(env, key) {
+  if (!env.ART) return new Response("Not found", { status: 404 });
+  const obj = await env.ART.get(key);
+  if (!obj) return new Response("Not found", { status: 404 });
+  const h = new Headers();
+  obj.writeHttpMetadata(h);
+  h.set("etag", obj.httpEtag);
+  h.set("cache-control", "private, max-age=3600");
+  // never let an uploaded SVG or HTML run as a page on our own origin
+  h.set("content-disposition", "attachment");
+  h.set("x-content-type-options", "nosniff");
+  return new Response(obj.body, { headers: h });
+}
+
 // ---- enquiries ------------------------------------------------------------
 // Stored in KV first, emailed second. If the mail provider is unconfigured or
 // down, the enquiry is still saved and still shows in /admin — an enquiry is
@@ -148,6 +201,23 @@ export const onRequest = async ({ request, env }) => {
 
   // --- contact form ---
   if (route === "enquiry" && method === "POST") return handleEnquiry(request, env);
+
+  // --- artwork in and out ---
+  if (route === "upload" && method === "POST") return handleUpload(request, env);
+  if (route.startsWith("art/") && method === "GET") return serveArt(env, route.slice(4));
+
+  // --- enquiry inbox for /admin ---
+  if (route === "enquiries" && method === "GET") {
+    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!env.NEOTYPE) return json({ enquiries: [] });
+    const list = await env.NEOTYPE.list({ prefix: "enquiry:" });
+    const items = await Promise.all(
+      // newest first — the keys start with an ISO timestamp, so they sort
+      list.keys.map((k) => k.name).sort().reverse().slice(0, 100)
+        .map((n) => env.NEOTYPE.get(n, { type: "json" }))
+    );
+    return json({ enquiries: items.filter(Boolean) });
+  }
 
   // --- admin login ---
   if (route === "verify" && method === "POST") {

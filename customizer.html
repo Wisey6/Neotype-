@@ -293,13 +293,10 @@
     </div>
   </div>
 
-  <!-- Checkout runs on this site's own /api function (Netlify). The only
-       optional key is Uploadcare, which stores customers' uploaded artwork. -->
+  <!-- Checkout and artwork storage both run on this site's own /api function.
+       Nothing to configure. -->
   <script>
-    window.NEOTYPE_CHECKOUT = {
-      uploadcareKey: "",   // Uploadcare public key for artwork uploads
-      currency: "aud"
-    };
+    window.NEOTYPE_CHECKOUT = { currency: "aud" };
   </script>
   <script src="assets/js/pricing-core.js?v=31" defer></script>
   <script src="assets/js/checkout.js?v=31" defer></script>
