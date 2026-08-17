@@ -267,6 +267,12 @@ function orderKey(session) {
 
    Reading payment_status alone conflates those two, which is how the success page
    came to tell an async-paying customer to pay again. */
+/* Ian's production pipeline, in order. Deliberately four stages, not six: the
+   site promises a free proof and no printing until the customer approves, and
+   printing sits between "approved" and "shipped" without needing its own click.
+   A pipeline nobody keeps current is worse than no pipeline. */
+const ORDER_STAGES = ["new", "proof", "approved", "shipped"];
+
 function paymentState(s) {
   if (s.payment_status === "paid" || s.payment_status === "no_payment_required") return "paid";
   if (s.status === "complete") return "pending";
@@ -295,9 +301,19 @@ function toOrder(s, status) {
 
 // Every write for one session uses the same key, so a status change overwrites
 // the record rather than adding a second one.
+//
+// It MERGES over what's already stored, because the owner's own workflow fields
+// (`stage`) live on the same record. A pending → paid transition rebuilding the
+// record from the Stripe session alone would silently reset a job Ian had already
+// moved to "Approved".
 async function saveOrder(env, session, status) {
   if (!env.NEOTYPE) return;
-  await env.NEOTYPE.put(orderKey(session), JSON.stringify(toOrder(session, status)));
+  const key = orderKey(session);
+  let existing = null;
+  try { existing = await env.NEOTYPE.get(key, { type: "json" }); } catch (_) {}
+  const next = toOrder(session, status);
+  if (existing && existing.stage) next.stage = existing.stage;
+  await env.NEOTYPE.put(key, JSON.stringify(next));
 }
 
 // The success-page URL carries the session id, so it ends up in browser history,
@@ -444,11 +460,34 @@ export const onRequest = async ({ request, env }) => {
     if (!env.NEOTYPE) return json({ [field]: [] });
     const prefix = route === "orders" ? "order:" : "enquiry:";
     const list = await env.NEOTYPE.list({ prefix });
-    const items = await Promise.all(
-      list.keys.map((k) => k.name).sort().reverse().slice(0, 100)
-        .map((n) => env.NEOTYPE.get(n, { type: "json" }))
-    );
-    return json({ [field]: items.filter(Boolean) });
+    const names = list.keys.map((k) => k.name).sort().reverse().slice(0, 100);
+    const items = await Promise.all(names.map((n) => env.NEOTYPE.get(n, { type: "json" })));
+    // Orders carry their own key so the dashboard can move them along the
+    // pipeline without having to reconstruct it (and get it subtly wrong).
+    const out = items.map((it, i) => (it && field === "orders" ? Object.assign({ key: names[i] }, it) : it));
+    return json({ [field]: out.filter(Boolean) });
+  }
+
+  // --- move an order along Ian's pipeline (admin) ---
+  if (route === "order-stage" && method === "POST") {
+    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const key = str(body.key, 200);
+    const stage = str(body.stage, 20);
+    if (!ORDER_STAGES.includes(stage)) return json({ error: "Unknown stage" }, 400);
+    // Only ever address a real order key — never an arbitrary KV key.
+    if (!/^order:[0-9TZ.:-]+:cs_[A-Za-z0-9_]+$/.test(key)) return json({ error: "Unknown order" }, 400);
+    if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+    const rec = await env.NEOTYPE.get(key, { type: "json" });
+    if (!rec) return json({ error: "Unknown order" }, 404);
+    // An unpaid job must not be walked down the production line.
+    if ((rec.status || "paid") !== "paid" && stage !== "new") {
+      return json({ error: "That order isn't paid yet" }, 409);
+    }
+    rec.stage = stage;
+    await env.NEOTYPE.put(key, JSON.stringify(rec));
+    return json({ ok: true, stage: stage });
   }
 
   // --- admin login ---
