@@ -11,9 +11,9 @@ taking card payments, a cap whose failure mode is total outage isn't acceptable.
 
 ---
 
-## 🔴 Read this first — Ian's email is broken, and it's not the hosting
+## ✅ Ian's email — SPF fixed 17 Aug 2026
 
-The apex TXT record on neotype.au is:
+This was broken by DNS, not by hosting. The apex TXT record *was*:
 
 ```
 v=spf1 include:secureserver.net -all
@@ -30,20 +30,19 @@ Microsoft 365. It is **not** something the Netlify or DNS work in this project
 caused — those changes were A, AAAA and CNAME records only, and never touched
 TXT.
 
-**Fix (do this now, independent of any hosting change).** In GoDaddy DNS, edit
-that TXT record on `@` to:
+**Fixed.** The record now reads `v=spf1 include:spf.protection.outlook.com ~all`,
+confirmed against both authoritative nameservers directly. `MS=ms80978019` is
+untouched. Tighten `~all` to `-all` after a week of clean sending.
 
-```
-v=spf1 include:spf.protection.outlook.com ~all
-```
+**Still outstanding:** DKIM (`selector1`/`selector2` CNAMEs, tenant-specific —
+from the M365 admin centre) and a DMARC record starting at `p=none`. Whether
+those are urgent depends on the symptom — `MAIL-DNS.md` has the one test that
+tells you which problem you actually had.
 
-Use `~all` (softfail) for the first week, then tighten to `-all` once you've
-confirmed mail flows. Leave the other apex TXT record, `MS=ms80978019`, alone —
-that's Microsoft's domain verification.
-
-Also missing and worth adding after mail is confirmed working (see `MAIL-DNS.md`):
-DKIM (`selector1`/`selector2` CNAMEs, tenant-specific — get them from the M365
-admin centre) and a DMARC record starting at `p=none`.
+Also noted: a stale `email → email.secureserver.net` CNAME from GoDaddy's old
+mail service. It authorises nothing (that was the SPF include, now removed) so
+it's untidy rather than risky. Ask Ian whether he ever uses GoDaddy webmail
+before deleting it.
 
 ---
 
@@ -112,7 +111,8 @@ Anything marked **KEEP** must survive the move untouched or mail breaks.
 | CNAME | `www` | `beamish-biscotti-7be2b5.netlify.app` | Netlify — replaced by Pages |
 | MX | `@` | `neotype-au.mail.protection.outlook.com` (priority 0) | **KEEP — M365 mail** |
 | TXT | `@` | `MS=ms80978019` | **KEEP — M365 domain verification** |
-| TXT | `@` | `v=spf1 include:secureserver.net -all` | **FIX — see above** |
+| TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | **KEEP — fixed 17 Aug** |
+| CNAME | `email` | `email.secureserver.net` | stale GoDaddy webmail — safe to drop |
 | CNAME | `autodiscover` | `autodiscover.outlook.com` | **KEEP — Outlook client setup** |
 | SRV | `_sip._tls` | `100 1 443 sipdir.online.lync.com` | **KEEP — Teams** |
 | SRV | `_sipfederationtls._tcp` | `100 1 5061 sipfed.online.lync.com` | **KEEP — Teams federation** |

@@ -1,11 +1,43 @@
-# Email DNS — needs attention (separate from the website)
+# Email DNS
 
-Found while moving the site to Netlify. **Nothing here was changed** — this is
-Ian's mail configuration and his call. It predates the website work and is
-unrelated to it, but it affects the business directly, so it's written down
-rather than lost in a chat log.
+Separate from the website. Found while moving the site off GitHub Pages; it
+predates the website work and is unrelated to it, but it affects the business
+directly, so it's written down rather than lost in a chat log.
 
-## The problem
+## ✅ Step 1 done — SPF fixed (17 Aug 2026)
+
+The apex TXT record now reads:
+
+```
+v=spf1 include:spf.protection.outlook.com ~all
+```
+
+Confirmed against both authoritative nameservers (`ns67`/`ns68.domaincontrol.com`)
+directly, not just a public resolver. The `MS=ms80978019` verification record is
+untouched.
+
+`~all` (softfail) is deliberate as a landing spot: if any legitimate sender we
+haven't discovered yet still sends as `kiko@neotype.au`, it softfails rather than
+being rejected while we watch. Tighten to `-all` after a week of clean sending.
+
+**Still outstanding: DKIM and DMARC** — see below. Whether they're urgent depends
+on the symptom (see "Which problem is it?").
+
+## Which problem is it?
+
+The fix above only addresses one of two possible symptoms. Send one test email
+from `kiko@neotype.au` to a Gmail address, then in Gmail open the message →
+⋮ menu → **Show original**, and read the top three lines:
+
+| What you see | What it means | What to do |
+|---|---|---|
+| `SPF: PASS`, mail in the inbox | It was the hardfail. **Fixed.** | Tighten to `-all` in a week |
+| `SPF: PASS` but mail in **spam** | Reputation/alignment, not SPF | Do DKIM + DMARC below |
+| `SPF: SOFTFAIL` or `FAIL` | Something else sends as this domain | Find that sender before anything else |
+
+Until that test is run, treat the mail work as **in progress, not finished**.
+
+## The original problem (for the record)
 
 `neotype.au` receives mail on **Microsoft 365**:
 
@@ -13,7 +45,7 @@ rather than lost in a chat log.
 MX  →  neotype-au.mail.protection.outlook.com
 ```
 
-But the SPF record still authorises **GoDaddy** mail servers:
+The SPF record used to authorise **GoDaddy** mail servers instead:
 
 ```
 TXT →  v=spf1 include:secureserver.net -all
@@ -24,7 +56,7 @@ Microsoft's. So mail sent from Microsoft 365 as `kiko@neotype.au` is not
 SPF-authorised, and the `-all` at the end is a **hard fail** instruction:
 strict receivers (Gmail, Outlook.com, corporate filters) are told to reject it.
 
-There is also:
+Still true today:
 - **no DKIM** — `selector1`/`selector2._domainkey` are absent, so there's no
   cryptographic signature to fall back on when SPF fails
 - **no DMARC** — no `_dmarc.neotype.au` record, so no policy and no reporting
