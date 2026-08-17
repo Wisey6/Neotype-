@@ -161,7 +161,10 @@
       '<button class="btn btn--ghost" id="admReload">Undo changes</button>' +
       '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>';
 
-    // enquiry inbox, filled in once it loads
+    // orders and enquiries, filled in once they load
+    html += '<section class="adm-card" id="admOrd"><div class="adm-card-h"><h2>Orders</h2>' +
+      '<span class="adm-note">paid orders, newest first — artwork files are here</span></div>' +
+      '<p class="lead" id="admOrdBody">Loading…</p></section>';
     html += '<section class="adm-card" id="admEnq"><div class="adm-card-h"><h2>Enquiries</h2>' +
       '<span class="adm-note">from the contact form on the website</span></div>' +
       '<p class="lead" id="admEnqBody">Loading…</p></section>';
@@ -170,7 +173,44 @@
     document.getElementById("admSave").addEventListener("click", save);
     document.getElementById("admReload").addEventListener("click", load);
     root.addEventListener("input", onEdit);
+    loadOrders();
     loadEnquiries();
+  }
+
+  // ---- orders -------------------------------------------------------------
+  function loadOrders() {
+    var box = document.getElementById("admOrdBody");
+    if (!box) return;
+    fetch(API + "/orders", { headers: { "X-Admin-Password": password } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) { box.textContent = "Couldn't load orders."; return; }
+        var list = d.orders || [];
+        if (!list.length) {
+          box.innerHTML = "No orders yet. Paid orders appear here automatically, with the " +
+            "customer's artwork attached. Stripe remains the record for the money itself.";
+          return;
+        }
+        var html = '<div class="adm-enq-list">';
+        list.forEach(function (o) {
+          var item = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ") || o.product || "Order";
+          html += '<div class="adm-enq adm-ord">' +
+            '<div class="adm-enq-top"><b>' + esc(item) + "</b>" +
+            '<span class="adm-ord-amt">$' + (o.amount / 100).toFixed(2) + " " + esc(o.currency || "AUD") + "</span>" +
+            '<span class="adm-enq-when">' + esc(whenLabel(o.when)) + "</span></div>" +
+            '<div class="adm-ord-meta"><span>Ref <b>' + esc(o.ref) + "</b></span>" +
+            (o.turnaround ? "<span>" + esc(o.turnaround) + "</span>" : "") +
+            (o.name ? "<span>" + esc(o.name) + "</span>" : "") + "</div>" +
+            (o.email ? '<a class="adm-enq-mail" href="mailto:' + esc(o.email) +
+              "?subject=" + encodeURIComponent("Your Neotype order " + (o.ref || "")) + '">' + esc(o.email) + "</a>" : "") +
+            (/^https?:\/\//.test(o.artwork || "")
+              ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a></p>'
+              : '<p class="adm-ord-art adm-ord-noart">⚠ No artwork file — chase the customer for it</p>') +
+            "</div>";
+        });
+        box.outerHTML = html + "</div>";
+      })
+      .catch(function () { box.textContent = "Couldn't load orders."; });
   }
 
   // ---- enquiry inbox ------------------------------------------------------

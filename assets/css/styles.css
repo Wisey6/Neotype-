@@ -800,6 +800,11 @@ section { position: relative; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---- Reveal on scroll ------------------------------------------------ */
+/* .reveal hides content until main.js adds .in on scroll. Two rules for using it:
+     1. the class is `in`, NOT `is-in` — a typo silently leaves content at opacity 0
+     2. the page MUST load main.js, or nothing ever becomes visible
+   Both were violated on success.html and the order confirmation rendered blank.
+   Never put critical content (confirmations, prices, errors) inside .reveal. */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.in { opacity: 1; transform: none; }
 
@@ -869,3 +874,29 @@ section { position: relative; }
 .adm-enq-when { font-size: .8rem; opacity: .6; margin-left: auto; font-variant-numeric: tabular-nums; }
 .adm-enq-mail { display: inline-block; margin: 4px 0 8px; font-size: .9rem; }
 .adm-enq-msg { margin: 0; white-space: pre-wrap; line-height: 1.55; opacity: .92; }
+
+/* ---- success page receipt ------------------------------------------------- */
+.ok-receipt { max-width: 460px; margin: 0 auto 28px; text-align: left; }
+.ok-rows {
+  border: 1px solid var(--line, rgba(255,255,255,.14));
+  border-radius: 14px; overflow: hidden;
+}
+.ok-row {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 11px 16px; font-size: .95rem;
+}
+.ok-row + .ok-row { border-top: 1px solid var(--line, rgba(255,255,255,.1)); }
+.ok-row span { opacity: .7; }
+.ok-row b { font-variant-numeric: tabular-nums; text-align: right; }
+.ok-art { margin: 16px 0 0; font-size: .92rem; opacity: .85; text-align: center; }
+
+/* ---- admin: orders ------------------------------------------------------- */
+.adm-ord-amt {
+  font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 2px 9px; border-radius: 999px;
+  background: rgba(90,209,200,.14); color: var(--teal, #5ad1c8);
+}
+.adm-ord-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: .84rem; opacity: .72; margin: 6px 0 2px; }
+.adm-ord-art { margin: 10px 0 0; }
+.btn--sm { padding: 7px 13px; font-size: .85rem; }
+.adm-ord-noart { font-size: .88rem; color: #ff8a5b; opacity: .95; }

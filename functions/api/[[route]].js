@@ -8,6 +8,8 @@
                            a Stripe Checkout Session
      POST /api/upload    → store the customer's artwork in R2, return its link
      GET  /api/art/:key  → serve a stored artwork file (random unguessable keys)
+     GET  /api/order     → confirm a paid session with Stripe and record the order
+     GET  /api/orders    → the order list for /admin (password guarded)
      POST /api/enquiry   → contact form: store the enquiry, email Ian
      GET  /api/enquiries → the enquiry inbox for /admin (password guarded)
 
@@ -228,6 +230,55 @@ async function handleEnquiry(request, env) {
   return json({ ok: true });
 }
 
+// ---- orders ----------------------------------------------------------------
+// There is no Stripe webhook, so the order is recorded when the customer lands
+// back on the success page: we ask Stripe whether that session actually paid,
+// and only then store it. Two consequences worth being honest about:
+//   • The customer's own browser triggers the record, so if they close the tab
+//     the instant they pay, nothing is stored. The payment is still in Stripe —
+//     that remains the source of truth for money. This is Ian's convenience
+//     view, not the ledger.
+//   • Because the record is keyed on the session id, a customer reloading the
+//     success page updates rather than duplicates the order.
+async function handleOrder(request, env) {
+  const id = str(new URL(request.url).searchParams.get("session_id"), 100);
+  if (!/^cs_[A-Za-z0-9_]+$/.test(id)) return json({ error: "Unknown order" }, 400);
+  const secret = env.STRIPE_SECRET_KEY;
+  if (!secret) return json({ error: "Payments aren't switched on yet" }, 503);
+
+  let s;
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${id}`, {
+      headers: { Authorization: `Bearer ${secret}` },
+    });
+    s = await res.json();
+    if (!res.ok) return json({ error: "Unknown order" }, 404);
+  } catch {
+    return json({ error: "Couldn't reach the payment service" }, 502);
+  }
+  if (s.payment_status !== "paid") return json({ paid: false }, 200);
+
+  const m = s.metadata || {};
+  const order = {
+    // A short reference the customer can quote. Strip non-alphanumerics first,
+    // or a short session id leaks part of its "cs_test_" prefix into the ref.
+    ref: id.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase(),
+    session: id,
+    when: new Date((s.created || 0) * 1000).toISOString(),
+    amount: s.amount_total,
+    currency: (s.currency || "aud").toUpperCase(),
+    email: (s.customer_details && s.customer_details.email) || "",
+    name: (s.customer_details && s.customer_details.name) || "",
+    product: m.product || "", size: m.size || "", quantity: m.quantity || "",
+    finish: m.finish || "", shape: m.shape || "", turnaround: m.turnaround || "",
+    artwork: m.artwork || "",
+  };
+
+  // store for Ian; a failure here must not break the customer's confirmation
+  try { if (env.NEOTYPE) await env.NEOTYPE.put(`order:${order.when}:${id}`, JSON.stringify(order)); } catch (_) {}
+  return json({ paid: true, order });
+}
+
 // ---- router ---------------------------------------------------------------
 export const onRequest = async ({ request, env }) => {
   const url = new URL(request.url);
@@ -244,17 +295,22 @@ export const onRequest = async ({ request, env }) => {
   if (route === "upload" && method === "POST") return handleUpload(request, env);
   if (route.startsWith("art/") && method === "GET") return serveArt(env, route.slice(4));
 
-  // --- enquiry inbox for /admin ---
-  if (route === "enquiries" && method === "GET") {
+  // --- order confirmation (public: the customer needs it on the success page) ---
+  if (route === "order" && method === "GET") return handleOrder(request, env);
+
+  // --- inboxes for /admin ---
+  // Keys start with an ISO timestamp, so a reverse sort is newest-first.
+  if ((route === "enquiries" || route === "orders") && method === "GET") {
     if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
-    if (!env.NEOTYPE) return json({ enquiries: [] });
-    const list = await env.NEOTYPE.list({ prefix: "enquiry:" });
+    const field = route;
+    if (!env.NEOTYPE) return json({ [field]: [] });
+    const prefix = route === "orders" ? "order:" : "enquiry:";
+    const list = await env.NEOTYPE.list({ prefix });
     const items = await Promise.all(
-      // newest first — the keys start with an ISO timestamp, so they sort
       list.keys.map((k) => k.name).sort().reverse().slice(0, 100)
         .map((n) => env.NEOTYPE.get(n, { type: "json" }))
     );
-    return json({ enquiries: items.filter(Boolean) });
+    return json({ [field]: items.filter(Boolean) });
   }
 
   // --- admin login ---
