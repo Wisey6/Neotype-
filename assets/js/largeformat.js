@@ -1,36 +1,35 @@
 /* ==========================================================================
    Neotype large-format builder (banners, corflute). One module, driven by
-   window.LF_PRODUCT set on each page. Renders a live preview + options + price
-   and checks out through the site's /api function, same as the sticker builder.
-   Pricing here MUST match netlify/functions/api.mjs. See PRICING.md.
+   window.LF_PRODUCT for page presentation (title, blurb, size presets) and by
+   assets/js/pricing-core.js for everything that affects price: the option
+   groups, the quantity list, the size limits and the maths. The checkout
+   function imports the same core, so what is shown here is what is charged.
    ========================================================================== */
 (function () {
   "use strict";
   var CFG = window.LF_PRODUCT;
+  var CORE = window.NeotypePricing;
   var root = document.getElementById("lfRoot");
-  if (!CFG || !root) return;
+  if (!CFG || !CORE || !root) return;
+
+  var META = CORE.LF_META[CFG.key];
+  if (!META) return;
+  var PRICES = CORE.DEFAULT_PRICING;      // replaced by the live table from /api/pricing
 
   var state = {
-    w: CFG.defaultW, h: CFG.defaultH, qty: CFG.qtys[0],
+    w: CFG.defaultW, h: CFG.defaultH, qty: META.qtys[0],
     choices: {}, file: null, fileName: null, fileURL: null,
     img: { x: 0, y: 0, scale: 1, rot: 0, fill: false }
   };
-  Object.keys(CFG.choices).forEach(function (k) { state.choices[k] = Object.keys(CFG.choices[k].opts)[0]; });
+  Object.keys(META.groups).forEach(function (g) { state.choices[g] = Object.keys(META.groups[g])[0]; });
 
   function fmt(n) { return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
-  // bulk discount: per-unit price falls as quantity rises (matches the trade
-  // quantity breaks). qty 1 -> 1.00, 10 -> ~0.85, 25 -> ~0.72, 50 -> ~0.63.
-  function qtyMult(q) { return 0.6 + 0.4 * Math.exp(-(q - 1) / 20); }
-  function price() {
-    var mult = 1;
-    Object.keys(CFG.choices).forEach(function (k) {
-      var o = CFG.choices[k].opts[state.choices[k]];
-      if (o) mult *= o.mult;
-    });
-    var area = state.w * state.h;
-    return Math.max(CFG.min, area * CFG.rate * mult * state.qty * qtyMult(state.qty));
+  function quote() {
+    var o = { w: state.w, h: state.h, qty: state.qty };
+    Object.keys(state.choices).forEach(function (g) { o[g] = state.choices[g]; });
+    return CORE.priceLargeFormat(CFG.key, o, PRICES);
   }
 
   // ---- markup -----------------------------------------------------------
@@ -44,14 +43,17 @@
 
   function build() {
     var presetOpts = (CFG.presets || []).map(function (p, i) { return { v: String(i), label: p.label }; });
-    var qtyOpts = CFG.qtys.map(function (q) { return { v: String(q), label: String(q) }; });
+    var qtyOpts = META.qtys.map(function (q) { return { v: String(q), label: String(q) }; });
 
+    var GROUP_TITLE = {
+      material: "Material", finishing: "Finishing", eyelets: "Eyelets", rope: "Rope",
+      thickness: "Thickness", sides: "Print sides", turnaround: "Turnaround"
+    };
     var choicesHtml = "";
-    Object.keys(CFG.choices).forEach(function (k) {
-      var c = CFG.choices[k];
-      var opts = Object.keys(c.opts).map(function (v) { return { v: v, label: c.opts[v].label }; });
-      choicesHtml += '<div class="field"><label>' + c.label + ' <b id="lfval-' + k + '"></b></label>' +
-        optRow("lfchoice-" + k, opts, state.choices[k], "data-lfc-" + k) + "</div>";
+    Object.keys(META.groups).forEach(function (g) {
+      var opts = Object.keys(META.groups[g]).map(function (v) { return { v: v, label: META.groups[g][v] }; });
+      choicesHtml += '<div class="field"><label>' + (GROUP_TITLE[g] || g) + ' <b id="lfval-' + g + '"></b></label>' +
+        optRow("lfchoice-" + g, opts, state.choices[g], "data-lfc-" + g) + "</div>";
     });
 
     root.className = "customizer";
@@ -81,17 +83,19 @@
         (presetOpts.length ? '<div class="field"><label>Common sizes</label>' + optRow("lfPresets", presetOpts, "", "data-lfpreset") + "</div>" : "") +
         '<div class="field"><label>Custom size <b id="lfSizeVal"></b></label>' +
           '<div class="lf-dims">' +
-            '<span><input type="number" id="lfW" step="0.05" min="' + CFG.wRange[0] + '" max="' + CFG.wRange[1] + '" value="' + state.w + '"> m wide</span>' +
-            '<span><input type="number" id="lfH" step="0.05" min="' + CFG.hRange[0] + '" max="' + CFG.hRange[1] + '" value="' + state.h + '"> m tall</span>' +
+            '<span><input type="number" id="lfW" step="0.05" min="' + META.wRange[0] + '" max="' + META.wRange[1] + '" value="' + state.w + '"> m wide</span>' +
+            '<span><input type="number" id="lfH" step="0.05" min="' + META.hRange[0] + '" max="' + META.hRange[1] + '" value="' + state.h + '"> m tall</span>' +
           '</div>' +
-          '<p class="opt-help">Between ' + CFG.wRange[0] + '–' + CFG.wRange[1] + ' m wide and ' + CFG.hRange[0] + '–' + CFG.hRange[1] + ' m tall.</p>' +
+          '<p class="opt-help">Between ' + META.wRange[0] + '–' + META.wRange[1] + ' m wide and ' + META.hRange[0] + '–' + META.hRange[1] + ' m tall.</p>' +
         "</div>" +
         choicesHtml +
         '<div class="field"><label>Quantity <b id="lfQtyVal"></b></label>' + optRow("lfQtys", qtyOpts, String(state.qty), "data-lfqty") + "</div>" +
         '<div class="cz-price"><div class="price-row">' +
           '<div class="price-total"><sup>$</sup><span id="lfTotal">0</span> <span style="font-family:var(--font-round);font-size:.9rem;color:var(--muted)">AUD</span></div>' +
-          '<div class="price-per"><div><b id="lfPer">$0</b> / unit</div><div id="lfNote"></div></div>' +
-        "</div></div>" +
+          '<div class="price-per"><div><b id="lfPer">$0</b> / unit</div></div>' +
+        "</div>" +
+        '<div class="quote-lines" id="lfQuoteLines"></div>' +
+        "</div>" +
         '<div class="cz-actions"><button class="btn btn--accent" id="lfCheckout">Add &amp; check out <span class="arrow">→</span></button></div>' +
         '<p class="opt-help" style="text-align:center">Free digital proof before print · ships in ~4 business days</p>' +
       "</div>";
@@ -113,12 +117,18 @@
     document.getElementById("lfSizeCap").textContent = state.w.toFixed(2) + " × " + state.h.toFixed(2) + " m";
     setTxt("lfSizeVal", state.w.toFixed(2) + " × " + state.h.toFixed(2) + " m");
     setTxt("lfQtyVal", state.qty + (state.qty === 1 ? " unit" : " units"));
-    Object.keys(CFG.choices).forEach(function (k) { setTxt("lfval-" + k, CFG.choices[k].opts[state.choices[k]].label); });
+    Object.keys(META.groups).forEach(function (g) { setTxt("lfval-" + g, META.groups[g][state.choices[g]]); });
 
-    var total = price(), per = total / state.qty;
-    setTxt("lfTotal", Math.round(total).toLocaleString());
-    setTxt("lfPer", fmt(per));
-    setTxt("lfNote", state.qty + " × " + state.w.toFixed(2) + "×" + state.h.toFixed(2) + " m");
+    var r = quote();
+    if (!r) return;
+    setTxt("lfTotal", r.total.toLocaleString());
+    setTxt("lfPer", fmt(r.unit));
+    var ql = document.getElementById("lfQuoteLines");
+    if (ql) ql.innerHTML = r.lines.map(function (l) {
+      var amt = (l.signed && l.amount > 0 ? "+" : "") + "$" + Math.abs(l.amount).toLocaleString();
+      return '<div class="ql-row' + (l.note ? " ql-note" : "") + '"><span>' + l.label + '</span><b>' +
+             (l.amount < 0 ? "\u2212" : "") + amt + '</b></div>';
+    }).join("");
   }
   function setTxt(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
 
@@ -165,8 +175,8 @@
   function wire() {
     var wIn = document.getElementById("lfW"), hIn = document.getElementById("lfH");
     function syncDims() {
-      state.w = clamp(parseFloat(wIn.value) || CFG.wRange[0], CFG.wRange[0], CFG.wRange[1]);
-      state.h = clamp(parseFloat(hIn.value) || CFG.hRange[0], CFG.hRange[0], CFG.hRange[1]);
+      state.w = clamp(parseFloat(wIn.value) || META.wRange[0], META.wRange[0], META.wRange[1]);
+      state.h = clamp(parseFloat(hIn.value) || META.hRange[0], META.hRange[0], META.hRange[1]);
       pressGroup("lfPresets", "data-lfpreset", "-1"); // clear preset highlight
       render();
     }
@@ -185,9 +195,9 @@
       }
       var q = e.target.closest("button[data-lfqty]");
       if (q) { state.qty = parseInt(q.getAttribute("data-lfqty"), 10); pressGroup("lfQtys", "data-lfqty", q.getAttribute("data-lfqty")); render(); return; }
-      Object.keys(CFG.choices).forEach(function (k) {
-        var c = e.target.closest("button[data-lfc-" + k + "]");
-        if (c) { state.choices[k] = c.getAttribute("data-lfc-" + k); pressGroup("lfchoice-" + k, "data-lfc-" + k, state.choices[k]); render(); }
+      Object.keys(META.groups).forEach(function (g) {
+        var c = e.target.closest("button[data-lfc-" + g + "]");
+        if (c) { state.choices[g] = c.getAttribute("data-lfc-" + g); pressGroup("lfchoice-" + g, "data-lfc-" + g, state.choices[g]); render(); }
       });
     });
 
@@ -258,34 +268,22 @@
     // checkout
     document.getElementById("lfCheckout").addEventListener("click", function () {
       var payload = { product: CFG.key, w: state.w, h: state.h, qty: state.qty };
-      Object.keys(state.choices).forEach(function (k) { payload[k] = state.choices[k]; });
+      Object.keys(state.choices).forEach(function (g) { payload[g] = state.choices[g]; });
       var order = { file: state.file, fileName: state.fileName, payload: payload };
       var nc = window.NeotypeCheckout;
       if (nc && nc.enabled) { nc.checkout(order); return; }
-      window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Added: " + CFG.label + " " + state.w.toFixed(2) + "×" + state.h.toFixed(2) + "m ×" + state.qty + ", $" + Math.round(price()) + " AUD" }));
+      window.dispatchEvent(new CustomEvent("neotype:toast", { detail: "Added: " + CFG.label + " " + state.w.toFixed(2) + "×" + state.h.toFixed(2) + "m ×" + state.qty + ", $" + (quote() || { total: 0 }).total + " AUD" }));
     });
   }
 
-  // Apply a live price list (admin-editable) fetched from the site's /api.
-  // Overrides this product's rate, min and option multipliers; falls back to the
-  // page defaults if the API isn't reachable (e.g. viewing files locally).
-  function applyPricing(p) {
-    if (!p) return;
-    if (typeof p.rate === "number") CFG.rate = p.rate;
-    if (typeof p.min === "number") CFG.min = p.min;
-    Object.keys(CFG.choices).forEach(function (group) {
-      if (!p[group]) return;
-      Object.keys(CFG.choices[group].opts).forEach(function (opt) {
-        if (typeof p[group][opt] === "number") CFG.choices[group].opts[opt].mult = p[group][opt];
-      });
-    });
-  }
+  // Live price list from the admin. Falls back to the core defaults when the
+  // API isn't reachable (viewing the files locally, or before deploy).
   function fetchLivePricing() {
     if (location.protocol === "file:") return;
     var cfg = window.NEOTYPE_CHECKOUT || {};
     var api = (cfg.apiBase || "/api").replace(/\/$/, "");
     fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && d[CFG.key]) { applyPricing(d[CFG.key]); render(); } })
+      .then(function (d) { if (d && d[CFG.key]) { PRICES = d; render(); } })
       .catch(function () {});
   }
 

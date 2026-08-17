@@ -242,3 +242,21 @@
   fillRow(top, STICKERS.slice(0, half));
   fillRow(bot, STICKERS.slice(half));
 })();
+
+/* ==========================================================================
+   Homepage "from $X" teasers — read the live minimums so they can never
+   contradict the builders after Ian changes a price in /admin. The static text
+   in the HTML stays as the fallback if the API is unreachable.
+   ========================================================================== */
+(function () {
+  "use strict";
+  var els = document.querySelectorAll("[data-from]");
+  if (!els.length) return;
+  fetch("/api/pricing").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    if (!d) return;
+    Array.prototype.forEach.call(els, function (el) {
+      var min = d[el.getAttribute("data-from")] && d[el.getAttribute("data-from")].min;
+      if (typeof min === "number" && min > 0) el.textContent = "$" + Math.round(min);
+    });
+  }).catch(function () { /* keep the static text */ });
+})();

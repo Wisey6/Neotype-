@@ -3,6 +3,9 @@
    Prices are shown as dollars and % uplift, with a LIVE example price next to
    everything so the effect of a change is obvious. Loads/saves the price list
    through the site's /api function (guarded by a password). No developer needed.
+
+   Every example price here comes from assets/js/pricing-core.js — the same code
+   the shop and the card charge use — so what Ian previews is what customers pay.
    ========================================================================== */
 (function () {
   "use strict";
@@ -10,6 +13,21 @@
   var API = (CFG.apiBase || "/api").replace(/\/$/, "");
   var root = document.getElementById("admRoot");
   if (!root) return;
+  var CORE = window.NeotypePricing;
+
+  // Banner/corflute option tables are generated straight from the core, so a
+  // new option only ever has to be added in one place to appear here.
+  var GROUP_TITLE = {
+    material: "Material", finishing: "Finishing", eyelets: "Eyelets",
+    rope: "Rope", thickness: "Thickness", sides: "Print sides",
+    turnaround: "Turnaround"
+  };
+  function lfGroups(prod, anchor) {
+    var groups = CORE.LF_META[prod].groups;
+    return Object.keys(groups).map(function (key) {
+      return { key: key, title: GROUP_TITLE[key] || key, anchor: anchor, opts: groups[key] };
+    });
+  }
 
   // ---- product definitions (labels, example anchors) --------------------
   var PROD = {
@@ -19,13 +37,15 @@
       advanced: [
         { path: "rate.base", label: "Base rate (per m², large runs)" },
         { path: "rate.extra", label: "Small-run premium (per m²)" },
-        { path: "rate.decay", label: "How fast the bulk discount kicks in", pct: false }
+        { path: "rate.decay", label: "How fast the bulk discount kicks in", plain: true }
       ],
       groups: [
-        { key: "finish", title: "Finish", anchor: { size: 3, qty: 100, shape: "die" },
-          opts: { "vinyl-matte": "Vinyl · matte", "vinyl-gloss": "Vinyl · gloss", "holographic": "Holographic", "glitter": "Glitter", "chrome": "Chrome", "clear": "Clear" } },
+        { key: "finish", title: "Finish / laminate", anchor: { size: 3, qty: 100, shape: "die" },
+          opts: CORE.FINISH_LABEL },
         { key: "shape", title: "Shape / cut", anchor: { size: 3, qty: 100, finish: "vinyl-matte" },
-          opts: { die: "Die-cut", kiss: "Kiss-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" } }
+          opts: CORE.SHAPE_LABEL },
+        { key: "turnaround", title: "Turnaround", anchor: { size: 3, qty: 100, finish: "vinyl-matte", shape: "die" },
+          opts: CORE.TURNAROUND_LABEL }
       ],
       examples: [
         { label: "100 × 3″ matte, die-cut", size: 3, qty: 100, finish: "vinyl-matte", shape: "die" },
@@ -37,10 +57,7 @@
       title: "Banners", unitNote: "priced per square metre",
       money: [{ path: "rate", label: "Price per square metre" }, { path: "min", label: "Minimum order" }],
       advanced: [],
-      groups: [
-        { key: "material", title: "Material", anchor: { w: 2, h: 1, qty: 1 }, opts: { "vinyl-440": "440gsm PVC", "mesh": "Mesh (windy sites)" } },
-        { key: "finishing", title: "Finishing", anchor: { w: 2, h: 1, qty: 1 }, opts: { "hem-eyelets": "Hemmed + eyelets", "trim-eyelets": "Trimmed + eyelets", "trim": "Trimmed to size", "pole": "Pole pockets" } }
-      ],
+      groups: lfGroups("banner", { w: 2, h: 1, qty: 1 }),
       examples: [
         { label: "Small · 1.6 × 0.6 m", w: 1.6, h: 0.6, qty: 1 },
         { label: "Medium · 2 × 0.85 m", w: 2, h: 0.85, qty: 1 },
@@ -51,11 +68,7 @@
       title: "Corflute signs", unitNote: "priced per square metre",
       money: [{ path: "rate", label: "Price per square metre" }, { path: "min", label: "Minimum order" }],
       advanced: [],
-      groups: [
-        { key: "thickness", title: "Thickness", anchor: { w: 0.9, h: 0.6, qty: 1 }, opts: { "3mm": "3 mm", "5mm": "5 mm" } },
-        { key: "sides", title: "Print sides", anchor: { w: 0.9, h: 0.6, qty: 1 }, opts: { single: "Single-sided", double: "Double-sided" } },
-        { key: "eyelets", title: "Eyelets", anchor: { w: 0.9, h: 0.6, qty: 1 }, opts: { none: "None", corners: "4 corner eyelets" } }
-      ],
+      groups: lfGroups("corflute", { w: 0.9, h: 0.6, qty: 1 }),
       examples: [
         { label: "600 × 900 mm, 3 mm single", w: 0.6, h: 0.9, qty: 1 },
         { label: "900 × 600 mm, 3 mm single", w: 0.9, h: 0.6, qty: 1 },
@@ -73,21 +86,11 @@
   function set(path, v) { var ks = path.split("."), c = D; for (var i = 0; i < ks.length - 1; i++) c = c[ks[i]]; c[ks[ks.length - 1]] = v; }
   function money(n) { return "$" + Math.round(n).toLocaleString(); }
 
-  // ---- price maths (mirrors the site & the API) -------------------------
-  function stickerPrice(size, qty, finish, shape) {
-    var a = Math.pow(size * 0.0254, 2) * qty;
-    var r = D.stickers.rate.base + D.stickers.rate.extra * Math.exp(-a / D.stickers.rate.decay);
-    return Math.max(D.stickers.min, a * r * D.stickers.finish[finish] * D.stickers.shape[shape]);
+  // ---- example prices: the shop's own maths, on the numbers being edited --
+  function exPrice(prod, ex) {
+    var q = prod === "stickers" ? CORE.priceStickers(ex, D) : CORE.priceLargeFormat(prod, ex, D);
+    return q ? q.total : 0;
   }
-  function lfPrice(prod, ex) {
-    var q = 0.6 + 0.4 * Math.exp(-(ex.qty - 1) / 20), m = 1;
-    PROD[prod].groups.forEach(function (g) {
-      var opt = ex[g.key] || Object.keys(D[prod][g.key])[0];
-      m *= D[prod][g.key][opt];
-    });
-    return Math.max(D[prod].min, ex.w * ex.h * D[prod].rate * m * ex.qty * q);
-  }
-  function exPrice(prod, ex) { return prod === "stickers" ? stickerPrice(ex.size, ex.qty, ex.finish, ex.shape) : lfPrice(prod, ex); }
   // price for one option within a group, using the group's anchor
   function optPrice(prod, group, opt, anchor) {
     var ex = {}; for (var k in anchor) ex[k] = anchor[k];
@@ -96,8 +99,10 @@
   }
 
   // ---- rendering --------------------------------------------------------
-  function moneyInput(path) {
-    return '<span class="adm-money"><span>$</span><input type="number" step="0.01" min="0" data-path="' + path + '" value="' + get(path) + '"></span>';
+  // `plain` drops the $ sign for settings that aren't money (the decay figure).
+  function moneyInput(path, plain) {
+    return '<span class="adm-money">' + (plain ? "" : "<span>$</span>") +
+      '<input type="number" step="0.01" min="0" data-path="' + path + '" value="' + get(path) + '"></span>';
   }
   function pctInput(prod, group, opt, isBase) {
     var mult = D[prod][group][opt];
@@ -146,7 +151,7 @@
       // advanced (rarely touched)
       if (C.advanced.length) {
         html += '<details class="adm-adv"><summary>Advanced settings (usually set once)</summary><div class="adm-money-row" style="margin-top:12px">';
-        C.advanced.forEach(function (a) { html += '<label class="adm-field"><span>' + a.label + "</span>" + moneyInput(prod + "." + a.path) + "</label>"; });
+        C.advanced.forEach(function (a) { html += '<label class="adm-field"><span>' + a.label + "</span>" + moneyInput(prod + "." + a.path, a.plain) + "</label>"; });
         html += "</div></details>";
       }
       html += "</section>";

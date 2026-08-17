@@ -9,6 +9,7 @@
   var state = {
     finish: "vinyl-matte",
     shape: "die",
+    turnaround: "standard",
     size: 3,
     qty: 100,
     fileName: null,
@@ -26,17 +27,15 @@
   };
   var reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // ---- Pricing model ----------------------------------------------------
-  var FINISH = {
-    "vinyl-matte":  { mult: 1.00, label: "Vinyl · matte" },
-    "vinyl-gloss":  { mult: 1.05, label: "Vinyl · gloss" },
-    "holographic":  { mult: 1.50, label: "Holographic" },
-    "glitter":      { mult: 1.45, label: "Glitter" },
-    "chrome":       { mult: 1.60, label: "Chrome" },
-    "clear":        { mult: 1.15, label: "Clear" },
-  };
-  var SHAPE_MULT = { die: 1.00, kiss: 1.02, circle: 0.97, square: 0.95, rect: 0.96, rounded: 0.97, sheet: 1.10 };
-  var SHAPE_LABEL = { die: "Die-cut", kiss: "Kiss-cut", circle: "Circle", square: "Square", rect: "Rectangle", rounded: "Rounded", sheet: "Sheet" };
+  // ---- Pricing ----------------------------------------------------------
+  // All maths and every allowed option live in assets/js/pricing-core.js, which
+  // the checkout function imports too — so what is shown here is what is charged.
+  var CORE = window.NeotypePricing;
+  var CURRENCY = "AUD";
+  var PRICES = CORE.DEFAULT_PRICING;      // replaced by the live table from /api/pricing
+  var FINISH_LABEL = CORE.FINISH_LABEL;
+  var SHAPE_LABEL = CORE.SHAPE_LABEL;
+  var TURNAROUND_LABEL = CORE.TURNAROUND_LABEL;
   var SHAPE_HELP = {
     die: "Cut tight to the exact edge of your artwork, with a clean contour border.",
     kiss: "Your artwork on a peel-off square backing, the vinyl is scored to your shape so it lifts off easily.",
@@ -47,46 +46,28 @@
     sheet: "Multiple designs laid out on one peel-off sheet."
   };
 
-  // Area-based pricing in AUD, following eprintonline's "pay by the square
-  // metre" model: total = printed area (m²) × per-m² rate × finish, where the
-  // per-m² rate drops as total area grows (bulk discount). Rates approximate
-  // their guide (base ~A$36-45/m²); swap in the exact rate card when available.
-  var CURRENCY = "AUD";
-  var MIN_ORDER = 18; // A$ minimum order
-  var RATE = { base: 85, extra: 120, decay: 0.5 };
-  function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }        // per sticker
-  function ratePerM2(totalArea) { return RATE.base + RATE.extra * Math.exp(-totalArea / RATE.decay); }
-
-  // Apply a live price list fetched from the site's /api (admin-editable).
-  // Only overrides numbers; labels and options are unchanged. Falls back to the
-  // built-in defaults above if the API isn't reachable.
-  function applyPricing(s) {
-    if (!s) return;
-    if (typeof s.min === "number") MIN_ORDER = s.min;
-    if (s.rate) { if (typeof s.rate.base === "number") RATE.base = s.rate.base; if (typeof s.rate.extra === "number") RATE.extra = s.rate.extra; if (typeof s.rate.decay === "number") RATE.decay = s.rate.decay; }
-    if (s.finish) Object.keys(s.finish).forEach(function (k) { if (FINISH[k] && typeof s.finish[k] === "number") FINISH[k].mult = s.finish[k]; });
-    if (s.shape) Object.keys(s.shape).forEach(function (k) { if (typeof SHAPE_MULT[k] === "number" && typeof s.shape[k] === "number") SHAPE_MULT[k] = s.shape[k]; });
+  function quote() {
+    return CORE.priceStickers({
+      size: state.size, qty: state.qty, finish: state.finish,
+      shape: state.shape, turnaround: state.turnaround
+    }, PRICES);
   }
+  function savings() {
+    return CORE.stickerSavings({
+      size: state.size, qty: state.qty, finish: state.finish,
+      shape: state.shape, turnaround: state.turnaround
+    }, PRICES);
+  }
+
+  // Live price list from the admin. Falls back to the core defaults when the
+  // API isn't reachable (viewing the files locally, or before deploy).
   function fetchLivePricing() {
     if (location.protocol === "file:") return;
     var cfg = window.NEOTYPE_CHECKOUT || {};
     var api = (cfg.apiBase || "/api").replace(/\/$/, "");
     fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && d.stickers) { applyPricing(d.stickers); if (typeof renderAll === "function") renderAll(); } })
+      .then(function (d) { if (d && d.stickers) { PRICES = d; renderAll(); } })
       .catch(function () {});
-  }
-  function orderTotal(size, finish, shape, qty) {
-    var totalArea = areaM2(size) * qty;
-    var t = totalArea * ratePerM2(totalArea) * FINISH[finish].mult * SHAPE_MULT[shape];
-    return Math.max(MIN_ORDER, t);
-  }
-  function compute() {
-    var totalArea = areaM2(state.size) * state.qty;
-    var total = orderTotal(state.size, state.finish, state.shape, state.qty);
-    var unit = total / state.qty;
-    var unit15 = orderTotal(state.size, state.finish, state.shape, 15) / 15;
-    var savings = Math.round((1 - unit / unit15) * 100);
-    return { unit: unit, total: total, savings: savings, area: totalArea };
   }
 
   // ---- Preview visuals --------------------------------------------------
@@ -360,16 +341,27 @@
 
   // ---- Price render -----------------------------------------------------
   function renderPrice() {
-    var r = compute();
-    if (els.priceTotal) animateNumber(els.priceTotal, Math.round(r.total));
+    var r = quote();
+    if (!r) return;
+    if (els.priceTotal) animateNumber(els.priceTotal, r.total);
     if (els.pricePer) els.pricePer.textContent = "$" + r.unit.toFixed(2);
-    if (els.priceNote) els.priceNote.textContent = state.qty + " × " + state.size + "″ " + SHAPE_LABEL[state.shape].toLowerCase();
-    if (els.priceArea) els.priceArea.textContent = r.area.toFixed(2) + " m² · " + CURRENCY;
+    if (els.quoteLines) els.quoteLines.innerHTML = quoteHTML(r.lines);
     if (els.savings) {
-      if (r.savings > 0) { els.savings.style.display = ""; els.savings.textContent = "You save " + r.savings + "% vs. 15-pack"; }
+      var pct = savings();
+      if (pct > 0) { els.savings.style.display = ""; els.savings.textContent = "You save " + pct + "% vs. " + CORE.QTYS[0] + "-pack"; }
       else { els.savings.style.display = "none"; }
     }
   }
+
+  // A plain "what makes up this price" list, shared shape with the other builders.
+  function quoteHTML(lines) {
+    return lines.map(function (l) {
+      var amt = (l.signed && l.amount > 0 ? "+" : "") + "$" + Math.abs(l.amount).toLocaleString();
+      return '<div class="ql-row' + (l.note ? " ql-note" : "") + '">' +
+             '<span>' + l.label + '</span><b>' + (l.amount < 0 ? "\u2212" : "") + amt.replace("+-", "-") + '</b></div>';
+    }).join("");
+  }
+
   var numTimers = {};
   function animateNumber(el, target) {
     var id = el.id || "n";
@@ -387,10 +379,11 @@
   }
 
   function renderLabels() {
-    setTxt("czFinishVal", FINISH[state.finish].label);
+    setTxt("czFinishVal", FINISH_LABEL[state.finish]);
     setTxt("czShapeVal", SHAPE_LABEL[state.shape]);
     setTxt("czSizeVal", state.size + " × " + state.size + " in");
     setTxt("czQtyVal", state.qty.toLocaleString() + " stickers");
+    setTxt("czTurnVal", TURNAROUND_LABEL[state.turnaround]);
     var help = document.getElementById("shapeHelp");
     if (help) help.textContent = SHAPE_HELP[state.shape] || "";
     var FILL_NAMES = { "auto": "Studio gradient", "#06e4dd": "Teal", "#764cd9": "Purple", "#ec008c": "Pink", "#00ff09": "Green", "#ffd400": "Yellow", "#212830": "Ink", "#ffffff": "White" };
@@ -551,14 +544,15 @@
       els.proofStage.appendChild(clone);
     }
     if (els.proofResult) els.proofResult.classList.add("has-cut");
-    var r = compute();
+    var r = quote();
     if (els.proofSummary) {
       els.proofSummary.innerHTML =
-        chip(FINISH[state.finish].label) +
+        chip(FINISH_LABEL[state.finish]) +
         chip(SHAPE_LABEL[state.shape]) +
+        chip(TURNAROUND_LABEL[state.turnaround]) +
         chip(state.size + "×" + state.size + "″") +
         chip(state.qty.toLocaleString() + " stickers") +
-        '<span class="proof-chip price"><b>$' + Math.round(r.total) + "</b> " + CURRENCY + "</span>";
+        '<span class="proof-chip price"><b>$' + r.total + "</b> " + CURRENCY + "</span>";
     }
     if (els.proofLoading) els.proofLoading.hidden = true;
     if (els.proofResult) els.proofResult.hidden = false;
@@ -633,6 +627,7 @@
         product: "stickers",
         finish: state.finish,
         shape: state.shape,
+        turnaround: state.turnaround,
         size: state.size,
         qty: state.qty,
         background: state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
@@ -645,9 +640,9 @@
     var nc = window.NeotypeCheckout;
     if (nc && nc.enabled) { nc.checkout(buildOrder()); return; }
     // no checkout keys configured yet -> keep the demo behaviour
-    var r = compute();
+    var r = quote();
     window.dispatchEvent(new CustomEvent("neotype:toast", {
-      detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH[state.finish].label + ", $" + Math.round(r.total) + " AUD"
+      detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH_LABEL[state.finish] + ", $" + r.total + " AUD"
     }));
   }
 
@@ -661,7 +656,7 @@
     els = {
       artwork: $("czArtwork"), artLabel: $("czArtLabel"), paper: $("czPaper"),
       labelW: $("czLabelW"), labelH: $("czLabelH"),
-      priceTotal: $("priceTotal"), pricePer: $("pricePer"), priceNote: $("priceQtyNote"), priceArea: $("priceArea"), savings: $("czSavings"),
+      priceTotal: $("priceTotal"), pricePer: $("pricePer"), quoteLines: $("czQuoteLines"), savings: $("czSavings"),
       editor: $("czEditor"), zoom: $("ceZoom"), rot: $("ceRot"), x: $("ceX"), y: $("ceY"),
       border: $("ceBorder"), borderRow: $("ceBorderRow"), borderColorRow: $("ceBorderColorRow"),
       proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
@@ -694,6 +689,7 @@
     }
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
     wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
+    wireGroup("turnOpts", "data-turn", function (v) { state.turnaround = v; renderAll(); });
     wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });
     wireGroup("borderColorOpts", "data-bcol", function (v) { state.dieBorderColor = v; regenDieCut(true); });
     wireUpload();

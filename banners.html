@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/styles.css?v=30" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=31" />
 </head>
 <body>
   <header class="site-header">
@@ -65,35 +65,24 @@
 
   <script>
     window.LF_PRODUCT = {
+      // Presentation only. Sizes, options, quantities and every price live in
+      // assets/js/pricing-core.js so the browser and the card charge agree.
       key: "banner", label: "Banner", title: "Custom banners",
       blurb: "440gsm weatherproof PVC · priced by the square metre (AUD) · free digital proof",
-      rate: 29, min: 35,
-      wRange: [0.3, 6], hRange: [0.3, 3], defaultW: 2, defaultH: 0.85,
+      defaultW: 2, defaultH: 0.85,
       presets: [
         { label: "Small · 1600 × 600", w: 1.6, h: 0.6 },
         { label: "Medium · 2000 × 850", w: 2.0, h: 0.85 },
         { label: "Large · 3000 × 1000", w: 3.0, h: 1.0 },
         { label: "1 × 0.5 m", w: 1.0, h: 0.5 },
         { label: "4 × 1 m", w: 4.0, h: 1.0 }
-      ],
-      choices: {
-        material: { label: "Material", opts: {
-          "vinyl-440": { label: "440gsm PVC", mult: 1.00 },
-          "mesh": { label: "Mesh (windy sites)", mult: 1.12 }
-        } },
-        finishing: { label: "Finishing", opts: {
-          "hem-eyelets": { label: "Hemmed + eyelets", mult: 1.00 },
-          "trim-eyelets": { label: "Trimmed + eyelets", mult: 0.95 },
-          "trim": { label: "Trimmed to size", mult: 0.90 },
-          "pole": { label: "Pole pockets", mult: 1.06 }
-        } }
-      },
-      qtys: [1, 2, 3, 5, 10, 25]
+      ]
     };
     window.NEOTYPE_CHECKOUT = { uploadcareKey: "", currency: "aud" };
   </script>
-  <script src="assets/js/checkout.js?v=30" defer></script>
-  <script src="assets/js/largeformat.js?v=30" defer></script>
-  <script src="assets/js/main.js?v=30" defer></script>
+  <script src="assets/js/pricing-core.js?v=31"></script>
+  <script src="assets/js/checkout.js?v=31" defer></script>
+  <script src="assets/js/largeformat.js?v=31" defer></script>
+  <script src="assets/js/main.js?v=31" defer></script>
 </body>
 </html>

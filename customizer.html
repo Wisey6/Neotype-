@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=30" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=31" />
 </head>
 <body>
 
@@ -132,10 +132,11 @@
             </div>
 
             <div class="field">
-              <label>Finish <b id="czFinishVal">Vinyl · matte</b></label>
-              <div class="opt-row" id="finishOpts" role="group" aria-label="Finish">
-                <button class="opt" data-finish="vinyl-matte" aria-pressed="true">Vinyl · matte</button>
-                <button class="opt" data-finish="vinyl-gloss" aria-pressed="false">Vinyl · gloss</button>
+              <label>Finish / laminate <b id="czFinishVal">Matte</b></label>
+              <div class="opt-row" id="finishOpts" role="group" aria-label="Finish or laminate">
+                <button class="opt" data-finish="vinyl-matte" aria-pressed="true">Matte</button>
+                <button class="opt" data-finish="vinyl-gloss" aria-pressed="false">Gloss</button>
+                <button class="opt" data-finish="satin" aria-pressed="false">Satin</button>
                 <button class="opt" data-finish="holographic" aria-pressed="false">Holographic</button>
                 <button class="opt" data-finish="glitter" aria-pressed="false">Glitter</button>
                 <button class="opt" data-finish="chrome" aria-pressed="false">Chrome</button>
@@ -198,6 +199,16 @@
               </div>
             </div>
 
+            <div class="field">
+              <label>Turnaround <b id="czTurnVal">Standard (~4 days)</b></label>
+              <div class="opt-row" id="turnOpts" role="group" aria-label="Turnaround">
+                <button class="opt" data-turn="standard" aria-pressed="true">Standard</button>
+                <button class="opt" data-turn="2day" aria-pressed="false">2 days</button>
+                <button class="opt" data-turn="nextday" aria-pressed="false">Next day</button>
+              </div>
+              <p class="opt-help">Standard is included. Faster turnarounds cost more and are shown in the price below.</p>
+            </div>
+
             <div class="cz-price">
               <div class="price-row">
                 <div>
@@ -206,11 +217,9 @@
                 </div>
                 <div class="price-per">
                   <div><b id="pricePer">$0.71</b> / sticker</div>
-                  <div id="priceQtyNote">100 × 3″ die-cut</div>
-                  <div id="priceArea">0.58 m² · AUD</div>
-                  <div>Ships in ~4 business days</div>
                 </div>
               </div>
+              <div class="quote-lines" id="czQuoteLines"></div>
               <div class="cz-actions">
                 <button class="btn btn--holo" id="previewSticker">Preview my sticker</button>
                 <button class="btn btn--ghost" id="addCart">Add to cart</button>
@@ -292,8 +301,9 @@
       currency: "aud"
     };
   </script>
-  <script src="assets/js/checkout.js?v=30" defer></script>
-  <script src="assets/js/customizer.js?v=30" defer></script>
-  <script src="assets/js/main.js?v=30" defer></script>
+  <script src="assets/js/pricing-core.js?v=31" defer></script>
+  <script src="assets/js/checkout.js?v=31" defer></script>
+  <script src="assets/js/customizer.js?v=31" defer></script>
+  <script src="assets/js/main.js?v=31" defer></script>
 </body>
 </html>
