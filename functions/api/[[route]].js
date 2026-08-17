@@ -91,23 +91,37 @@ function describe(product, quote) {
 
 // ---- artwork ---------------------------------------------------------------
 // The customer's print file is the whole job — without it Ian has a paid order
-// and nothing to print. It goes into R2 before checkout, and the order carries a
-// link. Keys are random so a stored file can't be guessed by URL.
+// and nothing to print. It's stored before checkout and the order carries a link.
+// Keys are random so a stored file can't be found by guessing a URL.
+//
+// Two storage backends, picked automatically:
+//   • R2 bucket bound as ART  — preferred, 50 MB ceiling, no expiry
+//   • KV (NEOTYPE) otherwise  — works with no paid subscription, but KV caps a
+//     value at 25 MB and free storage at 1 GB, so KV-stored artwork expires
+//     after 90 days. By then the job is printed; Ian should keep the file with
+//     the job, not rely on this as an archive.
+// Enabling R2 later needs no code change — bind it and the R2 path takes over.
 const ART_TYPES = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
   pdf: "application/pdf", svg: "image/svg+xml", ai: "application/postscript",
 };
-const ART_MAX = 50 * 1024 * 1024;   // 50 MB — comfortably inside the Workers limit
+const ART_MAX_R2 = 50 * 1024 * 1024;
+const ART_MAX_KV = 24 * 1024 * 1024;      // KV's hard limit is 25 MB
+const ART_TTL_KV = 90 * 24 * 60 * 60;
 
 async function handleUpload(request, env) {
-  if (!env.ART) return json({ error: "File storage isn't set up yet" }, 503);
+  const useR2 = Boolean(env.ART);
+  if (!useR2 && !env.NEOTYPE) return json({ error: "File storage isn't set up yet" }, 503);
+  const max = useR2 ? ART_MAX_R2 : ART_MAX_KV;
 
   let form;
   try { form = await request.formData(); } catch { return json({ error: "Bad request" }, 400); }
   const file = form.get("file");
   if (!file || typeof file === "string") return json({ error: "No file supplied" }, 400);
-  if (file.size > ART_MAX) return json({ error: "That file is over 50 MB — please send it to us directly." }, 413);
   if (file.size === 0) return json({ error: "That file is empty" }, 400);
+  if (file.size > max) {
+    return json({ error: `That file is over ${Math.floor(max / 1048576)} MB — please email it to us and we'll set the order up manually.` }, 413);
+  }
 
   const name = str(file.name || "artwork", 120);
   const ext = (name.split(".").pop() || "").toLowerCase();
@@ -117,25 +131,49 @@ async function handleUpload(request, env) {
   const safe = name.replace(/[^A-Za-z0-9._-]+/g, "-").slice(-60);
   const key = `${crypto.randomUUID()}/${safe}`;
   try {
-    await env.ART.put(key, file.stream(), { httpMetadata: { contentType: ART_TYPES[ext] } });
+    if (useR2) {
+      await env.ART.put(key, file.stream(), { httpMetadata: { contentType: ART_TYPES[ext] } });
+    } else {
+      await env.NEOTYPE.put(`art:${key}`, await file.arrayBuffer(), {
+        metadata: { ct: ART_TYPES[ext] },
+        expirationTtl: ART_TTL_KV,
+      });
+    }
   } catch {
     return json({ error: "Couldn't store that file — please try again" }, 502);
   }
   return json({ url: `${new URL(request.url).origin}/api/art/${key}`, key });
 }
 
-async function serveArt(env, key) {
-  if (!env.ART) return new Response("Not found", { status: 404 });
-  const obj = await env.ART.get(key);
-  if (!obj) return new Response("Not found", { status: 404 });
+function artHeaders(contentType, etag) {
   const h = new Headers();
-  obj.writeHttpMetadata(h);
-  h.set("etag", obj.httpEtag);
+  if (contentType) h.set("content-type", contentType);
+  if (etag) h.set("etag", etag);
   h.set("cache-control", "private, max-age=3600");
   // never let an uploaded SVG or HTML run as a page on our own origin
   h.set("content-disposition", "attachment");
   h.set("x-content-type-options", "nosniff");
-  return new Response(obj.body, { headers: h });
+  return h;
+}
+
+async function serveArt(env, key) {
+  if (env.ART) {
+    const obj = await env.ART.get(key);
+    if (obj) {
+      const h = artHeaders(null, obj.httpEtag);
+      obj.writeHttpMetadata(h);
+      h.set("content-disposition", "attachment");
+      h.set("x-content-type-options", "nosniff");
+      return new Response(obj.body, { headers: h });
+    }
+  }
+  if (env.NEOTYPE) {
+    const res = await env.NEOTYPE.getWithMetadata(`art:${key}`, { type: "arrayBuffer" });
+    if (res && res.value) {
+      return new Response(res.value, { headers: artHeaders((res.metadata && res.metadata.ct) || "application/octet-stream") });
+    }
+  }
+  return new Response("Not found", { status: 404 });
 }
 
 // ---- enquiries ------------------------------------------------------------

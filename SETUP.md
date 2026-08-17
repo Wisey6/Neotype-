@@ -45,7 +45,7 @@ automatically.
 Redeploy after adding them. Environment variables are read at build time, so a
 change only takes effect on the next deploy.
 
-> **Do not set a `SITE_URL`.** Stripe's return pages use the origin each request
+> **Do not set a `SITE_URL`.** Nothing reads it. Stripe's return pages use the origin each request
 > actually arrived on, so production returns to `neotype.au` and a deploy
 > preview returns to its own preview URL. Hardcoding a site URL (or using
 > Netlify's built-in `URL`, which is production even inside previews) would send

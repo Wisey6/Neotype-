@@ -146,8 +146,23 @@ variable name `NEOTYPE`.
 > commit for every change. Since the site has no build step, the file buys us
 > nothing. Everything is configured in the dashboard instead.
 
-This one namespace holds both the price list (key `pricing`) and every enquiry
-(keys `enquiry:<timestamp>:<id>`).
+This one namespace holds the price list (key `pricing`), every enquiry
+(`enquiry:<timestamp>:<id>`) and — unless R2 is enabled — customers' artwork
+(`art:<uuid>/<filename>`).
+
+### 2b. Artwork storage — R2 is optional
+R2 is the better home for print files, but Cloudflare gates it behind a
+subscription that wants a card on file (free to 10 GB, but still a card). **You
+do not need it.** With only the KV namespace bound, artwork is stored in KV
+instead, with two consequences worth knowing:
+
+- **25 MB per file** (KV's hard limit; the site rejects anything larger with a
+  message telling the customer to email it in) rather than 50 MB on R2.
+- **Artwork expires after 90 days.** By then the job is printed. Ian should save
+  the file with the job — this is delivery, not an archive.
+
+If you ever do enable R2, bind the bucket as `ART` and the code switches over on
+its own. No code change, no redeploy of anything but the binding.
 
 ### 3. Secrets and variables
 Settings → Variables and Secrets. Add to **Production** *and* **Preview**:
