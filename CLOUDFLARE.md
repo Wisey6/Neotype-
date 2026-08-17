@@ -135,12 +135,16 @@ Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git
 Unlike Netlify, git pushes to `main` build automatically — no manual trigger.
 
 ### 2. Create the KV namespace (replaces Netlify Blobs)
-```bash
-npx wrangler kv namespace create NEOTYPE
-```
-Copy the id it prints into `wrangler.toml`, replacing
-`REPLACE_WITH_YOUR_KV_NAMESPACE_ID`, then commit that change. Also bind it in
-the dashboard: Settings → Bindings → KV namespace, variable name `NEOTYPE`.
+Dashboard → Storage & Databases → KV → Create namespace, called `NEOTYPE`.
+Then bind it: Pages project → Settings → Bindings → Add → KV namespace, with
+variable name `NEOTYPE`.
+
+> There is deliberately **no `wrangler.toml`** in this repo. Cloudflare's docs are
+> explicit that a Wrangler config file "becomes the source of truth when used,
+> meaning that you can not edit the same fields in the dashboard" — so having one
+> would lock the bindings and variables out of the dashboard UI and require a
+> commit for every change. Since the site has no build step, the file buys us
+> nothing. Everything is configured in the dashboard instead.
 
 This one namespace holds both the price list (key `pricing`) and every enquiry
 (keys `enquiry:<timestamp>:<id>`).
@@ -170,10 +174,8 @@ covers this volume) and verify a **subdomain** — `send.neotype.au`, not the ro
 That matters: verifying the root would mean adding Resend to the root SPF record,
 right next to the M365 mail we just fixed. A subdomain keeps them separate.
 
-Until that's set up, enquiries accumulate in KV and can be read with:
-```bash
-npx wrangler kv key list --binding NEOTYPE | grep enquiry
-```
+Until that's set up, enquiries accumulate in KV and can be read in the dashboard:
+Storage & Databases → KV → `NEOTYPE` → the keys beginning `enquiry:`.
 
 ### 5. Custom domain
 Pages project → Custom domains → add `www.neotype.au` (Option B) or
@@ -192,7 +194,6 @@ automatically; allow a few minutes.
 | Netlify Forms (`data-netlify="true"`) | `POST /api/enquiry` → KV + Resend |
 | `netlify.toml` headers | `_headers` |
 | `netlify.toml` redirects | `_redirects` |
-| — | `wrangler.toml` |
 
 `assets/js/pricing-core.js` is unchanged and still the single source of truth —
 it bundles correctly under Cloudflare's bundler, so the browser, the function and
@@ -214,7 +215,7 @@ Test on the `*.pages.dev` URL first, while neotype.au still serves from Netlify.
    qty 1 is **$87**.
 3. `/admin` loads, the password works, changing a price and saving succeeds, and
    a builder reflects the new price on reload.
-4. Submit the enquiry form; confirm it appears via `wrangler kv key list`.
+4. Submit the enquiry form; confirm an `enquiry:` key appears in the KV namespace.
 5. With `sk_test_…` set, buy something with card `4242 4242 4242 4242`; confirm
    you land on the success page and Stripe shows the order metadata.
 

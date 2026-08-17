@@ -15,7 +15,8 @@
    Prices live in Workers KV so the owner can change them from /admin with no
    redeploy. If KV is empty or unbound, the core's defaults are used.
 
-   Bindings (Cloudflare dashboard → Workers & Pages → Settings):
+   Bindings — all set in the dashboard (Workers & Pages → project → Settings).
+   There is no wrangler.toml on purpose: it would lock these out of the UI.
      KV namespace  NEOTYPE      the price store and the enquiry log
      Secret        ADMIN_PASSWORD     password for the pricing admin page
      Secret        STRIPE_SECRET_KEY  Stripe secret key (sk_test_… then sk_live_…)
