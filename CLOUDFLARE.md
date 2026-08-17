@@ -215,7 +215,29 @@ Both write the same key, so whichever lands first wins — no duplicates.
   The trade-off: `pages.dev` is Cloudflare's hostname, so **if this site ever
   moves off Cloudflare Pages, this endpoint must be repointed** or orders stop
   recording. Note it wherever hosting changes get planned.
-- Events: `checkout.session.completed` **and** `checkout.session.async_payment_succeeded`
+- Events — **all three**, none optional:
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`
+
+  Why all three: **`completed` does not mean paid.** With an async method (BECS
+  Direct Debit, bank transfer) the session completes while the money is still with
+  the customer's bank. Stripe reports this across two fields — session `status`
+  (`open`/`complete`/`expired`) and `payment_status` (`paid`/`unpaid`) — and the
+  handler reads both:
+
+  | Event | Stripe says | Order recorded as |
+  |---|---|---|
+  | `completed` | `payment_status: paid` | **paid** — artwork downloadable, print it |
+  | `completed` | `complete` + `unpaid` | **pending** — shown in /admin in amber, *do not print* |
+  | `async_payment_succeeded` | — | **paid** (overwrites the pending record) |
+  | `async_payment_failed` | — | **failed** (overwrites it, stays visible in red) |
+
+  Drop `async_payment_failed` and a failed payment sits in Ian's list as
+  "awaiting payment" forever. Drop the pending branch and an async order is stored
+  nowhere at all.
+
+  Every write for one session uses the same key, so these are state changes to one
+  record, never duplicates.
 - Then copy the endpoint's **signing secret** (`whsec_…`) into
   `STRIPE_WEBHOOK_SECRET` in Cloudflare, and redeploy.
 

@@ -257,9 +257,26 @@ function orderKey(session) {
   return `order:${created}:${session.id}`;
 }
 
-function toOrder(s) {
+/* Stripe reports payment across TWO fields and both are needed:
+     session.status         open | complete | expired
+     session.payment_status paid | unpaid | no_payment_required
+
+   `complete` + `unpaid` is an async method (BECS Direct Debit, bank transfer)
+   sitting with the customer's bank — the money is coming and MUST NOT be
+   described as "not charged". `open` means they never finished; nothing charged.
+
+   Reading payment_status alone conflates those two, which is how the success page
+   came to tell an async-paying customer to pay again. */
+function paymentState(s) {
+  if (s.payment_status === "paid" || s.payment_status === "no_payment_required") return "paid";
+  if (s.status === "complete") return "pending";
+  return "incomplete";
+}
+
+function toOrder(s, status) {
   const m = s.metadata || {};
   return {
+    status: status || paymentState(s),   // "paid" | "pending" | "failed"
     // A short reference the customer can quote. Strip non-alphanumerics first,
     // or a short session id leaks part of its "cs_test_" prefix into the ref.
     ref: String(s.id).replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase(),
@@ -276,9 +293,11 @@ function toOrder(s) {
   };
 }
 
-async function saveOrder(env, session) {
+// Every write for one session uses the same key, so a status change overwrites
+// the record rather than adding a second one.
+async function saveOrder(env, session, status) {
   if (!env.NEOTYPE) return;
-  await env.NEOTYPE.put(orderKey(session), JSON.stringify(toOrder(session)));
+  await env.NEOTYPE.put(orderKey(session), JSON.stringify(toOrder(session, status)));
 }
 
 // The success-page URL carries the session id, so it ends up in browser history,
@@ -292,6 +311,7 @@ function maskEmail(e) {
 }
 function publicOrder(o) {
   return {
+    status: o.status,
     ref: o.ref, when: o.when, amount: o.amount, currency: o.currency,
     email: maskEmail(o.email),
     product: o.product, size: o.size, quantity: o.quantity,
@@ -316,12 +336,17 @@ async function handleOrder(request, env) {
   } catch {
     return json({ error: "Couldn't reach the payment service" }, 502);
   }
-  if (s.payment_status !== "paid") return json({ paid: false }, 200);
+  const state = paymentState(s);
+  // An abandoned checkout is not an order — say so and store nothing.
+  if (state === "incomplete") return json({ state: "incomplete", paid: false }, 200);
 
-  const order = toOrder(s);
+  // "pending" is recorded too: the customer has committed and their bank is
+  // processing, so Ian needs to see it coming.
+  const order = toOrder(s, state);
   // a storage failure must not break the customer's confirmation
-  try { await saveOrder(env, s); } catch (_) {}
-  return json({ paid: true, order: publicOrder(order) });
+  try { await saveOrder(env, s, state); } catch (_) {}
+  // `paid` is kept alongside `state` so an older cached success.html still works
+  return json({ state: state, paid: state === "paid", order: publicOrder(order) });
 }
 
 /* ---- Stripe webhook ------------------------------------------------------
@@ -367,14 +392,26 @@ async function handleWebhook(request, env) {
   let event;
   try { event = JSON.parse(raw); } catch { return json({ error: "Bad request" }, 400); }
 
-  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
-    const s = event.data && event.data.object;
-    if (s && s.payment_status === "paid") {
-      try { await saveOrder(env, s); } catch { return json({ error: "Storage failed" }, 500); }
+  /* All three checkout.session events matter, and the endpoint subscribes to all
+     three. `completed` does NOT mean paid — with an async method the session
+     completes while the payment is still with the customer's bank, so without the
+     "pending" branch below that order is stored nowhere and Ian never sees it. */
+  const s = (event.data && event.data.object) || null;
+  let status = null;
+  if (s) {
+    if (event.type === "checkout.session.completed") {
+      status = s.payment_status === "paid" ? "paid" : "pending";
+    } else if (event.type === "checkout.session.async_payment_succeeded") {
+      status = "paid";              // overwrites the pending record
+    } else if (event.type === "checkout.session.async_payment_failed") {
+      status = "failed";            // overwrites it too — never silently vanish
     }
   }
+  if (status) {
+    try { await saveOrder(env, s, status); } catch { return json({ error: "Storage failed" }, 500); }
+  }
   // Anything else is acknowledged so Stripe stops retrying it.
-  return json({ received: true });
+  return json({ received: true, recorded: status || null });
 }
 
 // ---- router ---------------------------------------------------------------

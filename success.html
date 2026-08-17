@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/styles.css?v=32" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=33" />
 </head>
 <body>
   <header class="site-header">
@@ -104,19 +104,31 @@
               '<a href="mailto:kiko@neotype.au">kiko@neotype.au</a> and we\'ll sort it out straight away.');
             return;
           }
-          if (!res.d.paid) {
+          // An abandoned checkout: safe to say nothing was charged.
+          if (res.d.state === "incomplete" || (!res.d.state && !res.d.paid)) {
             state("Not paid yet", "That payment didn't complete.",
               'Nothing has been charged. <a href="customizer.html">Try again</a>, or email ' +
               '<a href="mailto:kiko@neotype.au">kiko@neotype.au</a> if you think this is wrong.');
             return;
           }
           var o = res.d.order;
-          state("Order received", "Thanks — you're in. 🎉",
-            "Your payment went through and your order is with us.");
 
+          // A bank-processed payment still in flight. This must NEVER imply
+          // nothing was charged — that wording would invite a second payment.
+          if (res.d.state === "pending") {
+            state("Payment on its way", "Thanks — we've got your order.",
+              "Your bank is still processing the payment, which can take a few " +
+              "business days. <b class=\"tint-teal\">There's no need to pay again</b> " +
+              "— we'll email you the moment it clears, then start your proof.");
+          } else {
+            state("Order received", "Thanks — you're in. 🎉",
+              "Your payment went through and your order is with us.");
+          }
+
+          var pending = res.d.state === "pending";
           var rows = [
             ["Order reference", esc(o.ref)],
-            ["Total paid", "$" + (o.amount / 100).toFixed(2) + " " + esc(o.currency)],
+            [pending ? "Total" : "Total paid", "$" + (o.amount / 100).toFixed(2) + " " + esc(o.currency)],
             ["Item", esc([o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ")) ||
                      esc(o.product)],
             ["Turnaround", esc(o.turnaround)],
@@ -134,7 +146,8 @@
           }
           box.innerHTML = html;
           box.hidden = false;
-          foot.hidden = false;
+          // the proof promise only applies once the money has cleared
+          if (!pending) foot.hidden = false;
         })
         .catch(function () {
           state("Couldn't confirm", "We couldn't reach our order system.",

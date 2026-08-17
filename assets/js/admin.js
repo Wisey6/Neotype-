@@ -194,8 +194,16 @@
         var html = '<div class="adm-enq-list">';
         list.forEach(function (o) {
           var item = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ") || o.product || "Order";
-          html += '<div class="adm-enq adm-ord">' +
-            '<div class="adm-enq-top"><b>' + esc(item) + "</b>" +
+          // Orders recorded before payment states existed have no `status`, and
+          // only paid orders were ever stored back then — so treat it as paid.
+          var st = o.status || "paid";
+          var paid = st === "paid";
+          var pill = paid ? ""
+            : st === "pending"
+              ? '<span class="adm-ord-pill is-pending">Awaiting payment</span>'
+              : '<span class="adm-ord-pill is-failed">Payment failed</span>';
+          html += '<div class="adm-enq adm-ord' + (paid ? "" : " adm-ord--" + esc(st)) + '">' +
+            '<div class="adm-enq-top"><b>' + esc(item) + "</b>" + pill +
             '<span class="adm-ord-amt">$' + (o.amount / 100).toFixed(2) + " " + esc(o.currency || "AUD") + "</span>" +
             '<span class="adm-enq-when">' + esc(whenLabel(o.when)) + "</span></div>" +
             '<div class="adm-ord-meta"><span>Ref <b>' + esc(o.ref) + "</b></span>" +
@@ -203,9 +211,15 @@
             (o.name ? "<span>" + esc(o.name) + "</span>" : "") + "</div>" +
             (o.email ? '<a class="adm-enq-mail" href="mailto:' + esc(o.email) +
               "?subject=" + encodeURIComponent("Your Neotype order " + (o.ref || "")) + '">' + esc(o.email) + "</a>" : "") +
-            (/^https?:\/\//.test(o.artwork || "")
-              ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a></p>'
-              : '<p class="adm-ord-art adm-ord-noart">⚠ No artwork file — chase the customer for it</p>') +
+            // The artwork button is deliberately withheld unless the money has
+            // cleared, so an unpaid job can't be sent to print by habit.
+            (!paid
+              ? '<p class="adm-ord-art adm-ord-hold">' + (st === "pending"
+                  ? "⏳ Money not cleared yet — <b>do not print</b>. This updates itself when the bank confirms."
+                  : "✕ Payment failed — <b>do not print</b>. Kept here so you know it happened.") + "</p>"
+              : /^https?:\/\//.test(o.artwork || "")
+                ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a></p>'
+                : '<p class="adm-ord-art adm-ord-noart">⚠ No artwork file — chase the customer for it</p>') +
             "</div>";
         });
         box.outerHTML = html + "</div>";

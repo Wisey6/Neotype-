@@ -900,3 +900,17 @@ section { position: relative; }
 .adm-ord-art { margin: 10px 0 0; }
 .btn--sm { padding: 7px 13px; font-size: .85rem; }
 .adm-ord-noart { font-size: .88rem; color: #ff8a5b; opacity: .95; }
+
+/* ---- admin: order payment status ----------------------------------------- */
+.adm-ord-pill {
+  font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.adm-ord-pill.is-pending { background: rgba(255,170,60,.16); color: #ffb454; }
+.adm-ord-pill.is-failed  { background: rgba(255,90,90,.16);  color: #ff7a7a; }
+/* an unpaid order should not read as ready-to-print at a glance */
+.adm-ord--pending { border-color: rgba(255,170,60,.4); }
+.adm-ord--failed  { border-color: rgba(255,90,90,.4); opacity: .82; }
+.adm-ord-hold { margin: 10px 0 0; font-size: .88rem; line-height: 1.5; }
+.adm-ord--pending .adm-ord-hold { color: #ffb454; }
+.adm-ord--failed  .adm-ord-hold { color: #ff7a7a; }
