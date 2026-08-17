@@ -92,21 +92,26 @@
       var btn = contactForm.querySelector("button[type=submit]");
       var first = name.trim().split(" ")[0];
 
-      // Netlify Forms: post the form's own fields back to the site
       if (location.protocol === "file:") {
         showToast("Thanks " + first + ", we'll be in touch soon");
         contactForm.reset();
         return;
       }
       if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
-      var body = new URLSearchParams(new FormData(contactForm)).toString();
-      fetch("/", {
+      // POST to our own /api/enquiry, which stores it and emails Ian. The
+      // honeypot field goes along so the server can spot bots.
+      fetch("/api/enquiry", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name, email: email, topic: topic, message: msg,
+          company: (contactForm.querySelector("[name=company]") || {}).value || ""
+        })
       }).then(function (r) {
-        if (r.ok) { showToast("Thanks " + first + ", your enquiry is on its way"); contactForm.reset(); }
-        else { showToast("Couldn't send just now, please email us directly"); }
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          if (r.ok && d.ok) { showToast("Thanks " + first + ", your enquiry is on its way"); contactForm.reset(); }
+          else { showToast(d.error || "Couldn't send just now, please email us directly"); }
+        });
       }).catch(function () { showToast("Couldn't send just now, please email us directly"); })
         .then(function () { if (btn) { btn.disabled = false; btn.innerHTML = "Send enquiry <span class=\"arrow\">→</span>"; } });
     });

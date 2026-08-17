@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects (replaces the [[redirects]] block in netlify.toml)
+
+# Friendly URL for the pricing admin — serves admin.html without changing the URL
+/admin  /admin.html  200

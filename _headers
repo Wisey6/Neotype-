@@ -1,0 +1,12 @@
+# Cloudflare Pages headers (replaces the [[headers]] blocks in netlify.toml)
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+
+# The admin page should never be indexed by search engines
+/admin
+  X-Robots-Tag: noindex, nofollow
+/admin.html
+  X-Robots-Tag: noindex, nofollow
