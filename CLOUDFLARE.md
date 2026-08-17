@@ -202,7 +202,19 @@ Both write the same key, so whichever lands first wins — no duplicates.
 
 **To set it up:** Stripe → Developers → **Webhooks** → Add endpoint
 
-- URL: `https://www.neotype.au/api/stripe-webhook`
+- URL: `https://neotype.pages.dev/api/stripe-webhook`
+
+  **Deliberately the `pages.dev` hostname, not `www.neotype.au`.** A webhook fails
+  *silently* — orders simply stop being recorded and nobody notices until a
+  customer asks where their order went. So it should depend on as little as
+  possible. `pages.dev` depends on Cloudflare alone; `www.neotype.au` also depends
+  on GoDaddy's DNS, the CNAME, and a certificate. The nameserver move described
+  above would hand `www` over mid-propagation while `pages.dev` carries on
+  unaffected.
+
+  The trade-off: `pages.dev` is Cloudflare's hostname, so **if this site ever
+  moves off Cloudflare Pages, this endpoint must be repointed** or orders stop
+  recording. Note it wherever hosting changes get planned.
 - Events: `checkout.session.completed` **and** `checkout.session.async_payment_succeeded`
 - Then copy the endpoint's **signing secret** (`whsec_…`) into
   `STRIPE_WEBHOOK_SECRET` in Cloudflare, and redeploy.
