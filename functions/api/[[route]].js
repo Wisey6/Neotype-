@@ -296,7 +296,44 @@ function toOrder(s, status) {
     product: m.product || "", size: m.size || "", quantity: m.quantity || "",
     finish: m.finish || "", shape: m.shape || "", turnaround: m.turnaround || "",
     area_m2: m.area_m2 || "", artwork: m.artwork || "",
+    source: "stripe",
   };
+}
+
+/* Orders that didn't come through the website — phone, walk-in, an invoice Ian
+   raised himself. Ian types them in so the dashboard reflects the whole business
+   and not just the online slice. Stored with the same shape so every view,
+   chart and pipeline column treats them identically. */
+async function createManualOrder(env, body) {
+  if (!env.NEOTYPE) return { error: "Storage unavailable", code: 500 };
+  const amount = Math.round(Number(body.amount) * 100);
+  if (!isFinite(amount) || amount < 0) return { error: "Enter a valid amount", code: 400 };
+  const name = str(body.name, 120).trim();
+  if (!name) return { error: "Enter a customer name", code: 400 };
+
+  const when = str(body.when, 40) || new Date().toISOString();
+  if (isNaN(new Date(when))) return { error: "Enter a valid date", code: 400 };
+  const id = "man_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+  const turnaround = str(body.turnaround, 40) || "Standard (~4 days)";
+
+  const order = {
+    // Manual orders are ones Ian has already been paid for (or is invoicing
+    // himself), so they enter as paid — the pipeline is what he tracks here.
+    status: "paid",
+    stage: ORDER_STAGES.includes(str(body.stage, 20)) ? body.stage : "new",
+    ref: id.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase(),
+    session: id, when: new Date(when).toISOString(),
+    amount: amount, currency: "AUD",
+    email: str(body.email, 200).trim(), name: name, phone: str(body.phone, 40).trim(),
+    product: str(body.product, 40) || "other", size: str(body.size, 60).trim(),
+    quantity: str(body.quantity, 20).trim(), finish: str(body.finish, 60).trim(),
+    shape: "", turnaround: turnaround, area_m2: "",
+    artwork: /^https?:\/\//.test(body.artwork || "") ? str(body.artwork, 480) : "",
+    note: str(body.note, 600).trim(),
+    source: "manual",
+  };
+  await env.NEOTYPE.put(`order:${order.when}:${id}`, JSON.stringify(order));
+  return { order: order };
 }
 
 // Every write for one session uses the same key, so a status change overwrites
@@ -477,7 +514,9 @@ export const onRequest = async ({ request, env }) => {
     const stage = str(body.stage, 20);
     if (!ORDER_STAGES.includes(stage)) return json({ error: "Unknown stage" }, 400);
     // Only ever address a real order key — never an arbitrary KV key.
-    if (!/^order:[0-9TZ.:-]+:cs_[A-Za-z0-9_]+$/.test(key)) return json({ error: "Unknown order" }, 400);
+    // `cs_` is a Stripe session; `man_` is an order Ian typed in himself. A
+    // cs_-only pattern here would silently make manual orders unmovable.
+    if (!/^order:[0-9TZ.:-]+:(cs|man)_[A-Za-z0-9_]+$/.test(key)) return json({ error: "Unknown order" }, 400);
     if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
     const rec = await env.NEOTYPE.get(key, { type: "json" });
     if (!rec) return json({ error: "Unknown order" }, 404);
@@ -488,6 +527,16 @@ export const onRequest = async ({ request, env }) => {
     rec.stage = stage;
     await env.NEOTYPE.put(key, JSON.stringify(rec));
     return json({ ok: true, stage: stage });
+  }
+
+  // --- add an order that didn't come through the website (admin) ---
+  if (route === "orders" && method === "POST") {
+    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const res = await createManualOrder(env, body);
+    if (res.error) return json({ error: res.error }, res.code);
+    return json({ ok: true, order: res.order });
   }
 
   // --- admin login ---

@@ -1,0 +1,140 @@
+/* ==========================================================================
+   Neotype admin — the workshop dashboard.
+
+   A separate stylesheet on purpose: this is an internal tool for one person,
+   and none of it ships to customers, so it has no business inflating the
+   site's own styles.css. It inherits every brand token from there (--teal,
+   --purple, --bg-card, --line…) and adds only dashboard furniture.
+
+   Dark-first canvas with a single teal accent on neutral — the site's own
+   identity, not a borrowed one. Chart colours are validated: see the note
+   above MIX in admin.js.
+   ========================================================================== */
+
+/* ---- shell: fixed left rail + scrolling content ------------------------- */
+.adm-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 32px; align-items: start; }
+.adm-main { min-width: 0; }
+
+.adm-rail {
+  position: sticky; top: 24px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 16px 12px;
+  background: var(--bg-card); border: 1px solid var(--line-soft);
+  border-radius: var(--radius, 16px);
+}
+.adm-rail-h {
+  font-family: var(--font-display); font-size: .72rem; font-weight: 800;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted-2); padding: 4px 10px 12px;
+}
+.adm-navbtn {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font: inherit; font-size: .95rem; font-weight: 600; text-align: left;
+  text-decoration: none; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.adm-navbtn:hover { background: rgba(255, 255, 255, .04); color: var(--text); }
+.adm-navbtn[aria-current="page"] {
+  background: rgba(6, 228, 221, .1); color: var(--teal);
+  box-shadow: inset 2px 0 0 var(--teal);
+}
+.adm-navic { width: 18px; text-align: center; font-size: 1rem; opacity: .9; }
+.adm-navbtn--out { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line-soft); border-radius: 0 0 10px 10px; }
+
+/* hidden panels must be gone, not just transparent */
+.adm-panel[hidden] { display: none; }
+
+/* ---- analytics: stat row ------------------------------------------------ */
+/* Four single numbers. Per the dataviz form heuristic, a headline figure is a
+   stat tile, not a chart — plotting one number is noise. */
+.an-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.an-stat {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 16px 18px; background: var(--bg-card);
+  border: 1px solid var(--line-soft); border-radius: 14px;
+}
+.an-stat-l { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-2); }
+.an-stat-v { font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.an-stat-s { font-size: .84rem; color: var(--muted); }
+
+/* ---- product mix: horizontal bars -------------------------------------- */
+/* Bars, not a pie: three similar shares are unreadable as wedges. Every bar
+   carries its own value and a colour dot beside its name, so identity never
+   depends on colour alone. */
+.mix-chart { display: grid; gap: 10px; }
+.mix-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) 78px 44px; gap: 12px; align-items: center; }
+.mix-label { display: flex; align-items: center; gap: 8px; font-size: .92rem; font-weight: 600; }
+.mix-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.mix-track { height: 22px; background: rgba(255, 255, 255, .05); border-radius: 5px; overflow: hidden; }
+/* 4px rounded data-end, anchored to the baseline */
+.mix-bar { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 3px; }
+.mix-val { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.mix-share { font-size: .86rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---- the table view behind every chart --------------------------------- */
+.an-details { margin-top: 18px; }
+.an-details summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+.an-details summary:hover { color: var(--teal); }
+.an-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .9rem; }
+.an-table caption { text-align: left; padding-bottom: 8px; }
+.an-table th, .an-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); }
+.an-table th { font-size: .76rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-2); font-weight: 700; }
+.an-table td:not(:first-child), .an-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- receipts ---------------------------------------------------------- */
+.rec-list { display: grid; gap: 2px; }
+.rec-row {
+  display: grid; grid-template-columns: 108px minmax(0, 1fr) 96px 92px 130px;
+  gap: 12px; align-items: center; padding: 11px 12px; border-radius: 9px;
+}
+.rec-row:nth-child(odd) { background: rgba(255, 255, 255, .022); }
+.rec-when { font-size: .86rem; color: var(--muted); }
+.rec-who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-ref { font-size: .82rem; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+.rec-amt { font-variant-numeric: tabular-nums; text-align: right; }
+.rec-link { font-size: .86rem; text-align: right; }
+.rec-src { font-size: .82rem; color: var(--muted-2); text-align: right; }
+
+/* ---- manual order form ------------------------------------------------- */
+.mf-card { margin-top: 26px; }
+.mf-card > summary { cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+.mf-card > summary b { font-size: 1.02rem; }
+.mf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 14px; margin-top: 20px; }
+.mf-wide { grid-column: 1 / -1; }
+.mf-field { display: flex; flex-direction: column; gap: 6px; }
+.mf-field > span { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-2); }
+.mf-field input, .mf-field select, .mf-field textarea {
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(0, 0, 0, .22); border: 1px solid var(--line-soft);
+  color: var(--text); font: inherit; font-size: .95rem;
+}
+.mf-field input:focus, .mf-field select:focus, .mf-field textarea:focus {
+  outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6, 228, 221, .13);
+}
+.mf-field textarea { resize: vertical; }
+.mf-hint { font-size: .8rem; color: var(--muted-2); font-style: normal; }
+.mf-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
+
+/* ---- narrow screens: the rail becomes a scrolling tab strip ------------ */
+@media (max-width: 900px) {
+  .adm-shell { grid-template-columns: 1fr; gap: 20px; }
+  .adm-rail {
+    position: static; flex-direction: row; gap: 4px;
+    overflow-x: auto; padding: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .adm-rail-h { display: none; }
+  .adm-navbtn { white-space: nowrap; padding: 9px 13px; }
+  .adm-navbtn[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--teal); }
+  .adm-navbtn--out { margin: 0; padding-top: 9px; border-top: 0; border-radius: 10px; }
+  .mix-row { grid-template-columns: 96px minmax(0, 1fr) 70px; }
+  .mix-share { display: none; }
+  .rec-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+  .rec-when, .rec-ref { font-size: .8rem; }
+}
+
+/* A week with no revenue: a baseline tick, never a short bar. A stub for zero
+   would read as a small amount of money, which is a different answer. */
+.rev-zero { display: block; height: 1px; width: 100%; background: var(--line-soft); }

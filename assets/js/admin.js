@@ -116,11 +116,55 @@
     return '<b data-ex=\'' + JSON.stringify(Object.assign({ p: prod }, ex)) + "'>" + money(optPrice(prod, group, opt, anchor)) + "</b>";
   }
 
+  /* ======================================================================
+     THE SHELL
+     One page, a left rail, and five panels. Nothing navigates away, so the
+     loaded orders survive every switch and the whole tool feels instant.
+     Order matters: Ian opens this to answer "what do I have to make today",
+     so Dashboard is first and Pricing — set once, touched rarely — is last.
+     ====================================================================== */
+  var NAV = [
+    { key: "dash",      label: "Dashboard", icon: "◧" },
+    { key: "orders",    label: "Orders",    icon: "▤" },
+    { key: "analytics", label: "Analytics", icon: "◔" },
+    { key: "receipts",  label: "Receipts",  icon: "⎘" },
+    { key: "pricing",   label: "Pricing",   icon: "◈" }
+  ];
+  var view = "dash";
+
+  function showView(key) {
+    view = key;
+    NAV.forEach(function (n) {
+      var btn = document.querySelector('[data-view="' + n.key + '"]');
+      var panel = document.getElementById("panel-" + n.key);
+      if (btn) btn.setAttribute("aria-current", n.key === key ? "page" : "false");
+      if (panel) panel.hidden = n.key !== key;
+    });
+    // re-render the panels whose contents depend on the loaded orders
+    if (key === "analytics") renderAnalytics();
+    if (key === "receipts") renderReceipts();
+    var main = document.querySelector(".adm-main");
+    if (main) main.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: "instant" in document.body.style ? "instant" : "auto" });
+  }
+
+  function navHtml() {
+    return '<nav class="adm-rail" aria-label="Admin sections">' +
+      '<span class="adm-rail-h">Neotype</span>' +
+      NAV.map(function (n) {
+        return '<button class="adm-navbtn" data-view="' + n.key + '" aria-current="' +
+          (n.key === view ? "page" : "false") + '"><span class="adm-navic" aria-hidden="true">' +
+          n.icon + "</span>" + n.label + "</button>";
+      }).join("") +
+      '<a class="adm-navbtn adm-navbtn--out" href="index.html"><span class="adm-navic" aria-hidden="true">↗</span>View site</a>' +
+      "</nav>";
+  }
+
   function buildForm(pricing) {
     D = pricing;
-    // The workshop comes first: what's due, what's late, what's in flight.
-    // Prices are set once and rarely touched, so they live at the bottom.
-    var html =
+    var html = navHtml() + '<div class="adm-main">' +
+      // ---- Dashboard
+      '<section class="adm-panel" id="panel-dash">' +
       '<div class="section-head"><span class="eyebrow">Neotype workshop</span>' +
       '<h1 class="display-lg">Today</h1>' +
       '<p class="lead" id="admToday">Loading your orders…</p></div>' +
@@ -128,8 +172,32 @@
       '<section class="adm-card" id="admEnq"><div class="adm-card-h"><h2>Enquiries</h2>' +
       '<span class="adm-note">from the contact form on the website</span></div>' +
       '<p class="lead" id="admEnqBody">Loading…</p></section>' +
-      '<div class="section-head" style="margin-top:56px"><span class="eyebrow">Set once, change anytime</span>' +
-      '<h2 class="display-lg">Pricing</h2>' +
+      "</section>" +
+      // ---- Orders (full table + manual entry)
+      '<section class="adm-panel" id="panel-orders" hidden>' +
+      '<div class="section-head"><span class="eyebrow">Every order</span>' +
+      '<h1 class="display-lg">Orders</h1>' +
+      '<p class="lead">Everything that has come through, newest first — website and phone orders together.</p></div>' +
+      '<div id="admOrdersFull"></div>' + manualForm() +
+      "</section>" +
+      // ---- Analytics
+      '<section class="adm-panel" id="panel-analytics" hidden>' +
+      '<div class="section-head"><span class="eyebrow">The numbers</span>' +
+      '<h1 class="display-lg">Analytics</h1>' +
+      '<p class="lead">Where the money actually comes from. Paid orders only — pending and failed are excluded so nothing is counted before it clears.</p></div>' +
+      '<div id="admAnalytics"></div>' +
+      "</section>" +
+      // ---- Receipts
+      '<section class="adm-panel" id="panel-receipts" hidden>' +
+      '<div class="section-head"><span class="eyebrow">Money in</span>' +
+      '<h1 class="display-lg">Receipts</h1>' +
+      '<p class="lead">Every payment, with a link straight to it in Stripe. Stripe is the record for tax and refunds — this is the index into it.</p></div>' +
+      '<div id="admReceipts"></div>' +
+      "</section>" +
+      // ---- Pricing
+      '<section class="adm-panel" id="panel-pricing" hidden>' +
+      '<div class="section-head"><span class="eyebrow">Set once, change anytime</span>' +
+      '<h1 class="display-lg">Pricing</h1>' +
       '<p class="lead">Change a dollar amount or a percentage and hit <b>Save prices</b>. The example prices update as you type, so you can see exactly what customers will pay. Then it goes live straight away.</p></div>';
 
     ORDER.forEach(function (prod) {
@@ -170,18 +238,27 @@
 
     html += '<div class="adm-savebar"><button class="btn btn--accent" id="admSave">Save prices</button>' +
       '<button class="btn btn--ghost" id="admReload">Undo changes</button>' +
-      '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>';
+      '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>' +
+      "</section></div>";
 
+    root.className = "adm-shell";
     root.innerHTML = html;
     document.getElementById("admSave").addEventListener("click", save);
     document.getElementById("admReload").addEventListener("click", load);
     root.addEventListener("input", onEdit);
-    // one delegated listener: the pipeline re-renders, so per-button handlers
-    // would be lost on every move
+    // One delegated listener for the whole shell: the pipeline and tables
+    // re-render on every change, so per-button handlers would be lost.
     root.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".pipe-adv");
-      if (b) advance(b.getAttribute("data-key"), b.getAttribute("data-stage"), b);
+      var t = e.target;
+      var nav = t.closest && t.closest("[data-view]");
+      if (nav) { showView(nav.getAttribute("data-view")); return; }
+      var adv = t.closest && t.closest(".pipe-adv");
+      if (adv) { advance(adv.getAttribute("data-key"), adv.getAttribute("data-stage"), adv); return; }
+      if (t.closest && t.closest("#admManualSave")) { saveManual(t.closest("#admManualSave")); return; }
+      var jump = t.closest && t.closest("[data-goto]");
+      if (jump) showView(jump.getAttribute("data-goto"));
     });
+    showView(view);
     loadOrders();
     loadEnquiries();
   }
@@ -346,11 +423,14 @@
     }
     var fmt = function (d) { return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
     var bars = weeks.map(function (b, i) {
-      var pct = max ? Math.max(2, Math.round((b.cents / max) * 100)) : 2;
+      // A week with no money must render NO bar. Giving zero a small stub reads
+      // as "a little came in", which is a different and wrong answer.
+      var pct = b.cents && max ? Math.max(2, Math.round((b.cents / max) * 100)) : 0;
       var last = i === weeks.length - 1;
       return '<div class="rev-col" title="' + esc(fmt(b.start) + " – " + fmt(b.end) + ": " + money0(b.cents)) + '">' +
         '<span class="rev-val">' + (b.cents ? esc(money0(b.cents)) : "") + "</span>" +
-        '<span class="rev-bar' + (last ? " is-now" : "") + '" style="height:' + pct + '%"></span>' +
+        (pct ? '<span class="rev-bar' + (last ? " is-now" : "") + '" style="height:' + pct + '%"></span>'
+             : '<span class="rev-zero" aria-hidden="true"></span>') +
         '<span class="rev-x">' + esc(last ? "This wk" : fmt(b.start)) + "</span></div>";
     }).join("");
     var total = weeks.reduce(function (a, b) { return a + b.cents; }, 0);
@@ -376,7 +456,207 @@
             ? "<b>" + open.length + (open.length === 1 ? " order" : " orders") + " to make</b>, all on schedule."
             : "Everything's shipped. Nothing waiting on you.";
     }
-    host.innerHTML = tiles(ORDERS) + pipeline(ORDERS) + revenue(ORDERS) + ordersTable(ORDERS);
+    host.innerHTML = tiles(ORDERS) + pipeline(ORDERS) + revenue(ORDERS);
+  }
+
+  /* ======================================================================
+     ANALYTICS
+     Product mix is the one question a print shop actually acts on: it decides
+     what stock to hold. Three categories, so a bar chart with the value read
+     directly off each bar — not a pie, which makes three similar shares
+     impossible to compare.
+
+     Palette: #04a49f (teal-2) / #8f6ce6 (purple-2) / #c1861f. Two are brand
+     tokens. It was validated with the dataviz validator against the real card
+     surface #1c242c across ALL pairs — the obvious brand green failed the
+     normal-vision floor against the teal (ΔE 11.9, needs ≥15), so amber
+     replaced it. Every bar is also directly labelled, so identity never rests
+     on colour alone.
+     ====================================================================== */
+  var MIX = {
+    stickers: { label: "Stickers", color: "#04a49f" },
+    banner:   { label: "Banners",  color: "#8f6ce6" },
+    corflute: { label: "Corflute", color: "#c1861f" },
+    other:    { label: "Other",    color: "#6c7f86" }
+  };
+
+  function analyticsStat(label, value, sub) {
+    return '<div class="an-stat"><span class="an-stat-l">' + esc(label) + "</span>" +
+      '<b class="an-stat-v">' + esc(value) + "</b>" +
+      (sub ? '<span class="an-stat-s">' + esc(sub) + "</span>" : "") + "</div>";
+  }
+
+  function renderAnalytics() {
+    var host = document.getElementById("admAnalytics");
+    if (!host) return;
+    var paid = ORDERS.filter(function (o) { return (o.status || "paid") === "paid"; });
+
+    if (!paid.length) {
+      host.innerHTML = '<div class="dash-card"><p class="dash-thin">No paid orders yet. ' +
+        "These charts build themselves as orders come in — there's nothing to set up.</p></div>";
+      return;
+    }
+
+    var total = paid.reduce(function (a, o) { return a + (o.amount || 0); }, 0);
+    var avg = Math.round(total / paid.length);
+    var online = paid.filter(function (o) { return (o.source || "stripe") === "stripe"; }).length;
+
+    // 30-day window, for a figure Ian can compare month to month
+    var cut = new Date().getTime() - 30 * 86400000;
+    var last30 = paid.filter(function (o) { return new Date(o.when).getTime() >= cut; });
+    var cents30 = last30.reduce(function (a, o) { return a + (o.amount || 0); }, 0);
+
+    // ---- product mix
+    var by = {};
+    Object.keys(MIX).forEach(function (k) { by[k] = { cents: 0, n: 0 }; });
+    paid.forEach(function (o) {
+      var k = MIX[o.product] ? o.product : "other";
+      by[k].cents += o.amount || 0; by[k].n++;
+    });
+    var rows = Object.keys(MIX).filter(function (k) { return by[k].n > 0; })
+      .sort(function (a, b) { return by[b].cents - by[a].cents; });
+    var max = Math.max.apply(null, rows.map(function (k) { return by[k].cents; }));
+
+    var mix = rows.map(function (k) {
+      var pct = max ? Math.max(1.5, (by[k].cents / max) * 100) : 1.5;
+      var share = total ? Math.round((by[k].cents / total) * 100) : 0;
+      return '<div class="mix-row">' +
+        '<span class="mix-label"><i class="mix-dot" style="background:' + MIX[k].color + '"></i>' +
+        esc(MIX[k].label) + "</span>" +
+        '<span class="mix-track"><span class="mix-bar" style="width:' + pct.toFixed(1) +
+          "%;background:" + MIX[k].color + '"></span></span>' +
+        '<b class="mix-val">' + esc(money0(by[k].cents)) + "</b>" +
+        '<span class="mix-share">' + share + "%</span></div>";
+    }).join("");
+
+    // A table view of the same numbers, so the chart is never the only way in.
+    var table = '<table class="an-table"><caption class="adm-note">Product mix in full</caption>' +
+      "<thead><tr><th>Product</th><th>Orders</th><th>Revenue</th><th>Share</th><th>Average</th></tr></thead><tbody>" +
+      rows.map(function (k) {
+        return "<tr><td>" + esc(MIX[k].label) + "</td><td>" + by[k].n + "</td><td>" +
+          esc(money0(by[k].cents)) + "</td><td>" + (total ? Math.round((by[k].cents / total) * 100) : 0) +
+          "%</td><td>" + esc(money0(by[k].cents / by[k].n)) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+
+    host.innerHTML =
+      '<div class="an-stats">' +
+        analyticsStat("Revenue, last 30 days", money0(cents30), last30.length + (last30.length === 1 ? " order" : " orders")) +
+        analyticsStat("Average order", money0(avg), "across " + paid.length + " paid") +
+        analyticsStat("All time", money0(total), "since the shop opened") +
+        analyticsStat("From the website", online + " of " + paid.length,
+          paid.length - online === 0 ? "none typed in by hand" : (paid.length - online) + " added manually") +
+      "</div>" +
+      '<div class="dash-card"><div class="dash-card-h"><h2>What sells</h2>' +
+      '<span class="adm-note">revenue by product, all paid orders</span></div>' +
+      '<div class="mix-chart">' + mix + "</div>" +
+      '<details class="an-details"><summary>See the numbers</summary>' + table + "</details></div>" +
+      revenue(ORDERS);
+  }
+
+  /* ======================================================================
+     RECEIPTS — an index into Stripe, not a replacement for it.
+     ====================================================================== */
+  function renderReceipts() {
+    var host = document.getElementById("admReceipts");
+    if (!host) return;
+    var paid = ORDERS.filter(function (o) { return (o.status || "paid") === "paid"; });
+    if (!paid.length) {
+      host.innerHTML = '<div class="dash-card"><p class="dash-thin">No payments yet.</p></div>';
+      return;
+    }
+    var total = paid.reduce(function (a, o) { return a + (o.amount || 0); }, 0);
+    host.innerHTML = '<div class="dash-card"><div class="dash-card-h"><h2>' + paid.length +
+      " payment" + (paid.length === 1 ? "" : "s") + "</h2>" +
+      '<span class="adm-note">' + esc(money0(total)) + " received</span></div>" +
+      '<div class="rec-list">' + paid.map(function (o) {
+        var manual = (o.source || "stripe") === "manual";
+        return '<div class="rec-row">' +
+          '<span class="rec-when">' + esc(whenLabel(o.when)) + "</span>" +
+          '<span class="rec-who">' + esc(o.name || o.email || "—") + "</span>" +
+          '<span class="rec-ref">' + esc(o.ref || "") + "</span>" +
+          '<b class="rec-amt">' + esc(money0(o.amount || 0)) + "</b>" +
+          (manual
+            ? '<span class="rec-src">Added by hand</span>'
+            : '<a class="rec-link" href="https://dashboard.stripe.com/payments/' +
+              encodeURIComponent(o.session || "") + '" target="_blank" rel="noopener">Open in Stripe ↗</a>') +
+          "</div>";
+      }).join("") + "</div>" +
+      '<p class="dash-thin">Stripe holds the tax record and handles refunds. ' +
+      "Orders added by hand have no Stripe payment to open.</p></div>";
+  }
+
+  /* ======================================================================
+     MANUAL ORDERS — phone, walk-in, an invoice Ian raised himself. Without
+     this the dashboard only ever shows the online slice of the business, and
+     the pipeline stops being the real to-do list.
+     ====================================================================== */
+  function manualForm() {
+    var f = function (id, label, attrs, hint) {
+      return '<label class="mf-field"><span>' + label + "</span><input id=\"" + id + "\" " +
+        (attrs || "") + " />" + (hint ? '<em class="mf-hint">' + hint + "</em>" : "") + "</label>";
+    };
+    return '<details class="adm-card mf-card"><summary><b>+ Add an order that didn\'t come from the website</b>' +
+      '<span class="adm-note">phone, walk-in, or one you invoiced yourself</span></summary>' +
+      '<div class="mf-grid">' +
+      f("mfName", "Customer name", 'type="text" autocomplete="off"') +
+      f("mfAmount", "Amount paid (AUD)", 'type="number" step="0.01" min="0" placeholder="250.00"') +
+      '<label class="mf-field"><span>Product</span><select id="mfProduct">' +
+        '<option value="stickers">Stickers</option><option value="banner">Banners</option>' +
+        '<option value="corflute">Corflute signs</option><option value="other">Other</option>' +
+      "</select></label>" +
+      '<label class="mf-field"><span>Turnaround</span><select id="mfTurn">' +
+        '<option value="Standard (~4 days)">Standard (~4 days)</option>' +
+        '<option value="2 days">2 days</option><option value="Next day">Next day</option>' +
+      "</select></label>" +
+      f("mfQty", "Quantity", 'type="text" placeholder="20"') +
+      f("mfSize", "Size", 'type="text" placeholder="600 × 900 mm"') +
+      f("mfEmail", "Email", 'type="email" autocomplete="off"') +
+      f("mfPhone", "Phone", 'type="tel" autocomplete="off"') +
+      f("mfWhen", "Date ordered", 'type="date"', "Leave blank for today — this sets the due date") +
+      f("mfArtwork", "Artwork link", 'type="url" placeholder="https://…"', "Optional, if the file is somewhere online") +
+      '<label class="mf-field mf-wide"><span>Note</span><textarea id="mfNote" rows="2" placeholder="Paid by bank transfer, wants them by Friday"></textarea></label>' +
+      "</div>" +
+      '<div class="mf-actions"><button class="btn btn--accent" id="admManualSave">Add order</button>' +
+      '<span class="adm-hint">It lands in the pipeline at <b>New</b>, counted as paid.</span></div>' +
+      "</details>";
+  }
+
+  function saveManual(btn) {
+    var v = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
+    var payload = {
+      name: v("mfName"), amount: v("mfAmount"), product: v("mfProduct"),
+      turnaround: v("mfTurn"), quantity: v("mfQty"), size: v("mfSize"),
+      email: v("mfEmail"), phone: v("mfPhone"), note: v("mfNote"), artwork: v("mfArtwork")
+    };
+    if (v("mfWhen")) payload.when = new Date(v("mfWhen") + "T09:00:00").toISOString();
+    if (!payload.name) { toast("Add the customer's name"); return; }
+    if (!payload.amount) { toast("Add the amount they paid"); return; }
+
+    btn.disabled = true; btn.textContent = "Adding…";
+    fetch(API + "/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Password": password },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.d.ok) { toast(res.d.error || "Couldn't add that order"); return; }
+        toast("Added — it's in the pipeline as " + res.d.order.ref);
+        ["mfName", "mfAmount", "mfQty", "mfSize", "mfEmail", "mfPhone", "mfNote", "mfArtwork", "mfWhen"]
+          .forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ""; });
+        loadOrders();
+      })
+      .catch(function () { toast("Couldn't add that order"); })
+      .then(function () { btn.disabled = false; btn.textContent = "Add order"; });
+  }
+
+  // Every panel reads the same ORDERS array, so one load refreshes all of them
+  // and switching views never shows a stale number next to a fresh one.
+  function renderAll() {
+    renderDash();
+    var full = document.getElementById("admOrdersFull");
+    if (full) full.innerHTML = ordersTable(ORDERS);
+    if (view === "analytics") renderAnalytics();
+    if (view === "receipts") renderReceipts();
   }
 
   // ---- advance a job ------------------------------------------------------
@@ -392,7 +672,7 @@
         if (!res.ok || !res.d.ok) { toast(res.d.error || "Couldn't move that order"); if (btn) btn.disabled = false; return; }
         ORDERS.forEach(function (o) { if (o.key === key) o.stage = stage; });
         toast("Moved to " + (STAGE_LABEL[stage] || stage));
-        renderDash();
+        renderAll();
       })
       .catch(function () { toast("Couldn't move that order"); if (btn) btn.disabled = false; });
   }
@@ -403,7 +683,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         ORDERS = (d && d.orders) || [];
-        renderDash();
+        renderAll();
       })
       .catch(function () {
         var h = document.getElementById("admToday");
