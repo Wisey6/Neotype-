@@ -107,6 +107,129 @@ quiet day, with the verification in Option A step 4, not under pressure.
 
 ---
 
+## Nameserver move to Cloudflare — step by step (Option A)
+
+Decided 18 Aug 2026. Follow in order. The one irreversible-feeling step is #7,
+and everything before it is staging that changes nothing live.
+
+### Why the apex must be rebuilt in the same operation
+
+The apex `A` records (`15.197.225.128`, `3.33.251.168` as of 18 Aug — they
+rotate) are GoDaddy's **domain forwarding** service. That service only runs off
+GoDaddy's own nameservers. The moment the nameservers move, those IPs stop
+resolving to anything useful, so copying them into Cloudflare achieves nothing.
+The apex is replaced with a CNAME to `neotype.pages.dev`, which Cloudflare
+flattens at the apex — this is the upgrade the move buys, not a side effect.
+
+### 1. Add the zone — nameservers stay at GoDaddy
+
+Cloudflare → **Add a site** → `neotype.au` → **Free** plan. Let the scan run.
+**Do not** change nameservers at GoDaddy yet. Nothing is live until step 7.
+
+### 2. Check the scan against this list, by hand
+
+Cloudflare's importer routinely misses `TXT` and `SRV` — which is to say, it
+misses exactly the mail records. Anything below that isn't there, add manually.
+
+| Type | Name | Value | Proxy | Keep? |
+|---|---|---|---|---|
+| MX | `@` | `neotype-au.mail.protection.outlook.com` prio **0** | n/a | **KEEP — mail** |
+| TXT | `@` | `MS=ms80978019` | n/a | **KEEP — M365 verify** |
+| TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | n/a | **KEEP** |
+| CNAME | `autodiscover` | `autodiscover.outlook.com` | **DNS only** | **KEEP — Outlook** |
+| SRV | `_sip._tls` | `100 1 443 sipdir.online.lync.com` | n/a | **KEEP — Teams** |
+| SRV | `_sipfederationtls._tcp` | `100 1 5061 sipfed.online.lync.com` | n/a | **KEEP — Teams** |
+| CNAME | `www` | `neotype.pages.dev` | Proxied | the live site |
+| CNAME | `email` | `email.secureserver.net` | — | **drop** — stale GoDaddy webmail |
+| A | `@` | GoDaddy forwarding IPs | — | **drop** — replaced in step 4 |
+
+**The `autodiscover` record must be grey-cloud (DNS only).** Cloudflare defaults
+new CNAMEs to proxied, and a proxied `autodiscover` breaks Outlook client setup
+for every user on the domain. This is the single easiest way to break Ian's mail
+in this whole procedure, and it fails quietly — existing sessions keep working,
+only new setups fail.
+
+### 3. Add the Resend records while the zone is staged
+
+| Type | Name | Value | Prio |
+|---|---|---|---|
+| TXT | `resend._domainkey` | (paste from Resend — use its copy button) | — |
+| MX | `send` | `feedback-smtp.ap-northeast-1.amazonses.com` | 10 |
+| TXT | `send` | `v=spf1 include:amazonses.com ~all` | — |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` | — |
+
+Never add a second `v=spf1` record at the root. Two SPF records at one name is a
+permanent error and mail from the domain starts failing. Resend's SPF belongs on
+`send`, and it is consulted there because the return-path is `send.neotype.au` —
+the root record is never queried for Resend's mail.
+
+### 4. Rebuild the apex
+
+Delete both apex `A` records. Add:
+
+| Type | Name | Value | Proxy |
+|---|---|---|---|
+| CNAME | `@` | `neotype.pages.dev` | **Proxied** |
+
+Cloudflare flattens this at the apex, so `https://neotype.au` serves the site
+directly with no redirect hop and no dependency on GoDaddy's forwarding cert.
+
+### 5. Verify the staged zone BEFORE cutting over
+
+Cloudflare assigns two nameservers (shown on the zone's overview). Query them
+directly — this tests the new zone without anything being live:
+
+```bash
+NS=xxx.ns.cloudflare.com     # your assigned nameserver
+for r in "neotype.au MX" "neotype.au TXT" "autodiscover.neotype.au CNAME" \
+         "_sipfederationtls._tcp.neotype.au SRV" "_sip._tls.neotype.au SRV" \
+         "send.neotype.au TXT" "resend._domainkey.neotype.au TXT"; do
+  echo "--- $r"; dig +short @"$NS" $r
+done
+```
+
+**Every one must return a value. If any is empty, stop and fix it.** An empty
+answer here becomes broken mail after step 7.
+
+### 6. Keep GoDaddy forwarding for now
+
+Do not cancel it yet. It costs nothing to leave and it is the fallback if the
+cutover has to be reversed.
+
+### 7. Change the nameservers at GoDaddy
+
+GoDaddy → **My Products → neotype.au → DNS → Nameservers → Change → I'll use my
+own** → enter Cloudflare's two. Propagation is usually under an hour.
+
+Zero downtime by design: `www` already points at Pages, and both zones serve a
+working site throughout, so there is no window where the site is down.
+
+### 8. Verify after propagation
+
+```bash
+dig +short neotype.au NS                    # → cloudflare
+dig +short neotype.au MX                    # → outlook, priority 0
+curl -sI https://neotype.au | head -1       # → 200, not a redirect
+```
+
+Then the test that actually matters: **send mail from `kiko@neotype.au` to a
+Gmail address and reply to it.** Open the received message's headers and confirm
+`spf=pass`. Nothing else proves mail survived.
+
+### 9. Only then
+
+- Cancel GoDaddy domain forwarding
+- Pages → the project → Custom domains → add `neotype.au` (apex) alongside `www`
+- Verify the Resend domain, now that its records resolve
+
+### If mail breaks
+
+Change the nameservers back to `ns67`/`ns68.domaincontrol.com` at GoDaddy. The
+old zone is still intact there — GoDaddy does not delete it when you point away.
+Recovery is the propagation delay, nothing more.
+
+---
+
 ## Full DNS inventory
 
 **Live state as of 17 Aug 2026** — verified against GoDaddy's authoritative
