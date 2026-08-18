@@ -30,7 +30,20 @@
      Secret        STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
      Plain var     ENQUIRY_TO         where enquiries go (default kiko@neotype.au)
-     Plain var     ENQUIRY_FROM       verified sender, e.g. site@send.neotype.au
+     Plain var     ENQUIRY_FROM       verified Resend sender (wise-ai.au — see note below)
+
+   Why mail is sent FROM wise-ai.au and not neotype.au: Resend's free plan
+   verifies one domain, and that slot is already used. It costs nothing here
+   because no customer ever sees it — both send paths below mail ENQUIRY_TO
+   (Ian, at kiko@neotype.au) and nothing else. The customer's only confirmation
+   is success.html. Both calls also set reply_to to the customer, so Ian hits
+   Reply and it leaves from his own mailbox.
+
+   The fallbacks above are deliberately a VERIFIED domain. If ENQUIRY_FROM is
+   ever unset, Resend rejects mail from an unverified sender and order emails
+   stop with no error anywhere the shop can see — orders still reach KV and
+   /admin, so the loss is silent. Never point a fallback at a domain that is
+   not verified in the Resend dashboard.
 
    Stripe's return pages use the origin the request actually arrived on, so
    preview deployments return to the preview URL and production returns to
@@ -216,7 +229,7 @@ async function handleEnquiry(request, env) {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
         body: JSON.stringify({
-          from: env.ENQUIRY_FROM || "Neotype site <site@neotype.au>",
+          from: env.ENQUIRY_FROM || "Neotype site <site@wise-ai.au>",
           to: [env.ENQUIRY_TO || "kiko@neotype.au"],
           reply_to: email,
           subject: `Neotype enquiry — ${topic} — ${name}`,
@@ -408,7 +421,7 @@ async function notifyOrder(env, order, site) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({
-        from: env.ENQUIRY_FROM || "Neotype orders <orders@send.neotype.au>",
+        from: env.ENQUIRY_FROM || "Neotype orders <orders@wise-ai.au>",
         to: [env.ENQUIRY_TO || "kiko@neotype.au"],
         reply_to: order.email || undefined,
         subject: `New order ${order.ref} — ${spec || order.product} — $${((order.amount || 0) / 100).toFixed(0)}`,
