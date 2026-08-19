@@ -7,7 +7,7 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 |---|---|---|
 | 5 | Add to cart | **Full multi-item cart** — stickers + banners + corflute, one payment |
 | — | Order shape | **One order, N line items.** One card, one due date, one proof cycle |
-| 8 | Price floor | **Get Ian's cost per m² first.** Model already caps, at 2× where he's pointing |
+| 8 | Price model | **Banded qty tiers** (0-20, 20-50, 50-100, 100-250, 250-500, 500+, 2000+), set per cm². Replaces the exponential. Rates still need Ian's cost |
 | 1 | "Samples" | **Demo art for the preview only** — never orderable, never satisfies artwork |
 | 7 | Blog | **5–8 evergreen guides**, one per real search intent. Not a page of filler |
 | 3/4 | Option control | *Open — resume here* |
@@ -190,6 +190,56 @@ expiry and need no upkeep.
 - **Recommendation standing:** on/off toggles solve the stated pain (selling
   holographic he cannot print) at a fraction of the cost, and repricing already
   exists in the Pricing tab today.
+
+### Q3b — Pricing, clarified by Ian's own note (supersedes half of Q3)
+
+Ian's handwriting, verbatim:
+
+> pricing multiplier · set pricing per area **cm2** · Multiplier goes down as qty
+> goes up, **or set at certain qtys like 0-20, 20-50, 50-100, 100-250, 250-500,
+> 500+ 2000+**
+
+This answers the mechanism question that Q3 left open. He is not asking for a
+different curve — he is asking for **banded tiers he can type in**, and he has
+given the exact bands.
+
+**What changes**
+- `ratePerM2` today is a continuous exponential: `85 + 120·e^(−A/0.5)`. Ian wants
+  a **lookup table by quantity**, not a function of area. Different mechanism.
+- He thinks in **cm²**, not m². Worth matching in /admin — he will be typing these
+  numbers, and a rate per m² reads as a meaningless four-figure number to him.
+  Internally either unit works; the editor should speak his.
+- Banded means **he can see and set every number**, which is the real win. The
+  exponential is opaque: nobody can tell you what changing `decay` from 0.5 to 0.6
+  does to a 200-unit order without running it.
+
+**The hazard to design against: cliff edges.**
+A step-down multiplier at a band boundary can make a *larger* order **cheaper in
+total** than a smaller one — buy 21 and pay less than for 20. That is not
+hypothetical, it falls straight out of multiplying by a lower rate at the boundary.
+Two guards:
+1. Validate on save in /admin — reject a tier table where total price is not
+   monotonically increasing across every boundary, and say which boundary broke it.
+2. Or price the excess in each band separately (true bracket pricing, like income
+   tax) rather than applying one band's rate to the whole order. Smoother, no
+   cliffs, but harder for Ian to reason about.
+
+Recommendation: **flat band rate plus a monotonicity check on save**. It keeps the
+model Ian can read, and turns the cliff into an error message he sees while
+editing rather than a customer paying less for more.
+
+**Still open from Q3:** what the actual numbers are. The bands are known; the rates
+in them are not, and they still need his cost per cm² behind them.
+
+### Q7 — Header logo (done, not a question)
+- **Asked for:** *"neotype logo make larger x2 at the top left top bar"*
+- **Done:** `58px → 116px`, mobile `40px → 72px`.
+- The nav had to grow with it — `96px → 148px` desktop, `80px → 104px` mobile.
+  116px of logo in a 96px bar would overflow a **sticky** header that sits above
+  every page. The mobile menu's drop position was tied to the old height and moved
+  with it. `styles.css` bumped to `v=37`.
+- Worth a look on a phone before it ships: a 104px sticky bar costs real vertical
+  space on a small screen.
 
 ---
 
