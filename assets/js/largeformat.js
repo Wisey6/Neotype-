@@ -51,7 +51,13 @@
     };
     var choicesHtml = "";
     Object.keys(META.groups).forEach(function (g) {
-      var opts = Object.keys(META.groups[g]).map(function (v) { return { v: v, label: META.groups[g][v] }; });
+      // Options Ian has switched off in /admin never render. pricing-core refuses
+      // to price them anyway, so this only stops the shop offering something that
+      // would fail at checkout with nothing to explain it.
+      var opts = Object.keys(META.groups[g])
+        .filter(function (v) { return !CORE.isOff(PRICES, CFG.key, g, v); })
+        .map(function (v) { return { v: v, label: META.groups[g][v] }; });
+      if (opts.length && !opts.some(function (o) { return o.v === state.choices[g]; })) state.choices[g] = opts[0].v;
       choicesHtml += '<div class="field"><label>' + (GROUP_TITLE[g] || g) + ' <b id="lfval-' + g + '"></b></label>' +
         optRow("lfchoice-" + g, opts, state.choices[g], "data-lfc-" + g) + "</div>";
     });
@@ -283,7 +289,14 @@
     var cfg = window.NEOTYPE_CHECKOUT || {};
     var api = (cfg.apiBase || "/api").replace(/\/$/, "");
     fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && d[CFG.key]) { PRICES = d; render(); } })
+      .then(function (d) {
+        if (!d || !d[CFG.key]) return;
+        PRICES = d;
+        // rebuild rather than re-render: the live table may have switched an
+        // option off, and the buttons were built from the defaults
+        build();
+        render();
+      })
       .catch(function () {});
   }
 

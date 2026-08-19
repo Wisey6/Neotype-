@@ -33,6 +33,38 @@
   var CORE = window.NeotypePricing;
   var CURRENCY = "AUD";
   var PRICES = CORE.DEFAULT_PRICING;      // replaced by the live table from /api/pricing
+
+  /* Hide options Ian has switched off in /admin. This is presentation only —
+     pricing-core refuses to price a hidden option regardless, so a stale tab
+     cannot order one. What this avoids is offering a customer something that
+     would then fail at checkout with no explanation.
+
+     If the option they are currently on is the one that went out of stock, move
+     them to the first one still available rather than leaving them on a selection
+     that will not price. */
+  function applyStock() {
+    [["finishOpts", "data-finish", "finish"],
+     ["shapeOpts", "data-shape", "shape"],
+     ["turnOpts", "data-turn", "turnaround"]].forEach(function (g) {
+      var row = document.getElementById(g[0]);
+      if (!row) return;
+      var live = [];
+      row.querySelectorAll("[" + g[1] + "]").forEach(function (btn) {
+        var key = btn.getAttribute(g[1]);
+        var off = CORE.isOff(PRICES, "stickers", g[2], key);
+        btn.hidden = off;
+        if (!off) live.push(key);
+      });
+      if (live.length && live.indexOf(state[g[2]]) === -1) {
+        state[g[2]] = live[0];
+        var pick = row.querySelector("[" + g[1] + '="' + live[0] + '"]');
+        if (pick) {
+          row.querySelectorAll("[" + g[1] + "]").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+          pick.setAttribute("aria-pressed", "true");
+        }
+      }
+    });
+  }
   var FINISH_LABEL = CORE.FINISH_LABEL;
   var SHAPE_LABEL = CORE.SHAPE_LABEL;
   var TURNAROUND_LABEL = CORE.TURNAROUND_LABEL;
@@ -66,7 +98,7 @@
     var cfg = window.NEOTYPE_CHECKOUT || {};
     var api = (cfg.apiBase || "/api").replace(/\/$/, "");
     fetch(api + "/pricing").then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && d.stickers) { PRICES = d; renderAll(); } })
+      .then(function (d) { if (d && d.stickers) { PRICES = d; applyStock(); renderAll(); } })
       .catch(function () {});
   }
 
@@ -662,6 +694,7 @@
       proofModal: $("proofModal"), proofLoading: $("proofLoading"), proofResult: $("proofResult"),
       proofStage: $("proofStage"), proofSummary: $("proofSummary"),
     };
+    applyStock();
     wireGroup("finishOpts", "data-finish", function (v) { state.finish = v; renderAll(); });
     wireGroup("shapeOpts", "data-shape", function (v) {
       state.shape = v;

@@ -148,3 +148,29 @@
 .adm-remember input { margin-top: 3px; accent-color: var(--teal); flex: none; }
 .adm-remember span { font-size: .92rem; color: var(--muted); }
 .adm-remember em { display: block; font-style: normal; font-size: .84rem; color: var(--muted-2); }
+
+/* ---- stock switch on the pricing tables ---------------------------------
+   Ian turns an option off when he cannot print it. A hidden option is dimmed
+   rather than removed from his table, so he can see at a glance what is off
+   and switch it back — a disappearing row would leave him hunting for it. */
+.adm-stock { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.adm-stock input { position: absolute; opacity: 0; width: 0; height: 0; }
+.adm-stock-pill {
+  width: 38px; height: 22px; border-radius: 100px; flex: none;
+  background: var(--teal); position: relative; transition: background .15s;
+}
+.adm-stock-pill::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%; background: #0d1117;
+  transition: transform .15s;
+}
+.adm-stock.is-off .adm-stock-pill { background: var(--line-soft); }
+.adm-stock.is-off .adm-stock-pill::after { transform: translateX(16px); }
+.adm-stock-txt { font-size: .82rem; color: var(--muted); font-family: var(--font-round); white-space: nowrap; }
+.adm-stock.is-off .adm-stock-txt { color: var(--muted-2, #6c7f86); }
+.adm-stock input:focus-visible + .adm-stock-pill { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+/* the row stays visible but reads as inactive */
+.adm-tr-off .adm-opt, .adm-tr-off .adm-opt-ex, .adm-tr-off .adm-pct { opacity: .42; }
+/* an unavailable example price is not a number — don't let it read as one */
+.adm-tr-off .adm-opt-ex b, .adm-ex-row b:not([data-money]) { font-variant-numeric: tabular-nums; }

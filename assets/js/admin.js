@@ -84,12 +84,20 @@
   function toast(m) { window.dispatchEvent(new CustomEvent("neotype:toast", { detail: m })); }
   function get(path) { return path.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, D); }
   function set(path, v) { var ks = path.split("."), c = D; for (var i = 0; i < ks.length - 1; i++) c = c[ks[i]]; c[ks[ks.length - 1]] = v; }
-  function money(n) { return "$" + Math.round(n).toLocaleString(); }
+  function money(n) {
+    // null = the shop cannot sell this combination right now. Say so; "$0" is a
+    // price, and a wrong one.
+    if (n === null || n === undefined || !isFinite(n)) return "Off";
+    return "$" + Math.round(n).toLocaleString();
+  }
 
   // ---- example prices: the shop's own maths, on the numbers being edited --
+  /* null means pricing-core refused the combination — almost always because the
+     option is switched off. Returning 0 rendered a confident "$0", which reads as
+     a price that collapsed rather than an option that is unavailable. */
   function exPrice(prod, ex) {
     var q = prod === "stickers" ? CORE.priceStickers(ex, D) : CORE.priceLargeFormat(prod, ex, D);
-    return q ? q.total : 0;
+    return q ? q.total : null;
   }
   // price for one option within a group, using the group's anchor
   function optPrice(prod, group, opt, anchor) {
@@ -110,6 +118,18 @@
     return '<span class="adm-pct"><input type="number" step="1" data-mult="' + prod + "." + group + "." + opt + '" value="' + pct + '"><span>%</span></span>' +
       (isBase ? '<em class="adm-std">standard</em>' : "");
   }
+  /* Stock switch. The flag lives in the pricing record as D.off["prod.group.opt"],
+     so it saves through the existing Save prices button and travels with the
+     table the customizer already fetches — no second endpoint, no second load. */
+  function stockToggle(prod, group, opt) {
+    var path = prod + "." + group + "." + opt;
+    var on = !(D.off && D.off[path] === true);
+    return '<label class="adm-stock' + (on ? "" : " is-off") + '">' +
+      '<input type="checkbox" data-off="' + path + '"' + (on ? " checked" : "") + '>' +
+      '<span class="adm-stock-pill" aria-hidden="true"></span>' +
+      '<span class="adm-stock-txt">' + (on ? "In stock" : "Hidden") + "</span></label>";
+  }
+
   function exSpan(prod, ex) { return '<b data-ex=\'' + JSON.stringify(Object.assign({ p: prod }, ex)) + "'>" + money(exPrice(prod, ex)) + "</b>"; }
   function optExSpan(prod, group, opt, anchor) {
     var ex = {}; for (var k in anchor) ex[k] = anchor[k]; ex[group] = opt;
@@ -218,12 +238,14 @@
       // option tables
       C.groups.forEach(function (g) {
         html += '<h3 class="adm-sub">' + g.title + '</h3><div class="adm-table">' +
-          '<div class="adm-tr adm-th"><span>Option</span><span>Price change</span><span>Example</span></div>';
+          '<div class="adm-tr adm-th"><span>Option</span><span>Price change</span><span>Example</span><span>Availability</span></div>';
         var keys = Object.keys(g.opts), first = keys[0];
         keys.forEach(function (opt) {
-          html += '<div class="adm-tr"><span class="adm-opt">' + g.opts[opt] + "</span>" +
+          var offNow = !!(D.off && D.off[prod + "." + g.key + "." + opt] === true);
+          html += '<div class="adm-tr' + (offNow ? " adm-tr-off" : "") + '"><span class="adm-opt">' + g.opts[opt] + "</span>" +
             "<span>" + pctInput(prod, g.key, opt, opt === first) + "</span>" +
-            '<span class="adm-opt-ex">' + optExSpan(prod, g.key, opt, g.anchor) + "</span></div>";
+            '<span class="adm-opt-ex">' + optExSpan(prod, g.key, opt, g.anchor) + "</span>" +
+            "<span>" + stockToggle(prod, g.key, opt) + "</span></div>";
         });
         html += "</div>";
       });
@@ -792,6 +814,19 @@ function esc(s) {
     var t = e.target;
     if (t.dataset.path) { var v = parseFloat(t.value); if (isFinite(v)) set(t.dataset.path, v); }
     else if (t.dataset.mult) { var p = parseFloat(t.value); if (isFinite(p)) { var ks = t.dataset.mult.split("."); D[ks[0]][ks[1]][ks[2]] = 1 + p / 100; } }
+    else if (t.dataset.off) {
+      D.off = D.off || {};
+      if (t.checked) delete D.off[t.dataset.off];
+      else D.off[t.dataset.off] = true;
+      // repaint this row only — a full rebuild would lose focus mid-edit
+      var lab = t.closest(".adm-stock"), row = t.closest(".adm-tr");
+      if (lab) {
+        lab.classList.toggle("is-off", !t.checked);
+        var txt = lab.querySelector(".adm-stock-txt");
+        if (txt) txt.textContent = t.checked ? "In stock" : "Hidden";
+      }
+      if (row) row.classList.toggle("adm-tr-off", !t.checked);
+    }
     else return;
     refreshPrices();
   }

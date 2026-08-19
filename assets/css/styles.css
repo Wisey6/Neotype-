@@ -573,7 +573,7 @@ section { position: relative; }
 
 /* option table */
 .adm-table { border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
-.adm-tr { display: grid; grid-template-columns: 1.6fr 1fr 1fr; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line-soft); }
+.adm-tr { display: grid; grid-template-columns: 1.6fr 1fr 1fr 148px; align-items: center; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line-soft); }
 .adm-tr:first-child { border-top: 0; }
 .adm-th { background: rgba(255,255,255,.03); }
 .adm-th span { font-family: var(--font-round); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -594,7 +594,7 @@ section { position: relative; }
 .adm-savebar { position: static; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 26px; padding: 16px 20px; background: var(--bg-2); border: 1px solid var(--line-soft); border-radius: 14px; box-shadow: 0 -8px 24px -12px rgba(0,0,0,.7); }
 .adm-savebar .btn { flex: 0 0 auto; }
 .adm-hint { font-family: var(--font-round); font-size: 12.5px; color: var(--muted); }
-@media (max-width: 720px) { .adm-ex-rows { grid-template-columns: 1fr; } .adm-tr { grid-template-columns: 1.4fr 1fr 1fr; } }
+@media (max-width: 720px) { .adm-ex-rows { grid-template-columns: 1fr; } .adm-tr { grid-template-columns: 1.4fr 1fr 1fr; } .adm-tr > :nth-child(4) { grid-column: 1 / -1; } }
 
 /* ---- Enquiry form ---------------------------------------------------- */
 .enquiry-form { display: grid; gap: 14px; margin-top: 8px; }

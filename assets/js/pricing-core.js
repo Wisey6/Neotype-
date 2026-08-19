@@ -109,6 +109,20 @@
   function money(total) { return Math.round(total); }
   function cents(total) { return money(total) * 100; }
 
+  /* ---- stock control ----------------------------------------------------
+     Ian turns an option off in /admin when he cannot print it. The flag lives
+     in the pricing record as a flat map, `off["stickers.finish.holographic"]`,
+     so it travels with the table and needs no second fetch.
+
+     This check belongs HERE and not in the customizer. Hiding a button stops an
+     honest customer, not a stale tab, a bookmarked link or a hand-made request —
+     and the whole reason the price is computed on the server is that the browser
+     is not trusted. An option that is off must fail to price, everywhere. */
+  function isOff(table, product, group, key) {
+    var off = table && table.off;
+    return !!(off && off[product + "." + group + "." + key] === true);
+  }
+
   function mult(table, product, group, key) {
     var t = table[product] && table[product][group];
     var d = DEFAULT_PRICING[product][group];
@@ -125,6 +139,9 @@
     var size = parseInt(opt.size, 10), qty = parseInt(opt.qty, 10);
     if (!FINISH_LABEL[finish] || !SHAPE_LABEL[shape] || !TURNAROUND_LABEL[turn]) return null;
     if (SIZES.indexOf(size) === -1 || QTYS.indexOf(qty) === -1) return null;
+    if (isOff(table, "stickers", "finish", finish) ||
+        isOff(table, "stickers", "shape", shape) ||
+        isOff(table, "stickers", "turnaround", turn)) return null;
 
     var S = table.stickers || DEFAULT_PRICING.stickers;
     var area = areaM2(size) * qty;
@@ -176,6 +193,7 @@
     for (var g in meta.groups) {
       var key = String(opt[g] || Object.keys(meta.groups[g])[0]);
       if (!meta.groups[g][key]) return null;
+      if (isOff(table, product, g, key)) return null;   // out of stock
       picked[g] = meta.groups[g][key];
       var m = mult(table, product, g, key);
       if (m !== 1) lines.push([meta.groups[g][key], running * (m - 1)]);
@@ -220,7 +238,7 @@
     FINISH_LABEL: FINISH_LABEL, SHAPE_LABEL: SHAPE_LABEL, TURNAROUND_LABEL: TURNAROUND_LABEL,
     SIZES: SIZES, QTYS: QTYS, LF_META: LF_META,
     areaM2: areaM2, ratePerM2: ratePerM2, lfQtyMult: lfQtyMult,
-    priceStickers: priceStickers, priceLargeFormat: priceLargeFormat,
+    priceStickers: priceStickers, isOff: isOff, priceLargeFormat: priceLargeFormat,
     stickerSavings: stickerSavings, money: money, cents: cents
   };
 });
