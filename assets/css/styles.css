@@ -747,16 +747,11 @@ section { position: relative; }
 
 /* ---- Footer ---------------------------------------------------------- */
 .site-footer { background: #171d23; color: var(--text); }
-.footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 30px; padding: 60px 0 40px; }
+.footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; padding: 60px 0 40px; }
 .footer-grid h4 { font-family: var(--font-round); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); margin-bottom: 16px; }
 .footer-grid a { display: block; color: var(--muted); font-size: 14.5px; padding: 6px 0; transition: color .15s; font-family: var(--font-round); }
 .footer-grid a:hover { color: var(--teal); }
 .footer-logo { height: 30px; margin-bottom: 14px; }
-.footer-brand p { color: var(--muted); font-size: 14.5px; max-width: 34ch; margin: 0 0 20px; }
-.news { display: flex; gap: 8px; max-width: 320px; }
-.news input { flex: 1; background: var(--bg-3); border: 1px solid var(--line-soft); border-radius: 100px; padding: 12px 16px; color: var(--text); font-family: var(--font-round); font-size: 14px; }
-.news input::placeholder { color: var(--muted-2); }
-.news button { border-radius: 100px; }
 .footer-bottom { border-top: 1px solid var(--line-soft); padding: 22px 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; font-family: var(--font-round); font-size: 12px; color: var(--muted-2); flex-wrap: wrap; }
 .footer-bottom a { color: var(--muted); }
 
