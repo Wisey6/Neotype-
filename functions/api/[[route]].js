@@ -603,7 +603,8 @@ function publicOrder(o) {
 }
 
 async function handleOrder(request, env) {
-  const id = str(new URL(request.url).searchParams.get("session_id"), 100);
+  const url = new URL(request.url);
+  const id = str(url.searchParams.get("session_id"), 100);
   if (!/^cs_[A-Za-z0-9_]+$/.test(id)) return json({ error: "Unknown order" }, 400);
   const secret = env.STRIPE_SECRET_KEY;
   if (!secret) return json({ error: "Payments aren't switched on yet" }, 503);
@@ -635,7 +636,14 @@ async function handleOrder(request, env) {
       await notifyOrder(env, saved, url.origin);
       await confirmCustomer(env, saved, url.origin);
     }
-  } catch (_) {}
+  } catch (err) {
+    /* Never break the customer's confirmation over a storage or mail failure —
+       but say what happened. This catch was empty and `url` was undefined on the
+       two lines above, so every attempt threw a ReferenceError that went
+       straight into the void: the belt-and-braces path had never once sent mail,
+       and nothing anywhere could have told you. */
+    console.error("order side-effects failed", err && err.message, id);
+  }
   // `paid` is kept alongside `state` so an older cached success.html still works
   return json({ state: state, paid: state === "paid", order: publicOrder(order) });
 }
