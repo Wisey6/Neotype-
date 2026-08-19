@@ -16,7 +16,11 @@
 .adm-main { min-width: 0; }
 
 .adm-rail {
-  position: sticky; top: 24px;
+  /* Clear the sticky site header, or the top nav buttons hide behind it. The
+     header height is a variable in styles.css for exactly this reason. */
+  position: sticky; top: calc(var(--header-h, 148px) + 20px);
+  max-height: calc(100vh - var(--header-h, 148px) - 40px);
+  overflow-y: auto;
   display: flex; flex-direction: column; gap: 2px;
   padding: 16px 12px;
   background: var(--bg-card); border: 1px solid var(--line-soft);
