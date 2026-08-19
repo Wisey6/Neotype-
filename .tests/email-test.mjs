@@ -49,3 +49,35 @@ sent.length = 0;
 const res2 = await mod.onRequest({ request: new Request("https://neotype.au/api/stripe-webhook", {
   method: "POST", body, headers: { "stripe-signature": `t=${t},v1=${sig}`, "content-type": "application/json" } }), env, params: { route: ["stripe-webhook"] } });
 console.log("\nreplay:", res2.status, "-> emails sent on replay:", sent.length, sent.length === 0 ? "(de-dup OK)" : "(DUPLICATE!)");
+
+// --- the /api/order fallback path -----------------------------------------
+// This is the belt-and-braces route: the success page confirming a payment,
+// which must record AND announce the order when the webhook is not configured.
+// It referenced an undefined `url` inside an empty catch, so it silently sent
+// nothing. Locking that down.
+{
+  const kv2 = new Map();
+  const env2 = { ...env, STRIPE_SECRET_KEY: "sk_stub", NEOTYPE: {
+    get: async k => kv2.get(k) ?? null,
+    put: async (k, v) => void kv2.set(k, v),
+    list: async () => ({ keys: [] }),
+    getWithMetadata: async () => null,
+  } };
+  const s2 = { ...session, id: "cs_test_fallbackpath01" };
+  sent.length = 0;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("api.stripe.com")) {
+      return { ok: true, status: 200, json: async () => s2 };
+    }
+    sent.push(JSON.parse(init.body));
+    return { ok: true, status: 200, text: async () => "" };
+  };
+  const res3 = await mod.onRequest({
+    request: new Request("https://neotype.au/api/order?session_id=" + s2.id),
+    env: env2, params: { route: ["order"] },
+  });
+  const body = await res3.json();
+  console.log("\n/api/order fallback:", res3.status, "state=" + body.state);
+  console.log("  emails sent:", sent.length, sent.length === 2 ? "(notification + confirmation OK)" : "(EXPECTED 2)");
+  for (const m of sent) console.log("   ->", JSON.stringify(m.to), "|", m.subject);
+}

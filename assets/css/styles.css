@@ -149,8 +149,10 @@ a { color: inherit; text-decoration: none; }
 
 /* ---- Header ---------------------------------------------------------- */
 .site-header { position: sticky; top: 0; z-index: 60; background: rgba(33, 40, 48, 0.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line-soft); }
-.nav { display: flex; align-items: center; justify-content: space-between; height: 96px; gap: 20px; }
-.glitch img.brand-logo { height: 58px; width: auto; display: block; }
+.nav { display: flex; align-items: center; justify-content: space-between; height: 148px; gap: 20px; }
+/* Logo doubled at Ian's request. The nav grew with it — 116px of logo in a 96px
+   bar would have overflowed a sticky header that sits above every page. */
+.glitch img.brand-logo { height: 116px; width: auto; display: block; }
 .nav-links { display: flex; gap: 26px; align-items: center; }
 .nav-links a { font-family: var(--font-round); font-size: 15px; color: var(--muted); transition: color .15s; position: relative; white-space: nowrap; }
 .nav-links a:hover { color: var(--teal); }
@@ -828,9 +830,9 @@ section { position: relative; }
   .nav-links { display: none; }
   .nav-toggle { display: block; }
   .nav-cta > .btn { display: none; }
-  .glitch img.brand-logo { height: 40px; }
-  .nav { height: 80px; }
-  .nav-links.open { display: flex; position: absolute; top: 80px; left: 0; right: 0; flex-direction: column; background: var(--bg-2); padding: 18px 24px; border-bottom: 1px solid var(--line-soft); gap: 4px; }
+  .glitch img.brand-logo { height: 72px; }
+  .nav { height: 104px; }
+  .nav-links.open { display: flex; position: absolute; top: 104px; left: 0; right: 0; flex-direction: column; background: var(--bg-2); padding: 18px 24px; border-bottom: 1px solid var(--line-soft); gap: 4px; }
   .nav-links.open a { padding: 12px 0; width: 100%; border-bottom: 1px solid var(--line-soft); }
   .finish-grid { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr; }
