@@ -59,23 +59,6 @@
   }
   window.addEventListener("neotype:toast", function (e) { showToast(e.detail); });
 
-  // ---- Newsletter -------------------------------------------------------
-  var form = document.getElementById("newsForm");
-  if (form) {
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var email = document.getElementById("newsEmail");
-      var val = (email && email.value || "").trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-        showToast("Enter a valid email to grab your 15% off");
-        if (email) email.focus();
-        return;
-      }
-      showToast("You're in, 15% off is on its way to " + val);
-      form.reset();
-    });
-  }
-
   // ---- Enquiry form -----------------------------------------------------
   var contactForm = document.getElementById("contactForm");
   if (contactForm) {

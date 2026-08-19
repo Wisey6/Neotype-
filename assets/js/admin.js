@@ -392,8 +392,8 @@
       (/^https?:\/\//.test(o.artwork || "")
         ? '<a class="pipe-mini" href="' + esc(o.artwork) + '" title="Download the print file">⬇ Art</a>'
         : '<span class="pipe-mini is-off" title="The customer did not attach a file">no art</span>') +
-      (o.email ? '<a class="pipe-mini" href="mailto:' + esc(o.email) +
-        "?subject=" + encodeURIComponent("Your Neotype order " + (o.ref || "")) + '">✉ Email</a>' : "") +
+      (o.email ? '<a class="pipe-mini" target="_blank" rel="noopener" href="' +
+        esc(mailHref(o.email, "Your Neotype order " + (o.ref || ""))) + '">✉ Email</a>' : "") +
       (st.next ? '<button class="pipe-adv" data-key="' + esc(o.key || "") + '" data-stage="' + st.next + '">' +
         esc(st.cta) + " →</button>" : "") +
       "</div></div>";
@@ -720,8 +720,8 @@
         (d ? '<span class="pipe-due is-' + d.urgency + '">' + esc(d.label) + "</span>" : "") +
         (o.turnaround ? "<span>" + esc(o.turnaround) + "</span>" : "") +
         (o.name ? "<span>" + esc(o.name) + "</span>" : "") + "</div>" +
-        (o.email ? '<a class="adm-enq-mail" href="mailto:' + esc(o.email) +
-          "?subject=" + encodeURIComponent("Your Neotype order " + (o.ref || "")) + '">' + esc(o.email) + "</a>" : "") +
+        (o.email ? '<a class="adm-enq-mail" target="_blank" rel="noopener" href="' +
+          esc(mailHref(o.email, "Your Neotype order " + (o.ref || ""))) + '">' + esc(o.email) + "</a>" : "") +
         // The artwork button is deliberately withheld unless the money has
         // cleared, so an unpaid job can't be sent to print by habit.
         (!paid
@@ -739,7 +739,21 @@
   }
 
   // ---- enquiry inbox ------------------------------------------------------
-  function esc(s) {
+  /* Compose links go straight to Outlook on the web rather than using mailto:.
+
+   mailto: hands off to whatever the machine has registered as its mail handler,
+   which is how a reply to a customer went out from a personal Gmail instead of
+   kiko@neotype.au. The browser decides the sender, and the browser gets it wrong
+   whenever Gmail has claimed the protocol — which it asks to do, and people say
+   yes to. This link names Outlook, so the reply always leaves as Neotype.
+
+   If the business ever moves off Microsoft 365, this is the one place to change. */
+function mailHref(to, subject) {
+  return "https://outlook.office.com/mail/deeplink/compose?to=" +
+    encodeURIComponent(to || "") + "&subject=" + encodeURIComponent(subject || "");
+}
+
+function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
@@ -765,8 +779,8 @@
             '<div class="adm-enq-top"><b>' + esc(e.name) + "</b>" +
             '<span class="adm-enq-topic">' + esc(e.topic || "General") + "</span>" +
             '<span class="adm-enq-when">' + esc(whenLabel(e.when)) + "</span></div>" +
-            '<a class="adm-enq-mail" href="mailto:' + esc(e.email) +
-              "?subject=" + encodeURIComponent("Re: your Neotype enquiry") + '">' + esc(e.email) + "</a>" +
+            '<a class="adm-enq-mail" target="_blank" rel="noopener" href="' +
+              esc(mailHref(e.email, "Re: your Neotype enquiry")) + '">' + esc(e.email) + "</a>" +
             '<p class="adm-enq-msg">' + esc(e.message) + "</p></div>";
         });
         box.outerHTML = html + "</div>";

@@ -262,6 +262,40 @@ Recovery is the propagation delay, nothing more.
 
 ---
 
+## Everything in this repo is published
+
+Pages builds from the repo root with no build step, so every committed file is
+served on neotype.au. Verified live on 19 Aug 2026:
+
+```
+https://neotype.au/CLOUDFLARE.md   200  text/markdown     <- this file
+https://neotype.au/README.md       200  text/markdown
+https://neotype.au/package.json    200  application/json
+```
+
+No secrets are exposed — this file names environment *variables*, never their
+values — but it does describe the KV namespace, the admin path, the DNS layout
+and which variables exist, which is a map of the infrastructure that a customer
+site has no reason to hand out.
+
+**There is no repo-level exclude.** Two mechanisms were tried and both failed,
+each checked on a preview deploy rather than assumed: a dot-directory is served
+like any other folder, and `.assetsignore` belongs to Workers Static Assets, not
+Pages. The two fixes that do work:
+
+1. **A build output directory.** Set a build command that stages only the public
+   files into `dist/` and point the output directory at it. No npm install is
+   needed — a plain `mkdir`/`cp` command is enough, which keeps the build free of
+   the network dependency that stalled deploys once already.
+2. **Redirect Rules** for the specific paths, in the dashboard. Faster, but it is
+   a denylist, so the next document added to the repo is public until someone
+   remembers to add a rule.
+
+Option 1 is the real fix; option 2 is a stopgap. Both need a dashboard change,
+which is why neither is applied yet.
+
+---
+
 ## Full DNS inventory
 
 **Live state as of 17 Aug 2026** — verified against GoDaddy's authoritative

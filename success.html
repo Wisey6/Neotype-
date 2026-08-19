@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/styles.css?v=35" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=36" />
 </head>
 <body>
   <header class="site-header">
@@ -101,14 +101,14 @@
           if (!res.ok || res.d.error) {
             state("Couldn't confirm", "We can't find that order.",
               "If you were charged, you'll have a receipt from Stripe — forward it to " +
-              '<a href="mailto:kiko@neotype.au">kiko@neotype.au</a> and we\'ll sort it out straight away.');
+              '<a href="mailto:support@neotype.au">support@neotype.au</a> and we\'ll sort it out straight away.');
             return;
           }
           // An abandoned checkout: safe to say nothing was charged.
           if (res.d.state === "incomplete" || (!res.d.state && !res.d.paid)) {
             state("Not paid yet", "That payment didn't complete.",
               'Nothing has been charged. <a href="customizer.html">Try again</a>, or email ' +
-              '<a href="mailto:kiko@neotype.au">kiko@neotype.au</a> if you think this is wrong.');
+              '<a href="mailto:support@neotype.au">support@neotype.au</a> if you think this is wrong.');
             return;
           }
           var o = res.d.order;
@@ -152,7 +152,7 @@
         .catch(function () {
           state("Couldn't confirm", "We couldn't reach our order system.",
             "If you were charged, you'll have a Stripe receipt — forward it to " +
-            '<a href="mailto:kiko@neotype.au">kiko@neotype.au</a> and we\'ll pick it up from there.');
+            '<a href="mailto:support@neotype.au">support@neotype.au</a> and we\'ll pick it up from there.');
         });
     })();
   </script>
