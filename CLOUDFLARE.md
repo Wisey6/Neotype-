@@ -143,11 +143,16 @@ misses exactly the mail records. Anything below that isn't there, add manually.
 | CNAME | `email` | `email.secureserver.net` | — | **drop** — stale GoDaddy webmail |
 | A | `@` | GoDaddy forwarding IPs | — | **drop** — replaced in step 4 |
 
-**The `autodiscover` record must be grey-cloud (DNS only).** Cloudflare defaults
-new CNAMEs to proxied, and a proxied `autodiscover` breaks Outlook client setup
-for every user on the domain. This is the single easiest way to break Ian's mail
-in this whole procedure, and it fails quietly — existing sessions keep working,
-only new setups fail.
+**Every Microsoft CNAME must be grey-cloud (DNS only):** `autodiscover`,
+`lyncdiscover`, `msoid`. Cloudflare's import sets CNAMEs to proxied by default,
+and proxying these breaks them — Cloudflare terminates TLS with its own
+certificate for `*.neotype.au` and routes to its edge, while Outlook and Teams
+clients are expecting Microsoft's endpoints and Microsoft's certificate. The
+failure is quiet: existing sessions keep working and only new sign-ins and client
+setups fail, so it can go unnoticed for weeks.
+
+Cloudflare flags these itself with an orange warning triangle in the DNS table.
+That triangle is the signal, and it means the proxy toggle is wrong.
 
 ### 3. Add the Resend records while the zone is staged
 
@@ -245,11 +250,27 @@ future change or mail breaks.
 | TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | **KEEP — fixed 17 Aug** |
 | CNAME | `email` | `email.secureserver.net` | stale GoDaddy webmail — safe to drop |
 | CNAME | `autodiscover` | `autodiscover.outlook.com` | **KEEP — Outlook client setup** |
+| CNAME | `lyncdiscover` | `webdir.online.lync.com` | **KEEP — Teams client discovery** |
+| CNAME | `msoid` | `clientconfig.microsoftonline-p.net` | **KEEP — M365 sign-in** |
+| CNAME | `_domainconnect` | `_domainconnect.gd.domaincontrol.com` | GoDaddy Domain Connect — drop once off GoDaddy DNS |
 | SRV | `_sip._tls` | `100 1 443 sipdir.online.lync.com` | **KEEP — Teams** |
 | SRV | `_sipfederationtls._tcp` | `100 1 5061 sipfed.online.lync.com` | **KEEP — Teams federation** |
 
-Not currently set: DKIM (`selector1._domainkey`, `selector2._domainkey`) and
-`_dmarc`. There are no AAAA records — correct, they were removed earlier.
+Not currently set: DKIM (`selector1._domainkey`, `selector2._domainkey`),
+`_dmarc`, `enterpriseregistration` and `enterpriseenrollment`. There are no AAAA
+records — correct, they were removed earlier.
+
+**How this inventory was built, and why that matters.** The first version was
+assembled by querying each record name individually over DNS-over-HTTPS. DNS has
+no "list everything" query without a zone transfer, so that method can only ever
+find names someone thought to ask for — and it missed `lyncdiscover`, `msoid`
+and `_domainconnect`, two of which are load-bearing Microsoft records. They were
+caught on 18 Aug by Cloudflare's own zone scan, which reads the registrar's data
+rather than guessing names.
+
+Treat this table as a cross-check against a scan, never as the source for a
+hand-rebuild of the zone. Anything a scan reports that is not listed here should
+be assumed real and researched, not deleted.
 
 ---
 
