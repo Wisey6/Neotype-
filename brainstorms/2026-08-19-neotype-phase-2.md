@@ -11,7 +11,8 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 | 1 | "Samples" | **Demo art for the preview only** — never orderable, never satisfies artwork |
 | 7 | Blog | **5–8 evergreen guides**, one per real search intent. Not a page of filler |
 | 3/4 | Option control | **On/off toggles only**, enforced server-side. No new finishes — blocked by per-option CSS |
-| 2 | Upload button | Not broken. Affordance problem — see below |
+| 2 | Upload button | Not broken. Affordance problem — real button, and moves to last |
+| 10 | Field order | **Size → Qty → Finish → Shape → Background → Turnaround → Artwork** |
 | 6 | Socials | Footer links **plus `sameAs` in the LocalBusiness schema** |
 | 9 | Custom size + qty | Both free-entry, presets kept. **Switch stickers from inches to mm** while in there |
 
@@ -300,6 +301,43 @@ in them are not, and they still need his cost per cm² behind them.
 - **Server-side validation is the real work.** `qty` becomes free input, so
   `priceStickers` must reject non-integers, negatives, zero and absurd values
   rather than trusting the field.
+
+### Q11 — Field order in the customizer
+- **Ian:** *"sorting of the options — size, qty, finishes, etc etc"*
+- **Read as:** a desired sequence, not a request to drag-sort them from /admin.
+  Nothing in the feedback suggests he wants to reorder fields himself, and a
+  sortable form is a lot of machinery for a decision made once.
+
+**Current order** (`customizer.html`): Artwork → Finish → Shape → Background →
+Size → Quantity → Turnaround.
+
+**Proposed order:** Size → Quantity → Finish → Shape → Background → Turnaround →
+**Artwork last**.
+
+**Why size and quantity first.** They dominate the price. A customer arrives asking
+"how much for 100 at 50mm" and today has to scroll past four styling choices before
+the number means anything. Putting them first means a price forms on the first two
+interactions.
+
+**Why artwork moves to last, which is the non-obvious half.** It is the
+highest-friction step in the form — a file has to be found, and on a phone that
+means leaving the page. Asking for it *after* someone has configured and seen a
+price they like converts better than asking before they are invested. It also lands
+directly above the buy control, where it cannot be scrolled past unnoticed — which
+is the complaint in feedback item #2.
+
+**This only works because of Q4.** Artwork could not move down while the preview
+was empty without it. The demo-art decision fills the preview from the first
+interaction, so the form no longer needs a file to feel alive. The two changes
+depend on each other and should ship together.
+
+**Deliberately NOT doing this as a standalone change.** The customizer is about to
+be rebuilt anyway — custom size, custom qty, the mm switch, demo art, the upload
+affordance and add-to-cart all land in the same form. Reordering now means moving
+the same markup twice and testing it twice. It belongs in the first build group.
+
+- **Flags:** none — but confirm with Ian that "etc etc" does not hide a preference
+  for where turnaround and background sit.
 
 ---
 
