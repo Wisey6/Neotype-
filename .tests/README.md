@@ -1,10 +1,15 @@
 # Tests
 
-Kept in a dot-directory on purpose. Cloudflare Pages builds this repo from the
-root with no build step, so anything in a normally-named folder is published on
-neotype.au — a `test/` directory ends up served at `https://neotype.au/test/`.
-Dot-directories are excluded from the deployed output, which keeps test code off
-the client's production site.
+Cloudflare builds this repo from the root with no build step, so every file is
+published on neotype.au unless `.assetsignore` excludes it. That file is what
+keeps this directory off the live site — **not** the leading dot. Dot-directories
+are served like any other folder here; that was checked on a preview deploy,
+where `.tests/email-test.mjs` came back with `application/javascript`.
+
+If you add another folder that shouldn't ship, add it to `.assetsignore` and
+verify on the preview URL before merging. Check the **content type**, not the
+status code: every missing path on this host answers `200` with `text/html`, so
+a status code alone tells you nothing.
 
 Run from the repo root:
 

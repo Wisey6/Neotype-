@@ -1,0 +1,7 @@
+# Cloudflare builds this repo from the root with no build step, so every file
+# here is published on neotype.au unless it is listed below. Dot-directories are
+# NOT excluded automatically — verified on a preview deploy, where .tests/ was
+# served exactly like any other folder.
+.tests/
+README.md
+CLOUDFLARE.md
