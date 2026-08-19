@@ -107,6 +107,161 @@ quiet day, with the verification in Option A step 4, not under pressure.
 
 ---
 
+## Nameserver move to Cloudflare — DONE 19 Aug 2026
+
+Cutover completed and verified. `neotype.au` delegates to
+`melinda`/`trevor.ns.cloudflare.com`; the zone went active in about five minutes.
+
+Verified after the move: MX still `neotype-au.mail.protection.outlook.com`, SPF
+and `MS=` TXT both present, all three Microsoft CNAMEs (`autodiscover`,
+`lyncdiscover`, `msoid`) resolving, both Teams SRV records intact. Apex and `www`
+both serve the Pages site over HTTPS with a Cloudflare certificate, and
+`/api/*` answers on the apex hostname, so the Function is bound there too.
+
+**One consequence to be aware of.** The apex used to 301 to `www` via GoDaddy
+forwarding, so there was a single live host. Both now return 200 for identical
+content, while every canonical tag, the sitemap and all OG URLs declare
+`https://www.neotype.au/`. The canonicals keep search engines consolidated on
+`www`, so ranking is not split — but the tidy fix is a Redirect Rule
+(Rules → Redirect Rules) sending hostname `neotype.au` to
+`https://www.neotype.au/${uri}` with a 301, which restores one canonical host
+without touching any page.
+
+The old GoDaddy zone still exists and is inert. Leave it as a rollback reference.
+
+Still open after the move: DNSSEC (was off at GoDaddy, so nothing broke; can be
+enabled in Cloudflare, which manages the DS record itself), and the four Resend
+records, which are not in the zone yet because the domain is not verified on
+Ian's Resend account.
+
+### The procedure that was followed
+
+Decided 18 Aug 2026. Follow in order. The one irreversible-feeling step is #7,
+and everything before it is staging that changes nothing live.
+
+### Why the apex must be rebuilt in the same operation
+
+The apex `A` records (`15.197.225.128`, `3.33.251.168` as of 18 Aug — they
+rotate) are GoDaddy's **domain forwarding** service. That service only runs off
+GoDaddy's own nameservers. The moment the nameservers move, those IPs stop
+resolving to anything useful, so copying them into Cloudflare achieves nothing.
+The apex is replaced with a CNAME to `neotype.pages.dev`, which Cloudflare
+flattens at the apex — this is the upgrade the move buys, not a side effect.
+
+### 1. Add the zone — nameservers stay at GoDaddy
+
+Cloudflare → **Add a site** → `neotype.au` → **Free** plan. Let the scan run.
+**Do not** change nameservers at GoDaddy yet. Nothing is live until step 7.
+
+### 2. Check the scan against this list, by hand
+
+Cloudflare's importer routinely misses `TXT` and `SRV` — which is to say, it
+misses exactly the mail records. Anything below that isn't there, add manually.
+
+| Type | Name | Value | Proxy | Keep? |
+|---|---|---|---|---|
+| MX | `@` | `neotype-au.mail.protection.outlook.com` prio **0** | n/a | **KEEP — mail** |
+| TXT | `@` | `MS=ms80978019` | n/a | **KEEP — M365 verify** |
+| TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | n/a | **KEEP** |
+| CNAME | `autodiscover` | `autodiscover.outlook.com` | **DNS only** | **KEEP — Outlook** |
+| SRV | `_sip._tls` | `100 1 443 sipdir.online.lync.com` | n/a | **KEEP — Teams** |
+| SRV | `_sipfederationtls._tcp` | `100 1 5061 sipfed.online.lync.com` | n/a | **KEEP — Teams** |
+| CNAME | `www` | `neotype.pages.dev` | Proxied | the live site |
+| CNAME | `email` | `email.secureserver.net` | — | **drop** — stale GoDaddy webmail |
+| A | `@` | GoDaddy forwarding IPs | — | **drop** — replaced in step 4 |
+
+**Every Microsoft CNAME must be grey-cloud (DNS only):** `autodiscover`,
+`lyncdiscover`, `msoid`. Cloudflare's import sets CNAMEs to proxied by default,
+and proxying these breaks them — Cloudflare terminates TLS with its own
+certificate for `*.neotype.au` and routes to its edge, while Outlook and Teams
+clients are expecting Microsoft's endpoints and Microsoft's certificate. The
+failure is quiet: existing sessions keep working and only new sign-ins and client
+setups fail, so it can go unnoticed for weeks.
+
+Cloudflare flags these itself with an orange warning triangle in the DNS table.
+That triangle is the signal, and it means the proxy toggle is wrong.
+
+### 3. Add the Resend records while the zone is staged
+
+| Type | Name | Value | Prio |
+|---|---|---|---|
+| TXT | `resend._domainkey` | (paste from Resend — use its copy button) | — |
+| MX | `send` | `feedback-smtp.ap-northeast-1.amazonses.com` | 10 |
+| TXT | `send` | `v=spf1 include:amazonses.com ~all` | — |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` | — |
+
+Never add a second `v=spf1` record at the root. Two SPF records at one name is a
+permanent error and mail from the domain starts failing. Resend's SPF belongs on
+`send`, and it is consulted there because the return-path is `send.neotype.au` —
+the root record is never queried for Resend's mail.
+
+### 4. Rebuild the apex
+
+Delete both apex `A` records. Add:
+
+| Type | Name | Value | Proxy |
+|---|---|---|---|
+| CNAME | `@` | `neotype.pages.dev` | **Proxied** |
+
+Cloudflare flattens this at the apex, so `https://neotype.au` serves the site
+directly with no redirect hop and no dependency on GoDaddy's forwarding cert.
+
+### 5. Verify the staged zone BEFORE cutting over
+
+Cloudflare assigns two nameservers (shown on the zone's overview). Query them
+directly — this tests the new zone without anything being live:
+
+```bash
+NS=xxx.ns.cloudflare.com     # your assigned nameserver
+for r in "neotype.au MX" "neotype.au TXT" "autodiscover.neotype.au CNAME" \
+         "_sipfederationtls._tcp.neotype.au SRV" "_sip._tls.neotype.au SRV" \
+         "send.neotype.au TXT" "resend._domainkey.neotype.au TXT"; do
+  echo "--- $r"; dig +short @"$NS" $r
+done
+```
+
+**Every one must return a value. If any is empty, stop and fix it.** An empty
+answer here becomes broken mail after step 7.
+
+### 6. Keep GoDaddy forwarding for now
+
+Do not cancel it yet. It costs nothing to leave and it is the fallback if the
+cutover has to be reversed.
+
+### 7. Change the nameservers at GoDaddy
+
+GoDaddy → **My Products → neotype.au → DNS → Nameservers → Change → I'll use my
+own** → enter Cloudflare's two. Propagation is usually under an hour.
+
+Zero downtime by design: `www` already points at Pages, and both zones serve a
+working site throughout, so there is no window where the site is down.
+
+### 8. Verify after propagation
+
+```bash
+dig +short neotype.au NS                    # → cloudflare
+dig +short neotype.au MX                    # → outlook, priority 0
+curl -sI https://neotype.au | head -1       # → 200, not a redirect
+```
+
+Then the test that actually matters: **send mail from `kiko@neotype.au` to a
+Gmail address and reply to it.** Open the received message's headers and confirm
+`spf=pass`. Nothing else proves mail survived.
+
+### 9. Only then
+
+- Cancel GoDaddy domain forwarding
+- Pages → the project → Custom domains → add `neotype.au` (apex) alongside `www`
+- Verify the Resend domain, now that its records resolve
+
+### If mail breaks
+
+Change the nameservers back to `ns67`/`ns68.domaincontrol.com` at GoDaddy. The
+old zone is still intact there — GoDaddy does not delete it when you point away.
+Recovery is the propagation delay, nothing more.
+
+---
+
 ## Full DNS inventory
 
 **Live state as of 17 Aug 2026** — verified against GoDaddy's authoritative
@@ -122,11 +277,27 @@ future change or mail breaks.
 | TXT | `@` | `v=spf1 include:spf.protection.outlook.com ~all` | **KEEP — fixed 17 Aug** |
 | CNAME | `email` | `email.secureserver.net` | stale GoDaddy webmail — safe to drop |
 | CNAME | `autodiscover` | `autodiscover.outlook.com` | **KEEP — Outlook client setup** |
+| CNAME | `lyncdiscover` | `webdir.online.lync.com` | **KEEP — Teams client discovery** |
+| CNAME | `msoid` | `clientconfig.microsoftonline-p.net` | **KEEP — M365 sign-in** |
+| CNAME | `_domainconnect` | `_domainconnect.gd.domaincontrol.com` | GoDaddy Domain Connect — drop once off GoDaddy DNS |
 | SRV | `_sip._tls` | `100 1 443 sipdir.online.lync.com` | **KEEP — Teams** |
 | SRV | `_sipfederationtls._tcp` | `100 1 5061 sipfed.online.lync.com` | **KEEP — Teams federation** |
 
-Not currently set: DKIM (`selector1._domainkey`, `selector2._domainkey`) and
-`_dmarc`. There are no AAAA records — correct, they were removed earlier.
+Not currently set: DKIM (`selector1._domainkey`, `selector2._domainkey`),
+`_dmarc`, `enterpriseregistration` and `enterpriseenrollment`. There are no AAAA
+records — correct, they were removed earlier.
+
+**How this inventory was built, and why that matters.** The first version was
+assembled by querying each record name individually over DNS-over-HTTPS. DNS has
+no "list everything" query without a zone transfer, so that method can only ever
+find names someone thought to ask for — and it missed `lyncdiscover`, `msoid`
+and `_domainconnect`, two of which are load-bearing Microsoft records. They were
+caught on 18 Aug by Cloudflare's own zone scan, which reads the registrar's data
+rather than guessing names.
+
+Treat this table as a cross-check against a scan, never as the source for a
+hand-rebuild of the zone. Anything a scan reports that is not listed here should
+be assumed real and researched, not deleted.
 
 ---
 

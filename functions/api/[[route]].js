@@ -30,7 +30,21 @@
      Secret        STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
      Plain var     ENQUIRY_TO         where enquiries go (default kiko@neotype.au)
-     Plain var     ENQUIRY_FROM       verified sender, e.g. site@send.neotype.au
+     Plain var     ENQUIRY_FROM       verified Resend sender (neotype.au — see note below)
+
+   Mail is sent from neotype.au, verified in Resend on the client's own account
+   (DKIM at resend._domainkey, SPF and MX on the send subdomain, all in
+   Cloudflare DNS since the nameserver move). Nothing here uses any other domain.
+
+   The fallbacks above are deliberately a VERIFIED sender. If ENQUIRY_FROM is
+   ever unset, Resend rejects mail from an unverified sender and order emails
+   stop with no error anywhere the shop can see — orders still reach KV and
+   /admin, so the loss is silent. Never point a fallback at a domain that is not
+   verified in the Resend dashboard.
+
+   Both send paths mail ENQUIRY_TO (Ian, kiko@neotype.au) and nothing else; the
+   customer's confirmation is success.html, not an email. Both set reply_to to
+   the customer, so Ian hits Reply and it leaves from his own mailbox.
 
    Stripe's return pages use the origin the request actually arrived on, so
    preview deployments return to the preview URL and production returns to
@@ -224,7 +238,8 @@ async function handleEnquiry(request, env) {
         }),
       });
       emailed = res.ok;
-    } catch (_) { /* stored anyway */ }
+      if (!res.ok) console.error("resend enquiry failed", res.status, await res.text());
+    } catch (err) { console.error("resend enquiry threw", err && err.message); }
   }
 
   // Only a total failure is worth telling the customer about.
@@ -394,8 +409,98 @@ function escapeHtml(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* ---- the customer's confirmation -----------------------------------------
+   Until now the customer's only confirmation was success.html — fine while they
+   still have the tab open, useless the moment they close it, and nothing they
+   can forward or search for later. This is the copy of the order that lives in
+   their inbox.
+
+   Reply-To is ENQUIRY_TO, the mirror of notifyOrder: Ian's notification replies
+   to the customer, the customer's confirmation replies to Ian. Neither side ever
+   has to find an address.
+
+   Deliberately promises nothing the shop hasn't already promised on the success
+   page — a proof within a business day, and nothing printed before approval. An
+   order confirmation is the worst possible place to invent a commitment. */
+function customerEmailHtml(o, site) {
+  const row = (k, v) => v
+    ? `<tr><td style="padding:6px 14px 6px 0;color:#6c7f86;font-size:14px">${k}</td>
+         <td style="padding:6px 0;font-weight:600;font-size:14px">${escapeHtml(v)}</td></tr>`
+    : "";
+  const spec = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ");
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;color:#1b2228">
+    <p style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#04a49f;margin:0 0 4px">Order received</p>
+    <h1 style="font-size:22px;margin:0 0 4px">Thanks${o.name ? ", " + escapeHtml(String(o.name).split(" ")[0]) : ""} — we've got your order.</h1>
+    <p style="font-size:15px;color:#42525a;margin:0 0 18px">
+      A real person will email your <b style="color:#04a49f">free digital proof</b> shortly,
+      usually within a business day. Nothing goes to the press until you approve it.</p>
+    <table style="border-collapse:collapse;margin-bottom:20px">
+      ${row("Reference", o.ref)}${row("Item", spec || o.product)}
+      ${row("Total paid", "$" + ((o.amount || 0) / 100).toFixed(2) + " " + (o.currency || "AUD"))}
+      ${row("Turnaround", o.turnaround)}
+    </table>
+    <p style="font-size:14px;color:#42525a;margin:0 0 6px">
+      Just reply to this email if anything's wrong or you want to change something.</p>
+    <p style="margin:0 0 6px"><a href="${site}" style="color:#04a49f">neotype.au</a></p>
+    <p style="font-size:12px;color:#8ea4ab;margin:18px 0 0">
+      Neotype Studio · Brisbane · Mon–Fri, 8am–5pm AEST. Your payment receipt comes from Stripe separately.</p>
+  </div>`;
+}
+
+/* Mail the customer their own copy of the order. Failures are logged and
+   swallowed: the shop already has the order, and throwing here would turn a
+   missing courtesy email into a failed webhook that Stripe then retries. */
+async function confirmCustomer(env, order, site) {
+  if (!order || !order.email) return;
+  if (!env.RESEND_API_KEY) {
+    console.error("confirmCustomer skipped: RESEND_API_KEY is not bound", order.ref || order.session);
+    return;
+  }
+  const flag = `confirmed:${order.session}`;
+  try {
+    if (env.NEOTYPE && (await env.NEOTYPE.get(flag))) return;
+  } catch (_) { /* a duplicate confirmation beats none at all */ }
+
+  const spec = [order.quantity, order.size, order.finish].filter(Boolean).join(" · ");
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: env.ENQUIRY_FROM || "Neotype orders <orders@neotype.au>",
+        to: [order.email],
+        reply_to: env.ENQUIRY_TO || "kiko@neotype.au",
+        subject: `Your Neotype order ${order.ref} — we've got it`,
+        html: customerEmailHtml(order, site),
+        // a text part materially helps deliverability on a young sending domain
+        text: `Thanks — we've got your order.\n\n` +
+          `A real person will email your free digital proof shortly, usually within a\n` +
+          `business day. Nothing goes to the press until you approve it.\n\n` +
+          `Reference: ${order.ref}\n` +
+          `Item: ${spec || order.product || ""}\n` +
+          `Total paid: $${((order.amount || 0) / 100).toFixed(2)} ${order.currency || "AUD"}\n` +
+          (order.turnaround ? `Turnaround: ${order.turnaround}\n` : "") +
+          `\nJust reply to this email if anything's wrong.\n\nNeotype Studio, Brisbane\n`,
+      }),
+    });
+    if (res.ok && env.NEOTYPE) {
+      await env.NEOTYPE.put(flag, "1", { expirationTtl: 60 * 60 * 24 * 30 });
+    }
+    if (!res.ok) console.error("resend customer failed", res.status, await res.text(), order.ref);
+  } catch (err) {
+    console.error("resend customer threw", err && err.message, order.ref);
+  }
+}
+
 async function notifyOrder(env, order, site) {
-  if (!env.RESEND_API_KEY || !order) return;
+  if (!order) return;
+  /* No key means no notification, and the order still lands in KV and /admin —
+     so from the shop's side this is indistinguishable from a working system that
+     nobody emailed. That is exactly how it went unnoticed once. Say so. */
+  if (!env.RESEND_API_KEY) {
+    console.error("notifyOrder skipped: RESEND_API_KEY is not bound", order.ref || order.session);
+    return;
+  }
   // don't announce the same order twice
   const flag = `notified:${order.session}`;
   try {
@@ -408,18 +513,38 @@ async function notifyOrder(env, order, site) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({
-        from: env.ENQUIRY_FROM || "Neotype orders <orders@send.neotype.au>",
+        from: env.ENQUIRY_FROM || "Neotype orders <orders@neotype.au>",
         to: [env.ENQUIRY_TO || "kiko@neotype.au"],
         reply_to: order.email || undefined,
         subject: `New order ${order.ref} — ${spec || order.product} — $${((order.amount || 0) / 100).toFixed(0)}`,
         html: orderEmailHtml(order, site),
+        // HTML-only mail scores worse with Microsoft 365 filters, and this is the
+        // one message the business cannot afford to have junked
+        text: `New order ${order.ref}\n\n` +
+          `Item: ${spec || order.product || ""}\n` +
+          `Total: $${((order.amount || 0) / 100).toFixed(2)} ${order.currency || "AUD"}\n` +
+          (order.name ? `Customer: ${order.name}\n` : "") +
+          (order.email ? `Email: ${order.email}\n` : "") +
+          (order.phone ? `Phone: ${order.phone}\n` : "") +
+          (order.turnaround ? `Turnaround: ${order.turnaround}\n` : "") +
+          (/^https?:\/\//.test(order.artwork || "")
+            ? `\nArtwork: ${order.artwork}\n`
+            : `\nNo artwork file — chase the customer for it.\n`) +
+          `\nDashboard: ${site}/admin\n`,
       }),
     });
     if (res.ok && env.NEOTYPE) {
       // keep the flag well past any retry window, but not forever
       await env.NEOTYPE.put(flag, "1", { expirationTtl: 60 * 60 * 24 * 30 });
     }
-  } catch (_) { /* an order recorded but unannounced is recoverable; a 500 here is not */ }
+    /* A rejected send skips the dedupe flag, so the next event retries it. Log
+       the reason too: a 403 from an unverified sender and a 200 look identical
+       from outside this function. */
+    if (!res.ok) console.error("resend order failed", res.status, await res.text(), order.ref);
+  } catch (err) {
+    /* an order recorded but unannounced is recoverable; throwing here is not */
+    console.error("resend order threw", err && err.message, order.ref);
+  }
 }
 
 // The success-page URL carries the session id, so it ends up in browser history,
@@ -471,7 +596,10 @@ async function handleOrder(request, env) {
     // Belt and braces: if the webhook secret isn't configured, this is the only
     // path that will ever tell Ian an order came in. notifyOrder de-duplicates,
     // so when the webhook IS live this is a no-op rather than a second email.
-    if (state === "paid") await notifyOrder(env, saved, url.origin);
+    if (state === "paid") {
+      await notifyOrder(env, saved, url.origin);
+      await confirmCustomer(env, saved, url.origin);
+    }
   } catch (_) {}
   // `paid` is kept alongside `state` so an older cached success.html still works
   return json({ state: state, paid: state === "paid", order: publicOrder(order) });
@@ -540,7 +668,11 @@ async function handleWebhook(request, env) {
     try { saved = await saveOrder(env, s, status); } catch { return json({ error: "Storage failed" }, 500); }
     // Announce only once the money is real. A pending order isn't work yet, and
     // emailing "new order" for one that later fails would be worse than silence.
-    if (status === "paid") await notifyOrder(env, saved, new URL(request.url).origin);
+    if (status === "paid") {
+      const site = new URL(request.url).origin;
+      await notifyOrder(env, saved, site);
+      await confirmCustomer(env, saved, site);
+    }
   }
   // Anything else is acknowledged so Stripe stops retrying it.
   return json({ received: true, recorded: status || null });
