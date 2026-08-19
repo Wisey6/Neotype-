@@ -107,7 +107,34 @@ quiet day, with the verification in Option A step 4, not under pressure.
 
 ---
 
-## Nameserver move to Cloudflare — step by step (Option A)
+## Nameserver move to Cloudflare — DONE 19 Aug 2026
+
+Cutover completed and verified. `neotype.au` delegates to
+`melinda`/`trevor.ns.cloudflare.com`; the zone went active in about five minutes.
+
+Verified after the move: MX still `neotype-au.mail.protection.outlook.com`, SPF
+and `MS=` TXT both present, all three Microsoft CNAMEs (`autodiscover`,
+`lyncdiscover`, `msoid`) resolving, both Teams SRV records intact. Apex and `www`
+both serve the Pages site over HTTPS with a Cloudflare certificate, and
+`/api/*` answers on the apex hostname, so the Function is bound there too.
+
+**One consequence to be aware of.** The apex used to 301 to `www` via GoDaddy
+forwarding, so there was a single live host. Both now return 200 for identical
+content, while every canonical tag, the sitemap and all OG URLs declare
+`https://www.neotype.au/`. The canonicals keep search engines consolidated on
+`www`, so ranking is not split — but the tidy fix is a Redirect Rule
+(Rules → Redirect Rules) sending hostname `neotype.au` to
+`https://www.neotype.au/${uri}` with a 301, which restores one canonical host
+without touching any page.
+
+The old GoDaddy zone still exists and is inert. Leave it as a rollback reference.
+
+Still open after the move: DNSSEC (was off at GoDaddy, so nothing broke; can be
+enabled in Cloudflare, which manages the DS record itself), and the four Resend
+records, which are not in the zone yet because the domain is not verified on
+Ian's Resend account.
+
+### The procedure that was followed
 
 Decided 18 Aug 2026. Follow in order. The one irreversible-feeling step is #7,
 and everything before it is staging that changes nothing live.
