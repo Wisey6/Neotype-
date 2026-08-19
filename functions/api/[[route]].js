@@ -29,8 +29,27 @@
      Secret        STRIPE_SECRET_KEY  Stripe secret key (sk_test_… then sk_live_…)
      Secret        STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
-     Plain var     ENQUIRY_TO         where enquiries go (default kiko@neotype.au)
+     Plain var     ENQUIRY_TO         where enquiries and orders go, AND the
+                                        address customers reply to. MUST be a
+                                        real, monitored mailbox — see below.
      Plain var     ENQUIRY_FROM       verified Resend sender (neotype.au — see note below)
+
+   ENQUIRY_TO does two jobs: it is the recipient of every enquiry and order
+   notification, and it is the Reply-To on the customer's confirmation. Both
+   break the same way if it names an address that does not exist as a mailbox.
+
+   That happened on 19 Aug 2026: the variable held order@neotype.au, which
+   Microsoft 365 rejects with 550 5.1.10 RESOLVER.ADR.RecipientNotFound. Order
+   notifications bounced for as long as it was set that way, and the bounce goes
+   to the sending domain rather than to anyone watching, so nothing surfaced it —
+   orders kept reaching KV and /admin exactly as normal. It was only found when
+   somebody replied to a customer confirmation and read the NDR.
+
+   Sending does not require the mailbox to exist. Resend verifies the DOMAIN, so
+   any local part on neotype.au authenticates and leaves successfully. The
+   address only fails on the way back. Verifying that mail sends therefore proves
+   nothing about whether it can be received or replied to — those need a real
+   mailbox or alias in Microsoft 365, and a test that actually replies.
 
    Mail is sent from neotype.au, verified in Resend on the client's own account
    (DKIM at resend._domainkey, SPF and MX on the send subdomain, all in
