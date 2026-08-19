@@ -36,3 +36,15 @@ namespace and a stubbed Resend, and asserts:
 - replaying the same webhook event sends nothing (the de-dup flags hold)
 
 No network, no credentials, nothing to configure.
+
+**visual-verify.mjs** drives a real Chromium against a locally served copy of the
+site and asserts the layout numbers rather than eyeballing screenshots — logo and
+nav heights, the newsletter form's absence, the footer column count, the upload
+control, and the mobile header's share of the viewport. It also writes PNGs.
+
+    python3 -m http.server 8901 &
+    node .tests/visual-verify.mjs ./shots
+
+Written after the doubled logo silently pushed the /admin sidebar behind the sticky
+header: the change looked fine on the page it was made for and broke a different
+page two files away. Measurements catch that; a glance does not.
