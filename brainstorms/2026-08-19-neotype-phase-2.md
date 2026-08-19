@@ -10,10 +10,10 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 | 8 | Price model | **Banded qty tiers** (0-20, 20-50, 50-100, 100-250, 250-500, 500+, 2000+), set per cm². Replaces the exponential. Rates still need Ian's cost |
 | 1 | "Samples" | **Demo art for the preview only** — never orderable, never satisfies artwork |
 | 7 | Blog | **5–8 evergreen guides**, one per real search intent. Not a page of filler |
-| 3/4 | Option control | *Open — resume here* |
+| 3/4 | Option control | **On/off toggles only**, enforced server-side. No new finishes — blocked by per-option CSS |
 | 2 | Upload button | Not broken. Affordance problem — see below |
-| 6 | Socials | Not yet discussed |
-| 9 | Custom qty / custom size | Not yet discussed |
+| 6 | Socials | Footer links **plus `sameAs` in the LocalBusiness schema** |
+| 9 | Custom size + qty | Both free-entry, presets kept. **Switch stickers from inches to mm** while in there |
 
 
 ### The raw feedback, verbatim
@@ -241,10 +241,74 @@ in them are not, and they still need his cost per cm² behind them.
 - Worth a look on a phone before it ships: a 104px sticky bar costs real vertical
   space on a small screen.
 
+### Q6 — Option control: RESOLVED as on/off toggles only
+- **Decision taken by Tyler's instruction to proceed on my recommendation.**
+- **Build:** a visibility toggle per option, stored alongside the multipliers in the
+  existing pricing record. Hidden options disappear from the customizer.
+- **Not building:** renaming (cosmetic, and every label is already in one file),
+  or adding brand-new finishes — blocked by the CSS constraint above, where a
+  config-only finish renders with no swatch and no preview.
+- **Repricing already exists** in the Pricing tab. Ian may not know that; worth
+  showing him rather than building it twice.
+- **The part that is easy to get wrong:** hiding an option in the UI is not enough.
+  `priceStickers` must **reject** a hidden option server-side, or a stale tab, a
+  bookmarked link or a hand-made request can still order it — and the whole reason
+  the price is computed on the server is that the browser is not trusted. Hiding
+  must be enforced in `pricing-core`, not in the customizer.
+- **Edge case to handle:** an option that goes out of stock while it sits in
+  someone's cart. The cart must re-validate at checkout and say which item changed,
+  rather than silently repricing or silently failing.
+
+### Q8 — Socials (IG, FB)
+- **Decision:** footer links, plus `sameAs` on the existing LocalBusiness JSON-LD.
+- The `sameAs` half is the bit worth having beyond the link itself: it ties the
+  site and the social profiles to one business entity, which is exactly what
+  Google's local ranking uses to confirm a business is real. Pairs directly with
+  the Google Business Profile (task #25), which is still the highest-leverage SEO
+  item open.
+- **Flag:** the actual profile URLs → Ian. Do not guess or link a handle that
+  might not be his.
+
+### Q9 — Custom size (W × H)
+- **Decision:** build it, and **switch stickers to millimetres** while doing so.
+- **Why the unit change belongs here.** Stickers are currently fixed at 2/3/4/5
+  **inches** (`pricing-core.js:69`), while banners and corflute are already in
+  **metres**. Ian writes in **cm**. That is three units across one shop, in
+  Australia, where print is quoted in mm. Adding a free W × H field without fixing
+  this bakes the confusion into the highest-traffic input on the site — and a
+  customer who types "50" meaning mm and gets 50 inches has ordered a poster.
+- **Bounds are required, not optional.** A free numeric field with no limits
+  accepts 0.5mm and 3000mm. Needs a real min and max per axis from what Ian's
+  cutter can physically do → flag.
+- **Preview:** currently renders a fixed aspect. A custom W × H has to drive the
+  preview's aspect ratio, or the customer sees a square and receives a long thin
+  sticker.
+- **Presets stay.** The four existing sizes become one-tap buttons alongside the
+  custom field. Most people want a common size and should not have to type.
+
+### Q10 — Custom quantity
+- **Decision:** free numeric entry, with the seven presets kept as one-tap buttons.
+- **Falls out of the banded pricing model for free** — a band lookup takes any
+  integer, whereas the current `QTYS.indexOf(qty) === -1` check exists precisely
+  because the old model only priced a fixed list.
+- **Minimum stays 15.** It is published in three places — the homepage stat block,
+  and the meta description on the customizer — so changing it is a content change
+  too, not just a validation constant.
+- **A maximum is needed.** Not for pricing but for sanity: an order for 500,000
+  stickers should route to a human, not to Stripe. Suggest capping the online path
+  and showing "talk to us about volume" past it → threshold from Ian.
+- **Server-side validation is the real work.** `qty` becomes free input, so
+  `priceStickers` must reject non-integers, negatives, zero and absurd values
+  rather than trusting the field.
+
 ---
 
 ## Open flags (pending input)
 - Which device/browser was Ian on when he couldn't find the upload button? → Ian
 - Who writes the 5–8 guides, and who checks them for print accuracy → Tyler + Ian
+- Instagram and Facebook profile URLs → Ian
+- Minimum and maximum sticker dimensions the cutter can handle (mm, per axis) → Ian
+- Quantity above which an order should go to a human instead of Stripe → Ian
+- Rate per cm² for each of the seven quantity bands → Ian
 - Material + machine cost per m², to set the new price floor → Ian
 - Which sticker size eprintonline's "10c" actually refers to → Ian
