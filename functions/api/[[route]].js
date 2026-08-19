@@ -61,7 +61,14 @@
    /admin, so the loss is silent. Never point a fallback at a domain that is not
    verified in the Resend dashboard.
 
-   Both send paths mail ENQUIRY_TO (Ian, kiko@neotype.au) and nothing else; the
+   Both send paths mail ENQUIRY_TO and nothing else; the customer's confirmation
+   is success.html, not an email. Both set reply_to so each side can reply without
+   looking up an address.
+
+   ENQUIRY_TO should be the orders@neotype.au alias, but the hardcoded fallbacks
+   below deliberately stay on kiko@neotype.au: that is a real mailbox rather than
+   an alias, and an alias can be removed by an admin without anyone touching this
+   repo. A fallback should be the address most likely to still exist. The
    customer's confirmation is success.html, not an email. Both set reply_to to
    the customer, so Ian hits Reply and it leaves from his own mailbox.
 
@@ -262,7 +269,7 @@ async function handleEnquiry(request, env) {
   }
 
   // Only a total failure is worth telling the customer about.
-  if (!stored && !emailed) return json({ error: "Couldn't send that — please email kiko@neotype.au." }, 502);
+  if (!stored && !emailed) return json({ error: "Couldn't send that — please email support@neotype.au." }, 502);
   return json({ ok: true });
 }
 
