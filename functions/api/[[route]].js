@@ -445,6 +445,13 @@ function escapeHtml(s) {
    to the customer, the customer's confirmation replies to Ian. Neither side ever
    has to find an address.
 
+   The footer names support@neotype.au as well as inviting a reply. Reply-To is
+   built from ENQUIRY_TO, so a single wrong variable turns "just reply to this
+   email" into an instruction that bounces the customer — which is what happened
+   on 19 Aug, when it pointed at an address with no mailbox. A second, literal
+   address means a misconfiguration costs the customer a click rather than the
+   ability to reach the shop at all.
+
    Deliberately promises nothing the shop hasn't already promised on the success
    page — a proof within a business day, and nothing printed before approval. An
    order confirmation is the worst possible place to invent a commitment. */
@@ -466,7 +473,8 @@ function customerEmailHtml(o, site) {
       ${row("Turnaround", o.turnaround)}
     </table>
     <p style="font-size:14px;color:#42525a;margin:0 0 6px">
-      Just reply to this email if anything's wrong or you want to change something.</p>
+      Reply to this email if anything's wrong or you want to change something —
+      or write to <a href="mailto:support@neotype.au" style="color:#04a49f">support@neotype.au</a>.</p>
     <p style="margin:0 0 6px"><a href="${site}" style="color:#04a49f">neotype.au</a></p>
     <p style="font-size:12px;color:#8ea4ab;margin:18px 0 0">
       Neotype Studio · Brisbane · Mon–Fri, 8am–5pm AEST. Your payment receipt comes from Stripe separately.</p>
@@ -506,7 +514,8 @@ async function confirmCustomer(env, order, site) {
           `Item: ${spec || order.product || ""}\n` +
           `Total paid: $${((order.amount || 0) / 100).toFixed(2)} ${order.currency || "AUD"}\n` +
           (order.turnaround ? `Turnaround: ${order.turnaround}\n` : "") +
-          `\nJust reply to this email if anything's wrong.\n\nNeotype Studio, Brisbane\n`,
+          `\nReply to this email if anything's wrong, or write to support@neotype.au\n` +
+          `\nNeotype Studio, Brisbane\n`,
       }),
     });
     if (res.ok && env.NEOTYPE) {
