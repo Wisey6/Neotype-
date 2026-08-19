@@ -1,4 +1,21 @@
-import { chromium } from "playwright-core";
+import { createRequire } from "node:module";
+const _req = createRequire(import.meta.url);
+/* playwright-core is deliberately NOT in package.json. Cloudflare runs npm install
+   whenever this repo declares a dependency, and that install step is what stalled
+   production deploys for a day. Keep the repo dependency-free and point NODE_PATH
+   at wherever playwright-core lives:
+
+     mkdir -p /tmp/pw && cd /tmp/pw && npm i playwright-core
+     NODE_PATH=/tmp/pw/node_modules node .tests/visual-verify.mjs ./shots
+
+   Skipping beats crashing: ERR_MODULE_NOT_FOUND reads as a broken test, and a
+   broken test gets deleted. */
+let chromium;
+try { ({ chromium } = _req("playwright-core")); }
+catch {
+  console.log("SKIP — playwright-core not resolvable. See the note at the top of this file.");
+  process.exit(0);
+}
 const OUT = process.argv[2], B = "http://127.0.0.1:8901";
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 let pass = 0, fail = 0;

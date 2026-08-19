@@ -43,8 +43,25 @@ nav heights, the newsletter form's absence, the footer column count, the upload
 control, and the mobile header's share of the viewport. It also writes PNGs.
 
     python3 -m http.server 8901 &
-    node .tests/visual-verify.mjs ./shots
+    mkdir -p /tmp/pw && (cd /tmp/pw && npm i playwright-core)
+    NODE_PATH=/tmp/pw/node_modules node .tests/visual-verify.mjs ./shots
+
+`playwright-core` is deliberately kept OUT of `package.json`. Cloudflare runs
+`npm install` whenever this repo declares a dependency, and that install step is
+what stalled production deploys for a day. Both browser tests skip with a message
+rather than crashing when it is missing, because ERR_MODULE_NOT_FOUND reads as a
+broken test and a broken test gets deleted.
 
 Written after the doubled logo silently pushed the /admin sidebar behind the sticky
 header: the change looked fine on the page it was made for and broke a different
 page two files away. Measurements catch that; a glance does not.
+
+**stock-toggle.mjs** covers the availability switches end to end: that
+`pricing-core` refuses to price a switched-off option for both stickers and large
+format, that the switch in /admin flips and reaches the save payload, and that the
+button disappears in the customizer.
+
+    NODE_PATH=/tmp/pw/node_modules node .tests/stock-toggle.mjs ./shots
+
+The server-side half matters most. Hiding a button stops an honest customer and
+nobody else — a stale tab or a hand-made request still reaches /api/checkout.
