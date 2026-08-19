@@ -30,20 +30,21 @@
      Secret        STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
      Plain var     ENQUIRY_TO         where enquiries go (default kiko@neotype.au)
-     Plain var     ENQUIRY_FROM       verified Resend sender (wise-ai.au — see note below)
+     Plain var     ENQUIRY_FROM       verified Resend sender (neotype.au — see note below)
 
-   Why mail is sent FROM wise-ai.au and not neotype.au: Resend's free plan
-   verifies one domain, and that slot is already used. It costs nothing here
-   because no customer ever sees it — both send paths below mail ENQUIRY_TO
-   (Ian, at kiko@neotype.au) and nothing else. The customer's only confirmation
-   is success.html. Both calls also set reply_to to the customer, so Ian hits
-   Reply and it leaves from his own mailbox.
+   Mail is sent from neotype.au, verified in Resend on the client's own account
+   (DKIM at resend._domainkey, SPF and MX on the send subdomain, all in
+   Cloudflare DNS since the nameserver move). Nothing here uses any other domain.
 
-   The fallbacks above are deliberately a VERIFIED domain. If ENQUIRY_FROM is
+   The fallbacks above are deliberately a VERIFIED sender. If ENQUIRY_FROM is
    ever unset, Resend rejects mail from an unverified sender and order emails
    stop with no error anywhere the shop can see — orders still reach KV and
-   /admin, so the loss is silent. Never point a fallback at a domain that is
-   not verified in the Resend dashboard.
+   /admin, so the loss is silent. Never point a fallback at a domain that is not
+   verified in the Resend dashboard.
+
+   Both send paths mail ENQUIRY_TO (Ian, kiko@neotype.au) and nothing else; the
+   customer's confirmation is success.html, not an email. Both set reply_to to
+   the customer, so Ian hits Reply and it leaves from his own mailbox.
 
    Stripe's return pages use the origin the request actually arrived on, so
    preview deployments return to the preview URL and production returns to
@@ -229,7 +230,7 @@ async function handleEnquiry(request, env) {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
         body: JSON.stringify({
-          from: env.ENQUIRY_FROM || "Neotype site <site@wise-ai.au>",
+          from: env.ENQUIRY_FROM || "Neotype site <site@neotype.au>",
           to: [env.ENQUIRY_TO || "kiko@neotype.au"],
           reply_to: email,
           subject: `Neotype enquiry — ${topic} — ${name}`,
@@ -237,7 +238,8 @@ async function handleEnquiry(request, env) {
         }),
       });
       emailed = res.ok;
-    } catch (_) { /* stored anyway */ }
+      if (!res.ok) console.error("resend enquiry failed", res.status, await res.text());
+    } catch (err) { console.error("resend enquiry threw", err && err.message); }
   }
 
   // Only a total failure is worth telling the customer about.
@@ -408,7 +410,14 @@ function escapeHtml(s) {
 }
 
 async function notifyOrder(env, order, site) {
-  if (!env.RESEND_API_KEY || !order) return;
+  if (!order) return;
+  /* No key means no notification, and the order still lands in KV and /admin —
+     so from the shop's side this is indistinguishable from a working system that
+     nobody emailed. That is exactly how it went unnoticed once. Say so. */
+  if (!env.RESEND_API_KEY) {
+    console.error("notifyOrder skipped: RESEND_API_KEY is not bound", order.ref || order.session);
+    return;
+  }
   // don't announce the same order twice
   const flag = `notified:${order.session}`;
   try {
@@ -421,7 +430,7 @@ async function notifyOrder(env, order, site) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({
-        from: env.ENQUIRY_FROM || "Neotype orders <orders@wise-ai.au>",
+        from: env.ENQUIRY_FROM || "Neotype orders <orders@neotype.au>",
         to: [env.ENQUIRY_TO || "kiko@neotype.au"],
         reply_to: order.email || undefined,
         subject: `New order ${order.ref} — ${spec || order.product} — $${((order.amount || 0) / 100).toFixed(0)}`,
@@ -432,7 +441,14 @@ async function notifyOrder(env, order, site) {
       // keep the flag well past any retry window, but not forever
       await env.NEOTYPE.put(flag, "1", { expirationTtl: 60 * 60 * 24 * 30 });
     }
-  } catch (_) { /* an order recorded but unannounced is recoverable; a 500 here is not */ }
+    /* A rejected send skips the dedupe flag, so the next event retries it. Log
+       the reason too: a 403 from an unverified sender and a 200 look identical
+       from outside this function. */
+    if (!res.ok) console.error("resend order failed", res.status, await res.text(), order.ref);
+  } catch (err) {
+    /* an order recorded but unannounced is recoverable; throwing here is not */
+    console.error("resend order threw", err && err.message, order.ref);
+  }
 }
 
 // The success-page URL carries the session id, so it ends up in browser history,
