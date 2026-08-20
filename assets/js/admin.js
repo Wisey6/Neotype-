@@ -80,6 +80,17 @@
 
   var D = null; // working price list (multipliers), edited in place
   var password = "";
+  var token = "";      // set instead of `password` when signing in by email code
+
+  /* One place that decides how a request proves who it is, so a new call site
+     can't accidentally ship an unauthenticated fetch. */
+  function authHeaders(json) {
+    var h = {};
+    if (json) h["Content-Type"] = "application/json";
+    if (password) h["X-Admin-Password"] = password;
+    else if (token) h["X-Admin-Token"] = token;
+    return h;
+  }
 
   function toast(m) { window.dispatchEvent(new CustomEvent("neotype:toast", { detail: m })); }
   function get(path) { return path.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, D); }
@@ -137,12 +148,30 @@
 
      Off until he fills it in and ticks the box, so the site keeps pricing off the
      existing curve until he has decided the numbers. */
+  /* Seeded from the trade rates worked out on 20 Aug 2026, not from the old
+     sliding scale. The old curve bottomed out at $85/m², which made a 50 mm
+     sticker cost about the same per unit at 2,000 as at 100 — the complaint
+     that started this. These floor at $60/m² against a cost of roughly $20/m²
+     (material + ink + machine time), so about 67% gross at the bottom band.
+     They are a starting point, not a decision: every figure is editable below
+     and none of it prices anything until the toggle is on. */
   var DEFAULT_BANDS = [
-    { from: 1, rate: 0.01858 }, { from: 20, rate: 0.01649 }, { from: 50, rate: 0.01352 },
-    { from: 100, rate: 0.01007 }, { from: 250, rate: 0.00865 },
-    { from: 500, rate: 0.0085 }, { from: 2000, rate: 0.0085 }
+    { from: 1, rate: 0.024 },    // $240/m² — ones and twos, mostly proofs
+    { from: 20, rate: 0.018 },   // $180/m²
+    { from: 50, rate: 0.014 },   // $140/m²
+    { from: 100, rate: 0.011 },  // $110/m² — the common small-business order
+    { from: 250, rate: 0.0085 }, // $85/m²
+    { from: 500, rate: 0.007 },  // $70/m²
+    { from: 2000, rate: 0.006 }  // $60/m² — the floor
   ];
   var BAND_REF = { size: 3, finish: "vinyl-matte", shape: "die", turnaround: "standard" };
+  /* Deliberately spans both axes — every size at a small quantity and the common
+     sizes at volume — because that is where the two pricing models disagree most. */
+  var IMPACT = [
+    { size: 2, qty: 50 }, { size: 3, qty: 50 }, { size: 4, qty: 50 }, { size: 5, qty: 50 },
+    { size: 2, qty: 100 }, { size: 3, qty: 100 }, { size: 4, qty: 100 }, { size: 5, qty: 100 },
+    { size: 2, qty: 500 }, { size: 3, qty: 500 }, { size: 3, qty: 1000 }, { size: 3, qty: 2000 }
+  ];
 
   function bandsHtml() {
     var on = !!(D.stickers && D.stickers.qtyBands && D.stickers.qtyBands.length);
@@ -166,6 +195,22 @@
         "</div>";
     });
     html += "</div><p class=\"adm-bandwarn\" id=\"admBandWarn\" hidden></p>";
+
+    /* Bands price per cm², so they can only see how much vinyl an order uses —
+       never whether that's a few big stickers or a lot of small ones. Turning
+       them on therefore moves some prices up and others down, and the direction
+       depends on size. Ian gets to see exactly which, on real orders, before he
+       commits. Without this the first he'd hear of a rise is a customer email. */
+    html += '<h3 class="adm-sub adm-impact-h">What switching over would change</h3>' +
+      '<p class="adm-note">Every price on the site, before and after. Recalculated as you type.</p>' +
+      '<div class="adm-table adm-impact"><div class="adm-tr adm-th adm-imptr">' +
+      "<span>Order</span><span>Now</span><span>With bands</span><span>Change</span></div>" +
+      IMPACT.map(function (row, i) {
+        return '<div class="adm-tr adm-imptr"><span>' + row.qty + ' × ' + row.size + '″</span>' +
+          '<span class="adm-opt-ex" data-impnow="' + i + '">—</span>' +
+          '<span class="adm-opt-ex" data-impnew="' + i + '">—</span>' +
+          '<span data-impdiff="' + i + '">—</span></div>';
+      }).join("") + "</div>";
     return html;
   }
 
@@ -196,6 +241,32 @@
     warn.textContent = "At " + breaks.map(function (b) { return b.from; }).join(", ") +
       " the step down is big enough that buying one fewer would otherwise cost more. " +
       "Those customers are charged the larger quantity's price instead, so nobody ever pays more for buying less.";
+
+    refreshImpact(probe);
+  }
+
+  // Before/after for the representative basket. `probe` already has the bands
+  // applied; `plain` is the same table with them stripped out, which is exactly
+  // what the site charges today whenever the toggle is off.
+  function refreshImpact(probe) {
+    var plain = JSON.parse(JSON.stringify(probe));
+    if (plain.stickers) delete plain.stickers.qtyBands;
+    IMPACT.forEach(function (row, i) {
+      var opt = Object.assign({}, BAND_REF, { size: row.size, qty: row.qty });
+      var now = CORE.priceStickers(opt, plain);
+      var next = CORE.priceStickers(opt, probe);
+      var elNow = root.querySelector('[data-impnow="' + i + '"]');
+      var elNew = root.querySelector('[data-impnew="' + i + '"]');
+      var elDiff = root.querySelector('[data-impdiff="' + i + '"]');
+      if (elNow) elNow.textContent = now ? "$" + now.total.toLocaleString() : "—";
+      if (elNew) elNew.textContent = next ? "$" + next.total.toLocaleString() : "—";
+      if (!elDiff) return;
+      if (!now || !next || !now.total) { elDiff.textContent = "—"; elDiff.className = ""; return; }
+      var pct = Math.round((next.total - now.total) / now.total * 100);
+      elDiff.textContent = (pct > 0 ? "+" : "") + pct + "%";
+      // A rise is the one Ian needs to notice, so it is the one that is loud.
+      elDiff.className = pct > 0 ? "adm-imp-up" : (pct < 0 ? "adm-imp-down" : "adm-imp-flat");
+    });
   }
 
   function exSpan(prod, ex) { return '<b data-ex=\'' + JSON.stringify(Object.assign({ p: prod }, ex)) + "'>" + money(exPrice(prod, ex)) + "</b>"; }
@@ -731,7 +802,7 @@
     btn.disabled = true; btn.textContent = "Adding…";
     fetch(API + "/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Password": password },
+      headers: authHeaders(true),
       body: JSON.stringify(payload)
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
@@ -761,7 +832,7 @@
     if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
     fetch(API + "/order-stage", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Admin-Password": password },
+      headers: authHeaders(true),
       body: JSON.stringify({ key: key, stage: stage })
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {
@@ -775,7 +846,7 @@
 
   // ---- orders -------------------------------------------------------------
   function loadOrders() {
-    fetch(API + "/orders", { headers: { "X-Admin-Password": password } })
+    fetch(API + "/orders", { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         ORDERS = (d && d.orders) || [];
@@ -861,7 +932,7 @@ function esc(s) {
   function loadEnquiries() {
     var box = document.getElementById("admEnqBody");
     if (!box) return;
-    fetch(API + "/enquiries", { headers: { "X-Admin-Password": password } })
+    fetch(API + "/enquiries", { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d) { box.textContent = "Couldn't load enquiries."; return; }
@@ -956,7 +1027,7 @@ function esc(s) {
     var btn = document.getElementById("admSave");
     if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
     fetch(API + "/pricing", {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Admin-Password": password }, body: JSON.stringify(D)
+      method: "POST", headers: authHeaders(true), body: JSON.stringify(D)
     }).then(function (r) { if (r.status === 401) { toast("Incorrect password — nothing was saved"); return null; } return r.json(); })
       .then(function (d) { if (d && d.ok) { toast("Saved — new prices are live"); } else if (d) { toast(d.error || "Couldn't save"); } })
       .catch(function () { toast("Couldn't save — please try again"); })
@@ -973,28 +1044,49 @@ function esc(s) {
      for a shared or public computer, which is why it is off by default and the
      checkbox says so. "Sign out" clears it. */
   var REMEMBER_KEY = "neotype.admin.key";
+  var TOKEN_KEY = "neotype.admin.tok";
 
   function rememberedPassword() {
     try { return window.localStorage.getItem(REMEMBER_KEY) || ""; } catch (_) { return ""; }
   }
+  function rememberedToken() {
+    try { return window.localStorage.getItem(TOKEN_KEY) || ""; } catch (_) { return ""; }
+  }
   function remember(pw) {
     try { pw ? window.localStorage.setItem(REMEMBER_KEY, pw) : window.localStorage.removeItem(REMEMBER_KEY); } catch (_) {}
   }
+  function rememberToken(t) {
+    try { t ? window.localStorage.setItem(TOKEN_KEY, t) : window.localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+  }
   function signOut() {
-    remember("");
-    password = "";
+    /* Tell the server first, while the token is still valid — an email session
+       that only disappears from this browser is still a live way in for anyone
+       who has the string. Local state is cleared either way. */
+    var dying = token;
+    if (dying) {
+      fetch(API + "/admin-signout", { method: "POST", headers: { "X-Admin-Token": dying } }).catch(function () {});
+    }
+    remember(""); rememberToken("");
+    password = ""; token = "";
     lockScreen("Signed out on this device.");
   }
 
-  function lockScreen(msg) {
+  function lockScreen(msg, tone) {
     root.className = "";
     root.innerHTML =
       '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Neotype dashboard</h1>' +
-      '<p class="lead">Enter your password to see orders, enquiries and pricing.</p></div>' +
+      '<p class="lead">Sign in to see orders, enquiries and pricing.</p></div>' +
       '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password" autocomplete="current-password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +
-      '<label class="adm-remember"><input type="checkbox" id="admRemember" ' + (rememberedPassword() ? "checked" : "") + ' />' +
+      '<label class="adm-remember"><input type="checkbox" id="admRemember" ' + ((rememberedPassword() || rememberedToken()) ? "checked" : "") + ' />' +
       '<span>Stay signed in on this device <em>— only tick this on your own phone or computer</em></span></label>' +
-      (msg ? '<p class="opt-help" style="color:#ff8a5b">' + msg + "</p>" : "");
+      '<p class="adm-forgot"><button type="button" class="adm-link" id="admForgot">Forgotten the password? Email me a code instead</button></p>' +
+      '<div class="adm-code" id="admCodeBox" hidden>' +
+        '<h2 class="adm-code-h">Sign in by email</h2>' +
+        '<p class="opt-help" id="admCodeMsg"></p>' +
+        '<div class="adm-lock"><input type="text" id="admCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="Six-digit sign-in code"><button class="btn btn--accent" id="admCodeGo">Sign in</button></div>' +
+      "</div>" +
+      (msg ? '<p class="opt-help adm-lockmsg' + (tone === "ok" ? " is-ok" : "") + '">' + msg + "</p>" : "");
+
     var pass = document.getElementById("admPass");
     function go() {
       password = pass.value || "";
@@ -1006,12 +1098,87 @@ function esc(s) {
     }
     document.getElementById("admUnlock").addEventListener("click", go);
     pass.addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+
+    wireCodeSignIn();
     pass.focus();
+  }
+
+  /* The recovery path. ADMIN_PASSWORD is a Cloudflare Secret, so a forgotten
+     password can't be looked up — not by Ian, not by anyone. Without this the
+     only way back in is editing the Cloudflare project, which is precisely the
+     "call the developer" step this dashboard exists to remove. */
+  function wireCodeSignIn() {
+    var forgot = document.getElementById("admForgot");
+    var box = document.getElementById("admCodeBox");
+    var msg = document.getElementById("admCodeMsg");
+    var input = document.getElementById("admCode");
+    var go = document.getElementById("admCodeGo");
+    if (!forgot || !box) return;
+
+    function say(t, bad) {
+      if (!msg) return;
+      msg.textContent = t;
+      msg.className = "opt-help" + (bad ? " adm-lockmsg" : "");
+    }
+
+    forgot.addEventListener("click", function () {
+      forgot.disabled = true;
+      forgot.textContent = "Sending…";
+      fetch(API + "/admin-code", { method: "POST" })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          box.hidden = false;
+          if (!res.ok) {
+            say((res.d && res.d.error) || "Couldn't send a code.", true);
+            forgot.disabled = false;
+            forgot.textContent = "Try sending a code again";
+            return;
+          }
+          say("Code sent to " + (res.d.sentTo || "your studio inbox") + ". It expires in 10 minutes.");
+          forgot.hidden = true;
+          if (input) input.focus();
+        })
+        .catch(function () {
+          box.hidden = false;
+          say("Couldn't reach the admin service.", true);
+          forgot.disabled = false;
+          forgot.textContent = "Try sending a code again";
+        });
+    });
+
+    function redeem() {
+      var code = (input.value || "").replace(/\D/g, "");
+      if (code.length !== 6) { say("Enter all six digits.", true); return; }
+      go.disabled = true; go.textContent = "Checking…";
+      fetch(API + "/admin-code/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          go.disabled = false; go.textContent = "Sign in";
+          if (!res.ok || !res.d.token) { say((res.d && res.d.error) || "That didn't work.", true); return; }
+          var keep = document.getElementById("admRemember");
+          password = "";
+          token = res.d.token;
+          rememberToken(keep && keep.checked ? token : "");
+          remember("");   // the password is not what got us in; don't imply it works
+          load();
+        })
+        .catch(function () {
+          go.disabled = false; go.textContent = "Sign in";
+          say("Couldn't reach the admin service.", true);
+        });
+    }
+    if (go) go.addEventListener("click", redeem);
+    if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") redeem(); });
   }
 
   // real login: verify the password before showing anything
   function unlock(pw, keep, silent) {
     password = pw;
+    token = "";
     return fetch(API + "/verify", { method: "POST", headers: { "X-Admin-Password": pw } })
       .then(function (r) {
         if (r.status === 401) {
@@ -1025,7 +1192,29 @@ function esc(s) {
       .catch(function () { lockScreen("Couldn't reach the admin service — check your connection."); });
   }
 
+  // Same thing for a remembered email session: prove it still works before
+  // showing a dashboard, because the token expires server-side after 30 days
+  // and a silently dead session looks identical to a broken site.
+  function unlockToken(t) {
+    password = "";
+    token = t;
+    return fetch(API + "/verify", { method: "POST", headers: { "X-Admin-Token": t } })
+      .then(function (r) {
+        if (!r.ok) {
+          rememberToken(""); token = "";
+          lockScreen("That sign-in has expired — use your password, or email yourself a new code.");
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (d) { if (d && d.ok) load(); })
+      .catch(function () { lockScreen("Couldn't reach the admin service — check your connection."); });
+  }
+
   // If this device is remembered, go straight in; otherwise ask.
   var saved = rememberedPassword();
-  if (saved) { lockScreen(); unlock(saved, true, true); } else { lockScreen(); }
+  var savedTok = rememberedToken();
+  lockScreen();
+  if (saved) unlock(saved, true, true);
+  else if (savedTok) unlockToken(savedTok);
 })();

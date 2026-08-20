@@ -149,6 +149,22 @@
 .adm-remember span { font-size: .92rem; color: var(--muted); }
 .adm-remember em { display: block; font-style: normal; font-size: .84rem; color: var(--muted-2); }
 
+/* Sign in by emailed code — the way back in when the password is gone. */
+.adm-forgot { margin: 16px 0 0; }
+.adm-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: var(--font-round); font-size: .9rem; color: var(--teal);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.adm-link:hover { color: #fff; }
+.adm-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+.adm-code { margin-top: 18px; max-width: 460px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.adm-code-h { font-size: 1rem; margin: 0 0 4px; font-family: var(--font-round); }
+.adm-code .adm-lock { margin-top: 8px; }
+.adm-code input { letter-spacing: .28em; font-weight: 700; text-align: center; }
+.adm-lockmsg { color: #ff8a5b; }
+.adm-lockmsg.is-ok { color: var(--teal); }
+
 /* ---- stock switch on the pricing tables ---------------------------------
    Ian turns an option off when he cannot print it. A hidden option is dimmed
    rather than removed from his table, so he can see at a glance what is off
@@ -184,4 +200,12 @@
 .adm-bandtable[data-dim] { opacity: .45; }
 .adm-bandwarn { margin: 12px 0 0; padding: 12px 15px; border-left: 3px solid var(--teal);
   background: rgba(4,164,159,.09); border-radius: 0 8px 8px 0; font-size: .88rem; color: var(--muted); max-width: 78ch; }
-@media (max-width: 720px) { .adm-bandtr { grid-template-columns: 1fr 1fr; } }
+/* Before/after impact of the band table. Rises are red because a rise is the
+   thing that generates a complaint; cuts are teal because they are the intent. */
+.adm-impact-h { margin-top: 30px; }
+.adm-imptr { grid-template-columns: 1.4fr 1fr 1fr .8fr; }
+.adm-imptr span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm-imp-up { color: #ff6b6b; }
+.adm-imp-down { color: var(--teal); }
+.adm-imp-flat { color: var(--muted); }
+@media (max-width: 720px) { .adm-bandtr { grid-template-columns: 1fr 1fr; } .adm-imptr { grid-template-columns: 1.3fr 1fr .7fr; } .adm-imptr span:nth-child(2) { display: none; } }

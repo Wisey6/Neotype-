@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=40" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=41" />
 
   <link rel="canonical" href="https://www.neotype.au/customizer" />
   <meta property="og:type" content="website" />
@@ -213,6 +213,12 @@
                 <button class="opt sz" data-qty="500" aria-pressed="false">500</button>
                 <button class="opt sz" data-qty="1000" aria-pressed="false">1000</button>
               </div>
+              <div class="qty-any">
+                <label for="czQtyAny">Or type any quantity</label>
+                <input type="number" id="czQtyAny" inputmode="numeric" min="15" max="5000" step="1" value="100" aria-describedby="czQtyHelp">
+                <span class="qty-any-unit">stickers</span>
+              </div>
+              <p class="opt-help" id="czQtyHelp">Anything from 15 to 5,000. Need more than that? <a href="index.html#contact">Ask us for a trade price</a>.</p>
             </div>
 
             <div class="field">
@@ -316,9 +322,9 @@
   <script>
     window.NEOTYPE_CHECKOUT = { currency: "aud" };
   </script>
-  <script src="assets/js/pricing-core.js?v=34" defer></script>
+  <script src="assets/js/pricing-core.js?v=35" defer></script>
   <script src="assets/js/checkout.js?v=32" defer></script>
-  <script src="assets/js/customizer.js?v=34" defer></script>
+  <script src="assets/js/customizer.js?v=35" defer></script>
   <script src="assets/js/main.js?v=33" defer></script>
 </body>
 </html>

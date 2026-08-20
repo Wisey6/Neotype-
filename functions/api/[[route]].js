@@ -26,6 +26,11 @@
      KV namespace  NEOTYPE      the price store and the enquiry log
      R2 bucket     ART          customers' uploaded artwork
      Secret        ADMIN_PASSWORD     password for the pricing admin page
+     Plain var     ADMIN_EMAIL        optional — where /admin sign-in codes are
+                                        emailed. Defaults to ENQUIRY_TO, then to
+                                        kiko@neotype.au. NEVER read from a
+                                        request: it is the only thing stopping
+                                        the code flow being an open relay.
      Secret        STRIPE_SECRET_KEY  Stripe secret key (sk_test_… then sk_live_…)
      Secret        STRIPE_WEBHOOK_SECRET  whsec_… from the Stripe webhook endpoint
      Secret        RESEND_API_KEY     optional — emails enquiries to ENQUIRY_TO
@@ -111,10 +116,153 @@ function sanitizePricing(input) {
   return out;
 }
 
-function authorised(request, env) {
+// Compare without leaking the answer in the timing. Length is not secret —
+// an attacker can measure that anyway — but the characters must not be.
+function sameSecret(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomHex(bytes) {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* Two ways in, and the second exists because of how the first fails.
+   ADMIN_PASSWORD is a Cloudflare Secret: once set, its value cannot be read
+   back from the dashboard by anyone, including the person who set it. Forgetting
+   it is therefore not a password reset, it is a lockout that needs a developer —
+   exactly the situation this project is trying to leave behind. So a signed-in
+   session can also be established by proving control of the studio mailbox. */
+async function authorised(request, env) {
   const pass = request.headers.get("x-admin-password") || "";
-  const expected = env.ADMIN_PASSWORD || "";
-  return Boolean(expected) && pass === expected;
+  if (env.ADMIN_PASSWORD && sameSecret(pass, env.ADMIN_PASSWORD)) return true;
+
+  const tok = str(request.headers.get("x-admin-token"), 80);
+  // Shape-check before touching KV, so a junk header can't be used to probe it.
+  if (!/^[a-f0-9]{64}$/.test(tok) || !env.NEOTYPE) return false;
+  try {
+    return Boolean(await env.NEOTYPE.get(TOKEN_KEY + tok));
+  } catch (_) {
+    return false;
+  }
+}
+
+// ---- signing in by email code ---------------------------------------------
+const CODE_KEY = "admin:code";        // the one live code, stored hashed
+const TOKEN_KEY = "admin:tok:";       // one key per issued session
+const CODE_TTL = 10 * 60;             // a code is worth ten minutes
+const TOKEN_TTL = 30 * 24 * 60 * 60;  // then Ian signs in again
+const CODE_TRIES = 5;
+const SEND_GAP = 60;                  // seconds between sends
+const SEND_PER_DAY = 10;
+
+// Never taken from the request. A caller-supplied address would turn this into
+// an open relay for admin codes; the whole security of the flow is that the
+// code can only ever arrive in one inbox, and that inbox is the studio's.
+function adminEmail(env) {
+  return str(env.ADMIN_EMAIL, 120) || str(env.ENQUIRY_TO, 120) || "kiko@neotype.au";
+}
+
+function maskAdminEmail(addr) {
+  const at = addr.indexOf("@");
+  if (at < 1) return "your studio inbox";
+  return addr[0] + "•••" + addr.slice(at);
+}
+
+async function sendAdminCode(env) {
+  if (!env.NEOTYPE) return { error: "Sign-in codes need the KV store bound.", code: 503 };
+  if (!env.RESEND_API_KEY) return { error: "Email isn't configured, so a code can't be sent.", code: 503 };
+
+  // Two limits with different jobs: the gap stops a stuck button hammering the
+  // inbox, the daily cap stops anyone using this as a way to harass it.
+  try {
+    if (await env.NEOTYPE.get(CODE_KEY + ":gap")) {
+      return { error: "A code was just sent — check your inbox, or try again in a minute.", code: 429 };
+    }
+    const used = parseInt((await env.NEOTYPE.get(CODE_KEY + ":day")) || "0", 10) || 0;
+    if (used >= SEND_PER_DAY) {
+      return { error: "Too many codes requested today. Try again tomorrow, or use the password.", code: 429 };
+    }
+    await env.NEOTYPE.put(CODE_KEY + ":day", String(used + 1), { expirationTtl: 24 * 60 * 60 });
+  } catch (_) { /* a rate limiter that fails open still beats no sign-in at all */ }
+
+  // Six digits, uniformly drawn — Math.random() is not a source for this.
+  const n = new Uint32Array(1);
+  crypto.getRandomValues(n);
+  const code = String(n[0] % 1000000).padStart(6, "0");
+  const to = adminEmail(env);
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: env.ENQUIRY_FROM || "Neotype orders <orders@neotype.au>",
+      to: [to],
+      subject: `${code} is your Neotype admin code`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:460px">
+  <p style="font-size:15px;color:#222">Here's your sign-in code for the Neotype dashboard.</p>
+  <p style="font-size:34px;letter-spacing:.16em;font-weight:700;margin:22px 0;color:#111">${code}</p>
+  <p style="font-size:13px;color:#666">It works once and expires in 10 minutes.</p>
+  <p style="font-size:13px;color:#666">If you didn't ask for this, someone has your dashboard address.
+  Nothing has been opened — the code is useless without this email — but change the admin password.</p>
+</div>`,
+      text: `Your Neotype admin sign-in code is ${code}\n\n` +
+        `It works once and expires in 10 minutes.\n\n` +
+        `If you didn't ask for it, nobody has got in — the code is useless without\n` +
+        `this email — but it's worth changing the admin password.\n`,
+    }),
+  });
+  if (!res.ok) {
+    console.error("admin code send failed", res.status, await res.text());
+    return { error: "The code couldn't be emailed. Check the Resend key.", code: 502 };
+  }
+
+  // Only the hash is stored: reading the KV namespace must not hand anyone a
+  // live code. `tries` is kept beside it so a guesser gets five, not unlimited.
+  await env.NEOTYPE.put(
+    CODE_KEY,
+    JSON.stringify({ hash: await sha256Hex(code), tries: 0 }),
+    { expirationTtl: CODE_TTL }
+  );
+  await env.NEOTYPE.put(CODE_KEY + ":gap", "1", { expirationTtl: SEND_GAP });
+  return { ok: true, sentTo: maskAdminEmail(to) };
+}
+
+async function redeemAdminCode(env, input) {
+  if (!env.NEOTYPE) return { error: "Sign-in codes need the KV store bound.", code: 503 };
+  const code = str(input, 10).replace(/\D/g, "");
+  if (code.length !== 6) return { error: "Enter the six digits from the email.", code: 400 };
+
+  const rec = await env.NEOTYPE.get(CODE_KEY, { type: "json" });
+  if (!rec) return { error: "That code has expired. Send yourself a new one.", code: 400 };
+
+  if (!sameSecret(await sha256Hex(code), rec.hash)) {
+    const tries = (rec.tries || 0) + 1;
+    if (tries >= CODE_TRIES) {
+      await env.NEOTYPE.delete(CODE_KEY);
+      return { error: "Too many wrong codes — that one is dead. Send a new one.", code: 429 };
+    }
+    // Re-put rather than leaving the count behind: a counter that doesn't
+    // persist is not a limit. TTL is refreshed but the code still dies on time
+    // because `tries` only ever climbs.
+    await env.NEOTYPE.put(CODE_KEY, JSON.stringify({ hash: rec.hash, tries }), { expirationTtl: CODE_TTL });
+    return { error: `Wrong code — ${CODE_TRIES - tries} ${CODE_TRIES - tries === 1 ? "try" : "tries"} left.`, code: 401 };
+  }
+
+  // Correct: burn the code, hand back a session.
+  await env.NEOTYPE.delete(CODE_KEY);
+  const token = randomHex(32);
+  await env.NEOTYPE.put(TOKEN_KEY + token, JSON.stringify({ iat: Date.now() }), { expirationTtl: TOKEN_TTL });
+  return { ok: true, token, days: TOKEN_TTL / 86400 };
 }
 
 // Build the Stripe line item from a priced quote.
@@ -746,7 +894,7 @@ export const onRequest = async ({ request, env }) => {
   // --- inboxes for /admin ---
   // Keys start with an ISO timestamp, so a reverse sort is newest-first.
   if ((route === "enquiries" || route === "orders") && method === "GET") {
-    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     const field = route;
     if (!env.NEOTYPE) return json({ [field]: [] });
     const prefix = route === "orders" ? "order:" : "enquiry:";
@@ -761,7 +909,7 @@ export const onRequest = async ({ request, env }) => {
 
   // --- move an order along Ian's pipeline (admin) ---
   if (route === "order-stage" && method === "POST") {
-    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
     const key = str(body.key, 200);
@@ -785,7 +933,7 @@ export const onRequest = async ({ request, env }) => {
 
   // --- add an order that didn't come through the website (admin) ---
   if (route === "orders" && method === "POST") {
-    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
     const res = await createManualOrder(env, body);
@@ -795,13 +943,40 @@ export const onRequest = async ({ request, env }) => {
 
   // --- admin login ---
   if (route === "verify" && method === "POST") {
-    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    return json({ ok: true });
+  }
+
+  // --- signing in by emailed code, for when the password is gone ---
+  // Unauthenticated by necessity: it is the route you take *because* you can't
+  // authenticate. What keeps it safe is that the code only ever goes to the one
+  // address held in config, never to an address named in the request.
+  if (route === "admin-code" && method === "POST") {
+    const res = await sendAdminCode(env);
+    if (res.error) return json({ error: res.error }, res.code);
+    return json({ ok: true, sentTo: res.sentTo });
+  }
+
+  if (route === "admin-code/verify" && method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const res = await redeemAdminCode(env, body && body.code);
+    if (res.error) return json({ error: res.error }, res.code);
+    return json({ ok: true, token: res.token, days: res.days });
+  }
+
+  // --- sign this browser out (drops the stored session, not the password) ---
+  if (route === "admin-signout" && method === "POST") {
+    const tok = str(request.headers.get("x-admin-token"), 80);
+    if (/^[a-f0-9]{64}$/.test(tok) && env.NEOTYPE) {
+      try { await env.NEOTYPE.delete(TOKEN_KEY + tok); } catch (_) { /* already gone is fine */ }
+    }
     return json({ ok: true });
   }
 
   // --- pricing write (admin) ---
   if (route === "pricing" && method === "POST") {
-    if (!authorised(request, env)) return json({ error: "Unauthorized" }, 401);
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
     const clean = sanitizePricing(body);
