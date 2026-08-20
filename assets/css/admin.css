@@ -174,3 +174,14 @@
 .adm-tr-off .adm-opt, .adm-tr-off .adm-opt-ex, .adm-tr-off .adm-pct { opacity: .42; }
 /* an unavailable example price is not a number — don't let it read as one */
 .adm-tr-off .adm-opt-ex b, .adm-ex-row b:not([data-money]) { font-variant-numeric: tabular-nums; }
+
+/* ---- quantity band editor ----------------------------------------------- */
+.adm-bandnote { display: block; margin: 0 0 12px; max-width: 60ch; }
+.adm-bandon { margin: 0 0 14px; }
+.adm-bandtr { grid-template-columns: 1fr 1fr 1fr 1.2fr; }
+.adm-bandtable input { width: 100%; max-width: 130px; background: var(--bg-3); border: 1px solid var(--line-soft);
+  border-radius: 8px; padding: 8px 11px; color: var(--text); font-family: var(--font-round); font-size: 14px; }
+.adm-bandtable[data-dim] { opacity: .45; }
+.adm-bandwarn { margin: 12px 0 0; padding: 12px 15px; border-left: 3px solid var(--teal);
+  background: rgba(4,164,159,.09); border-radius: 0 8px 8px 0; font-size: .88rem; color: var(--muted); max-width: 78ch; }
+@media (max-width: 720px) { .adm-bandtr { grid-template-columns: 1fr 1fr; } }

@@ -7,7 +7,7 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 |---|---|---|
 | 5 | Add to cart | **Full multi-item cart** — stickers + banners + corflute, one payment |
 | — | Order shape | **One order, N line items.** One card, one due date, one proof cycle |
-| 8 | Price model | **Banded qty tiers** (0-20, 20-50, 50-100, 100-250, 250-500, 500+, 2000+), set per cm². Replaces the exponential. Rates still need Ian's cost |
+| 8 | Price model | ✅ **BUILT, opt-in** — banded qty tiers (0-20, 20-50, 50-100, 100-250, 250-500, 500+, 2000+), set per cm². Replaces the exponential. Rates still need Ian's cost |
 | 1 | "Samples" | **Demo art for the preview only** — never orderable, never satisfies artwork |
 | 7 | Blog | **5–8 evergreen guides**, one per real search intent. Not a page of filler |
 | 3/4 | Option control | **On/off toggles only**, enforced server-side. No new finishes — blocked by per-option CSS |
@@ -229,8 +229,34 @@ Recommendation: **flat band rate plus a monotonicity check on save**. It keeps t
 model Ian can read, and turns the cliff into an error message he sees while
 editing rather than a customer paying less for more.
 
-**Still open from Q3:** what the actual numbers are. The bands are known; the rates
-in them are not, and they still need his cost per cm² behind them.
+**BUILT 20 Aug 2026, opt-in.** The band engine, the editor and the validation are
+in; the numbers are not. The editor is seeded from the current curve so Ian has a
+working starting point, and the toggle stays OFF until he ticks it — the site keeps
+pricing off the existing sliding scale until he decides.
+
+**What the maths turned up while building it.** The two models have different
+shapes: the curve keys off total area (size × quantity), bands key off quantity
+alone. Switching therefore makes small stickers markedly cheaper and barely moves
+large ones. Seeded from a 3″ reference:
+
+| | today | banded | change |
+|---|---|---|---|
+| 2″ × 100 | $40.42 | $25.99 | **−36%** |
+| 3″ × 100 | $71.17 | $58.47 | −18% |
+| 4″ × 100 | $103.46 | $103.95 | +0% |
+
+That is probably what Ian is after — his "caps out to 10c" remark points the same
+way — but it is a revenue decision, not a mechanism swap, and it needs his eyes.
+
+**The cliff edge is real and worse than expected.** A step down applies to the
+whole order, so forbidding non-monotonic totals caps the discount at a boundary of
+n to 1/n: 5% at qty 20, and **0.2% at qty 500**. That rules out any meaningful
+volume break, so strict validation was the wrong answer.
+
+Solved by honouring it instead: nobody pays more than they would for the next
+break, so buying 19 is charged the price of 20. It is what a shop does over the
+counter, and it turns an arithmetic artefact into something a customer is pleased
+to find. Verified monotonic across every quantity from 15 to 2600.
 
 ### Q7 — Header logo (done, not a question)
 - **Asked for:** *"neotype logo make larger x2 at the top left top bar"*
