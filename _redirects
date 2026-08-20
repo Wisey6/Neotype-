@@ -8,6 +8,39 @@
 # rule's own target /admin.html back to /admin — so the rule bounces the request
 # between the two forever (verified: 50 redirects, never resolves).
 #
-# Pages' default behaviour is what we want, so there is nothing to declare here.
 # If you add rules later, avoid targeting a *.html path that Pages will itself
 # redirect to its extension-less form.
+
+
+# ---------------------------------------------------------------------------
+# Keep the workshop out of the shop window.
+#
+# Cloudflare Pages publishes the WHOLE repository. There is no ignore file that
+# changes that: a leading dot does not hide a directory (verified — /.tests/ is
+# served), and .assetsignore is a Workers Static Assets feature that Pages does
+# not read (also verified, then deleted rather than left lying).
+#
+# The only two real options are a build output directory or these rules. These
+# rules were chosen because they need no build step, and a build step is a new
+# way for a deploy to fail on a site that is about to be handed over.
+#
+# This works because of one documented guarantee: "Redirects are always
+# followed, regardless of whether or not an asset matches the incoming request."
+# So the file can still sit in the repo and still not be readable over the web.
+# 404 is not a status _redirects supports, so these are 301s to the homepage.
+#
+# Adding a new internal document? Add it here in the same commit.
+
+/README.md        /  301
+/CLOUDFLARE.md    /  301
+/PRICING.md       /  301
+/SETUP.md         /  301
+/MAIL-DNS.md      /  301
+/package.json     /  301
+/.gitignore       /  301
+
+/brainstorms/*    /  301
+/.tests/*         /  301
+/.wiseai/*        /  301
+/.claude/*        /  301
+/.netlify/*       /  301

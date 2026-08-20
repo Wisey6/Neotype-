@@ -281,18 +281,30 @@ site has no reason to hand out.
 **There is no repo-level exclude.** Two mechanisms were tried and both failed,
 each checked on a preview deploy rather than assumed: a dot-directory is served
 like any other folder, and `.assetsignore` belongs to Workers Static Assets, not
-Pages. The two fixes that do work:
+Pages.
 
-1. **A build output directory.** Set a build command that stages only the public
-   files into `dist/` and point the output directory at it. No npm install is
-   needed — a plain `mkdir`/`cp` command is enough, which keeps the build free of
-   the network dependency that stalled deploys once already.
-2. **Redirect Rules** for the specific paths, in the dashboard. Faster, but it is
-   a denylist, so the next document added to the repo is public until someone
-   remembers to add a rule.
+### What was done — `_redirects`, 20 Aug 2026
 
-Option 1 is the real fix; option 2 is a stopgap. Both need a dashboard change,
-which is why neither is applied yet.
+`_redirects` now 301s every internal path to the homepage. It works because of
+one documented guarantee:
+
+> Redirects are always followed, regardless of whether or not an asset matches
+> the incoming request.
+> — [Pages redirects](https://developers.cloudflare.com/pages/configuration/redirects/)
+
+So the files stay in the repo and stop being readable over the web. `404` is not
+a status `_redirects` supports, hence 301s rather than a not-found.
+
+It is a **denylist**: a new internal document is public until it is added to the
+list. Add it in the same commit that adds the document.
+
+The alternative was a build output directory — a build command staging only the
+public files into `dist/`. That is a stricter allowlist and remains the better
+long-term shape. It was not taken now because it introduces a build step, and a
+build step is a fresh way for a deploy to fail on a site that is being handed
+over this week. Revisit it when the site is quiet.
+
+Neither needs a dashboard change; `_redirects` deploys with the repo.
 
 ---
 
@@ -382,15 +394,47 @@ Settings → Variables and Secrets. Add to **Production** *and* **Preview**:
 
 | Name | Kind | Value |
 |---|---|---|
-| `ADMIN_PASSWORD` | Secret | the `/admin` password — **pick a new one**, the old one was pasted in chat |
+| `ADMIN_PASSWORD` | Secret | the `/admin` password — **pick a new one**, the old one was pasted in chat. A Secret cannot be read back once set, so write it down somewhere safe; the email-code sign-in below is the recovery path if you don't |
 | `STRIPE_SECRET_KEY` | Secret | `sk_test_…` first, `sk_live_…` when going live |
 | `STRIPE_WEBHOOK_SECRET` | Secret | `whsec_…` — see "Order recording" below |
 | `RESEND_API_KEY` | Secret | optional — enables enquiry emails |
 | `ENQUIRY_TO` | Plain | `kiko@neotype.au` |
+| `ADMIN_EMAIL` | Plain | optional — where `/admin` sign-in codes go. Falls back to `ENQUIRY_TO`, then `kiko@neotype.au`. **Never** read from a request |
 | `ENQUIRY_FROM` | Plain | verified sender, e.g. `site@send.neotype.au` |
 
 Cloudflare has no secret scanner, so the `SECRETS_SCAN_OMIT_PATHS` workaround
 that was needed on Netlify is gone.
+
+### 3c. Getting back into /admin without the password
+
+`ADMIN_PASSWORD` is a Cloudflare Secret. Once saved, **nobody can read it back**
+— not Ian, not Cloudflare support, not the person who typed it. Forgetting it is
+not a password reset; it is a lockout whose only cure is editing the Pages
+project, which is exactly the developer dependency this dashboard exists to
+remove.
+
+So `/admin` has a second door. "Forgotten the password? Email me a code instead"
+sends six digits to `ADMIN_EMAIL` (falling back to `ENQUIRY_TO`, then
+`kiko@neotype.au`), and the code buys a 30-day session.
+
+What makes it safe to leave unauthenticated — it has to be, since it is the
+route you take *because* you cannot authenticate:
+
+| | |
+|---|---|
+| Destination | Read from config only. A recipient named in the request is ignored, so it can never be used to send a code anywhere else |
+| Storage | Only a SHA-256 hash of the code is written to KV. Reading the namespace does not hand anyone a live code |
+| Lifetime | 10 minutes, single use, destroyed on success |
+| Guessing | 5 attempts, then the code is deleted |
+| Flooding | 60 seconds between sends, 10 sends a day |
+| Session | 32 random bytes, KV-backed, 30 days, revoked server-side by "Sign out" |
+
+Worst case for a brute-forcer: 10 codes a day × 5 guesses = 50 attempts against
+a million combinations, and every one of those sends lands in Ian's inbox.
+
+**This needs `RESEND_API_KEY` and the KV binding.** Without either, the button
+says so rather than failing silently — but the password becomes the only way in
+again, so check it works before relying on it.
 
 ### 3b. Order recording — set up the Stripe webhook
 

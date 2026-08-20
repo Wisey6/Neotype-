@@ -1,7 +1,7 @@
 /* ==========================================================================
    Neotype Studio - custom sticker studio
    Dark synthwave / glitch identity built on the brand kit
-   (Tailwind handles layout utilities; this file owns the identity)
+   This file owns the whole visual system — there is no CSS framework.
    ========================================================================== */
 
 :root {
