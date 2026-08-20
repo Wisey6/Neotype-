@@ -13,7 +13,7 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 | 3/4 | Option control | **On/off toggles only**, enforced server-side. No new finishes — blocked by per-option CSS |
 | 2 | Upload button | Not broken. Affordance problem — real button, and moves to last |
 | 10 | Field order | **Size → Qty → Finish → Shape → Background → Turnaround → Artwork** |
-| 6 | Socials | ✅ **BUILT** — footer links on all six pages + `sameAs`. Handles unverified |
+| 6 | Socials | ✅ **DONE** — all six pages + `sameAs`. Both handles confirmed by Ian |
 | 9 | Custom size + qty | Both free-entry, presets kept. **Switch stickers from inches to mm** while in there |
 
 
@@ -269,12 +269,30 @@ in them are not, and they still need his cost per cm² behind them.
   item open.
 - **BUILT 19 Aug 2026.** Footer links on all six pages, plus `sameAs` on the
   LocalBusiness schema. Handle given as `neotype` on both platforms.
-- **Not verified, and could not be.** Instagram returns the same logged-out wall
-  with `og:title = "Instagram"` for a handle that exists and one that does not, and
-  Facebook returns no og tags at all — so a 200 proves nothing either way, the same
-  trap as the Cloudflare 404s. Ian should click both links on the live site once.
-  `neotype` is a common word (a taxonomy term), so a bare handle is more likely
-  than most to belong to someone else.
+- **Facebook corrected 20 Aug.** It was never `facebook.com/neotype` — the real
+  page is `facebook.com/profile.php?id=61564794467856`. Exactly the failure the
+  flag was raised against, and it would have shipped a link to a stranger plus a
+  `sameAs` telling Google the business was somewhere it isn't.
+  - Two parameters were stripped from the URL as supplied: `&locale=mt_MT`, which
+    forces the page into Maltese for everyone who clicks it, and a trailing empty `#`.
+  - It is a numeric `profile.php` URL because no vanity handle is set. That works
+    fine for `sameAs`. If Ian ever claims a username, update both the footer and
+    the schema together.
+- **Instagram corrected 20 Aug too.** The real handle is `instagram.com/neotype.au`,
+  not `neotype`.
+
+**Both guesses were wrong.** The brief said "neotype from facebook and instagram",
+and neither platform used that: Facebook has no vanity handle at all and Instagram
+carries the `.au` suffix. Had the flag not been raised, the site would have shipped
+two links to strangers' profiles and a `sameAs` block telling Google the business
+was somewhere it isn't — which is worse than omitting `sameAs` entirely, because
+it is an assertion rather than a gap.
+
+Worth keeping as the general lesson: a social handle cannot be verified from a
+server. Instagram and Facebook both return `200` with a logged-out wall for
+handles that do not exist, so the only check that means anything is a person
+clicking the link. Ask for the URL from the address bar of the real profile;
+never infer it from a business name.
 
 ### Q9 — Custom size (W × H)
 - **Decision:** build it, and **switch stickers to millimetres** while doing so.
