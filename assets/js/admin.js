@@ -130,6 +130,74 @@
       '<span class="adm-stock-txt">' + (on ? "In stock" : "Hidden") + "</span></label>";
   }
 
+  /* ---- quantity price bands (stickers) -----------------------------------
+     Ian's model: a rate per cm² that steps down at quantities he chooses. Shown
+     in cents per cm² because that is the unit he wrote it in — a rate per m²
+     reads as a meaningless four-figure number to someone thinking in centimetres.
+
+     Off until he fills it in and ticks the box, so the site keeps pricing off the
+     existing curve until he has decided the numbers. */
+  var DEFAULT_BANDS = [
+    { from: 1, rate: 0.01858 }, { from: 20, rate: 0.01649 }, { from: 50, rate: 0.01352 },
+    { from: 100, rate: 0.01007 }, { from: 250, rate: 0.00865 },
+    { from: 500, rate: 0.0085 }, { from: 2000, rate: 0.0085 }
+  ];
+  var BAND_REF = { size: 3, finish: "vinyl-matte", shape: "die", turnaround: "standard" };
+
+  function bandsHtml() {
+    var on = !!(D.stickers && D.stickers.qtyBands && D.stickers.qtyBands.length);
+    var rows = (on ? D.stickers.qtyBands : DEFAULT_BANDS);
+    var html = '<h3 class="adm-sub">Quantity price bands</h3>' +
+      '<p class="adm-note adm-bandnote">A rate per cm² that steps down as the order grows. ' +
+      'Leave this off and pricing keeps using the existing sliding scale.</p>' +
+      '<label class="adm-stock adm-bandon' + (on ? "" : " is-off") + '">' +
+        '<input type="checkbox" id="admBandsOn"' + (on ? " checked" : "") + '>' +
+        '<span class="adm-stock-pill" aria-hidden="true"></span>' +
+        '<span class="adm-stock-txt">' + (on ? "Bands are pricing the shop" : "Using the sliding scale") + "</span></label>" +
+      '<div class="adm-table adm-bandtable"' + (on ? "" : ' data-dim="1"') + '>' +
+      '<div class="adm-tr adm-th adm-bandtr"><span>From quantity</span><span>Rate (¢ per cm²)</span>' +
+      '<span>3″ sticker</span><span>Order of that size</span></div>';
+    rows.forEach(function (b, i) {
+      html += '<div class="adm-tr adm-bandtr">' +
+        '<span><input type="number" min="1" step="1" data-band="' + i + '.from" value="' + b.from + '"></span>' +
+        '<span><input type="number" min="0" step="0.001" data-band="' + i + '.rate" value="' + (b.rate * 100).toFixed(3) + '"></span>' +
+        '<span class="adm-opt-ex" data-bandunit="' + i + '">—</span>' +
+        '<span class="adm-opt-ex" data-bandtotal="' + i + '">—</span>' +
+        "</div>";
+    });
+    html += "</div><p class=\"adm-bandwarn\" id=\"admBandWarn\" hidden></p>";
+    return html;
+  }
+
+  // live figures under the band table, recomputed on every keystroke
+  function refreshBands() {
+    var rows = D.stickers && D.stickers.qtyBands;
+    var using = rows && rows.length ? rows : DEFAULT_BANDS;
+    var probe = JSON.parse(JSON.stringify(D));
+    probe.stickers = probe.stickers || {};
+    probe.stickers.qtyBands = using;
+    var areaCm2 = Math.pow(BAND_REF.size * 2.54, 2);
+
+    using.forEach(function (b, i) {
+      var qty = Math.max(CORE.QTY_MIN, Math.round(b.from));
+      var q = CORE.priceStickers(Object.assign({}, BAND_REF, { qty: qty }), probe);
+      var u = root.querySelector('[data-bandunit="' + i + '"]');
+      var t = root.querySelector('[data-bandtotal="' + i + '"]');
+      if (u) u.textContent = q ? (q.unit * 100).toFixed(1) + "c each" : "—";
+      if (t) t.textContent = q ? "$" + q.total.toFixed(2) + " for " + qty : "—";
+    });
+
+    // where the next-break clamp will kick in — informational, not an error
+    var warn = document.getElementById("admBandWarn");
+    if (!warn) return;
+    var breaks = CORE.bandBreaks(CORE.bandsOf(probe, "stickers"), areaCm2);
+    if (!breaks.length) { warn.hidden = true; return; }
+    warn.hidden = false;
+    warn.textContent = "At " + breaks.map(function (b) { return b.from; }).join(", ") +
+      " the step down is big enough that buying one fewer would otherwise cost more. " +
+      "Those customers are charged the larger quantity's price instead, so nobody ever pays more for buying less.";
+  }
+
   function exSpan(prod, ex) { return '<b data-ex=\'' + JSON.stringify(Object.assign({ p: prod }, ex)) + "'>" + money(exPrice(prod, ex)) + "</b>"; }
   function optExSpan(prod, group, opt, anchor) {
     var ex = {}; for (var k in anchor) ex[k] = anchor[k]; ex[group] = opt;
@@ -250,6 +318,8 @@
         html += "</div>";
       });
 
+      if (prod === "stickers") html += bandsHtml();
+
       // advanced (rarely touched)
       if (C.advanced.length) {
         html += '<details class="adm-adv"><summary>Advanced settings (usually set once)</summary><div class="adm-money-row" style="margin-top:12px">';
@@ -269,6 +339,8 @@
     document.getElementById("admSave").addEventListener("click", save);
     document.getElementById("admReload").addEventListener("click", load);
     root.addEventListener("input", onEdit);
+    root.addEventListener("change", onEdit);   // checkboxes fire change, not input
+    refreshBands();
     // One delegated listener for the whole shell: the pipeline and tables
     // re-render on every change, so per-button handlers would be lost.
     root.addEventListener("click", function (e) {
@@ -814,6 +886,43 @@ function esc(s) {
     var t = e.target;
     if (t.dataset.path) { var v = parseFloat(t.value); if (isFinite(v)) set(t.dataset.path, v); }
     else if (t.dataset.mult) { var p = parseFloat(t.value); if (isFinite(p)) { var ks = t.dataset.mult.split("."); D[ks[0]][ks[1]][ks[2]] = 1 + p / 100; } }
+    else if (t.dataset.band) {
+      var parts = t.dataset.band.split("."), idx = parseInt(parts[0], 10), field = parts[1];
+      D.stickers = D.stickers || {};
+      if (!D.stickers.qtyBands || !D.stickers.qtyBands.length) {
+        D.stickers.qtyBands = JSON.parse(JSON.stringify(DEFAULT_BANDS));
+        var box = document.getElementById("admBandsOn");
+        if (box) box.checked = true;
+      }
+      var val = parseFloat(t.value);
+      if (isFinite(val)) {
+        // the editor speaks cents per cm²; the table stores dollars
+        D.stickers.qtyBands[idx][field] = field === "rate" ? val / 100 : Math.round(val);
+      }
+      refreshBands();
+      refreshPrices();
+      return;
+    }
+    else if (t.id === "admBandsOn") {
+      D.stickers = D.stickers || {};
+      if (t.checked) {
+        if (!D.stickers.qtyBands || !D.stickers.qtyBands.length) {
+          D.stickers.qtyBands = JSON.parse(JSON.stringify(DEFAULT_BANDS));
+        }
+      } else {
+        delete D.stickers.qtyBands;      // absent means the curve prices the shop
+      }
+      var lab = t.closest(".adm-stock"), tbl = root.querySelector(".adm-bandtable");
+      if (lab) {
+        lab.classList.toggle("is-off", !t.checked);
+        var lt = lab.querySelector(".adm-stock-txt");
+        if (lt) lt.textContent = t.checked ? "Bands are pricing the shop" : "Using the sliding scale";
+      }
+      if (tbl) { if (t.checked) tbl.removeAttribute("data-dim"); else tbl.setAttribute("data-dim", "1"); }
+      refreshBands();
+      refreshPrices();
+      return;
+    }
     else if (t.dataset.off) {
       D.off = D.off || {};
       if (t.checked) delete D.off[t.dataset.off];
