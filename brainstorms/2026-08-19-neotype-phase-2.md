@@ -13,7 +13,7 @@ Date: 2026-08-19 · Goal: turn Ian's nine-point feedback into a scoped, buildabl
 | 3/4 | Option control | **On/off toggles only**, enforced server-side. No new finishes — blocked by per-option CSS |
 | 2 | Upload button | Not broken. Affordance problem — real button, and moves to last |
 | 10 | Field order | **Size → Qty → Finish → Shape → Background → Turnaround → Artwork** |
-| 6 | Socials | Footer links **plus `sameAs` in the LocalBusiness schema** |
+| 6 | Socials | ✅ **BUILT** — footer links on all six pages + `sameAs`. Handles unverified |
 | 9 | Custom size + qty | Both free-entry, presets kept. **Switch stickers from inches to mm** while in there |
 
 
@@ -267,8 +267,14 @@ in them are not, and they still need his cost per cm² behind them.
   Google's local ranking uses to confirm a business is real. Pairs directly with
   the Google Business Profile (task #25), which is still the highest-leverage SEO
   item open.
-- **Flag:** the actual profile URLs → Ian. Do not guess or link a handle that
-  might not be his.
+- **BUILT 19 Aug 2026.** Footer links on all six pages, plus `sameAs` on the
+  LocalBusiness schema. Handle given as `neotype` on both platforms.
+- **Not verified, and could not be.** Instagram returns the same logged-out wall
+  with `og:title = "Instagram"` for a handle that exists and one that does not, and
+  Facebook returns no og tags at all — so a 200 proves nothing either way, the same
+  trap as the Cloudflare 404s. Ian should click both links on the live site once.
+  `neotype` is a common word (a taxonomy term), so a bare handle is more likely
+  than most to belong to someone else.
 
 ### Q9 — Custom size (W × H)
 - **Decision:** build it, and **switch stickers to millimetres** while doing so.
@@ -344,7 +350,6 @@ the same markup twice and testing it twice. It belongs in the first build group.
 ## Open flags (pending input)
 - Which device/browser was Ian on when he couldn't find the upload button? → Ian
 - Who writes the 5–8 guides, and who checks them for print accuracy → Tyler + Ian
-- Instagram and Facebook profile URLs → Ian
 - Minimum and maximum sticker dimensions the cutter can handle (mm, per axis) → Ian
 - Quantity above which an order should go to a human instead of Stripe → Ian
 - Rate per cm² for each of the seven quantity bands → Ian

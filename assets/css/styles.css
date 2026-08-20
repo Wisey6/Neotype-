@@ -1048,3 +1048,12 @@ section { position: relative; }
   font-size: .68rem; color: var(--muted-2); text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ---- social links in the footer ----------------------------------------
+   rel="me" as well as noopener: it is the microformat that says "this profile
+   is the same entity as this site", and it works with the sameAs in the
+   LocalBusiness schema rather than duplicating it. */
+.footer-social { display: inline-flex; gap: 18px; align-items: center; }
+.footer-social a { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); transition: color .15s; }
+.footer-social a:hover { color: var(--teal); }
+.footer-social svg { flex: none; }
