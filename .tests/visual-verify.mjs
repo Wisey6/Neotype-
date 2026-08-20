@@ -65,7 +65,7 @@ async function page(path, w = 1440, h = 900) {
   check("brand block gone", !m.brand);
   check('no "15% off" anywhere', !m.fifteen);
   check("footer has 3 columns", m.cols.length === 3 && m.cssCols === 3, m.cols.join(", "));
-  await p.screenshot({ path: `${OUT}/03-footer.png` });
+  if (OUT) await p.screenshot({ path: `${OUT}/03-footer.png` });
   await ctx.close();
 }
 
@@ -96,7 +96,7 @@ async function page(path, w = 1440, h = 900) {
   console.log("\n[ mobile header ]");
   check("logo is 72px on mobile", m.logoH === 72, `${m.logoH}px`);
   check("header under 20% of the screen", m.pctOfScreen < 20, `${m.navH}px = ${m.pctOfScreen}% of viewport`);
-  await p.screenshot({ path: `${OUT}/02-home-header-mobile.png` });
+  if (OUT) await p.screenshot({ path: `${OUT}/02-home-header-mobile.png` });
   await ctx.close();
 }
 

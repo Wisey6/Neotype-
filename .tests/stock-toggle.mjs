@@ -68,7 +68,7 @@ console.log("\n[ /admin stock switch ]");
   check("switch is now unchecked", !(await p.locator(sel).isChecked()));
   check("label reads Hidden", (await label.locator(".adm-stock-txt").innerText()) === "Hidden");
   check("row dims to show it is off", await p.locator('.adm-tr-off:has([data-off="stickers.finish.holographic"])').count() === 1);
-  await p.screenshot({ path: `${OUT}/07-admin-stock.png` });
+  if (OUT) await p.screenshot({ path: `${OUT}/07-admin-stock.png` });
   await p.click("#admSave"); await p.waitForTimeout(500);
   check("save payload carries the off flag", !!(saved && saved.off && saved.off["stickers.finish.holographic"] === true),
         saved ? JSON.stringify(saved.off) : "no POST seen");
@@ -91,7 +91,7 @@ console.log("\n[ customizer hides it ]");
   });
   check("holographic button hidden", m.holoHidden);
   check("the other six remain", m.glossVisible && m.visibleCount === 6, m.visibleCount + " visible");
-  await p.screenshot({ path: `${OUT}/08-customizer-stock.png` });
+  if (OUT) await p.screenshot({ path: `${OUT}/08-customizer-stock.png` });
   await ctx.close();
 }
 
