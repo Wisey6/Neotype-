@@ -899,12 +899,25 @@ export const onRequest = async ({ request, env }) => {
     if (!env.NEOTYPE) return json({ [field]: [] });
     const prefix = route === "orders" ? "order:" : "enquiry:";
     const list = await env.NEOTYPE.list({ prefix });
-    const names = list.keys.map((k) => k.name).sort().reverse().slice(0, 100);
+    const all = list.keys.map((k) => k.name).sort().reverse();
+    /* Each record is a separate KV read, so the whole history can't be fetched
+       on every dashboard load. The cap is reported rather than applied quietly:
+       an order that vanishes from the list with no explanation looks exactly
+       like an order that was lost. */
+    const LIMIT = 200;
+    const names = all.slice(0, LIMIT);
     const items = await Promise.all(names.map((n) => env.NEOTYPE.get(n, { type: "json" })));
     // Orders carry their own key so the dashboard can move them along the
     // pipeline without having to reconstruct it (and get it subtly wrong).
     const out = items.map((it, i) => (it && field === "orders" ? Object.assign({ key: names[i] }, it) : it));
-    return json({ [field]: out.filter(Boolean) });
+    return json({
+      [field]: out.filter(Boolean),
+      total: all.length,
+      capped: all.length > LIMIT,
+      // R2 keeps artwork indefinitely; the KV fallback expires it at 90 days.
+      // The dashboard can only warn about that if it knows which is in use.
+      ...(field === "orders" ? { artExpires: env.ART ? 0 : ART_TTL_KV / 86400 } : {}),
+    });
   }
 
   // --- move an order along Ian's pipeline (admin) ---

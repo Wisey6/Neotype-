@@ -420,10 +420,25 @@
       if (nav) { showView(nav.getAttribute("data-view")); return; }
       var adv = t.closest && t.closest(".pipe-adv");
       if (adv) { advance(adv.getAttribute("data-key"), adv.getAttribute("data-stage"), adv); return; }
+      if (t.closest && t.closest("#admOrderQX")) { ORDER_Q = ""; renderAll(); return; }
       if (t.closest && t.closest("#admSignOut")) { signOut(); return; }
       if (t.closest && t.closest("#admManualSave")) { saveManual(t.closest("#admManualSave")); return; }
       var jump = t.closest && t.closest("[data-goto]");
       if (jump) showView(jump.getAttribute("data-goto"));
+    });
+
+    /* Same reason the clicks are delegated: the card is rebuilt on every
+       keystroke, which would otherwise take the focus and the caret with it. */
+    root.addEventListener("input", function (e) {
+      var box = e.target.closest && e.target.closest("#admOrderQ");
+      if (!box) return;
+      ORDER_Q = box.value;
+      var caret = box.selectionStart;
+      renderAll();
+      var fresh = document.getElementById("admOrderQ");
+      if (!fresh) return;
+      fresh.focus();
+      try { fresh.setSelectionRange(caret, caret); } catch (_) { /* search inputs refuse this in Safari */ }
     });
     showView(view);
     loadOrders();
@@ -845,17 +860,58 @@
   }
 
   // ---- orders -------------------------------------------------------------
+  var PAY_LABEL = { paid: "Paid", pending: "Awaiting payment", failed: "Payment failed" };
+  var ORDER_META = { total: 0, capped: false, artExpires: 0 };
+  var ORDER_Q = "";
+
+  /* Free-text search over everything printed on the card. Ian's actual question
+     is never "show me orders 40 to 60" — it is "where's that job for Kelly", or
+     a customer quoting a reference down the phone. So one box, matching whatever
+     he happens to remember: reference, name, email, size, finish, stage. */
+  function orderMatches(o, q) {
+    if (!q) return true;
+    // Index the words Ian can actually see on the card, not the internal ones.
+    // "pending" is stored; "Awaiting payment" is what he reads and would type.
+    var st = o.status || "paid";
+    var hay = [o.ref, o.name, o.email, o.product, o.size, o.finish, o.shape,
+               o.turnaround, o.quantity, STAGE_LABEL[o.stage || "new"],
+               st, PAY_LABEL[st] || st,
+               o.amount ? "$" + (o.amount / 100).toFixed(2) : ""]
+      .filter(Boolean).join(" ").toLowerCase();
+    // Every word must appear somewhere, so "kelly holo" narrows rather than widens.
+    return q.toLowerCase().split(/\s+/).every(function (w) { return hay.indexOf(w) !== -1; });
+  }
+
   function loadOrders() {
     fetch(API + "/orders", { headers: authHeaders() })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         ORDERS = (d && d.orders) || [];
+        ORDER_META = { total: (d && d.total) || ORDERS.length, capped: !!(d && d.capped),
+                       artExpires: (d && d.artExpires) || 0 };
         renderAll();
       })
       .catch(function () {
         var h = document.getElementById("admToday");
         if (h) h.textContent = "Couldn't load your orders — check your connection and reload.";
       });
+  }
+
+  /* Without an R2 bucket bound, uploaded artwork lives in KV and is deleted
+     after 90 days. That is fine for a job printed the same week and quietly
+     fatal for a reprint six months later — the order is still in the list, the
+     download button still looks like a button, and the file is gone. The server
+     reports which backend is in use so this warning only appears when true. */
+  function artWarn(o) {
+    var days = ORDER_META.artExpires;
+    if (!days) return "";                       // R2: kept indefinitely
+    var age = (Date.now() - new Date(o.when).getTime()) / 86400000;
+    if (!isFinite(age)) return "";
+    var left = Math.ceil(days - age);
+    if (left > 21) return "";                   // three weeks' notice is plenty
+    return left <= 0
+      ? '<span class="adm-art-gone">This file has expired — ask the customer to send it again</span>'
+      : '<span class="adm-art-soon">Deleted in ' + left + (left === 1 ? " day" : " days") + " — save a copy now</span>";
   }
 
   /* The full list, under the pipeline: every order including unpaid ones, with
@@ -866,16 +922,16 @@
         '<p class="dash-thin">Nothing yet. Paid orders appear here automatically with the ' +
         "customer's artwork attached. Stripe stays the record for the money itself.</p></div>";
     }
-    var rows = list.map(function (o) {
+    var shown = list.filter(function (o) { return orderMatches(o, ORDER_Q); });
+    var rows = shown.map(function (o) {
       var item = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ") || o.product || "Order";
       // Orders recorded before payment states existed have no `status`, and only
       // paid orders were ever stored back then — so treat it as paid.
       var st = o.status || "paid";
       var paid = st === "paid";
       var d = paid ? dueInfo(o) : null;
-      var pill = paid ? "" : st === "pending"
-        ? '<span class="adm-ord-pill is-pending">Awaiting payment</span>'
-        : '<span class="adm-ord-pill is-failed">Payment failed</span>';
+      var pill = paid ? "" :
+        '<span class="adm-ord-pill is-' + esc(st) + '">' + esc(PAY_LABEL[st] || st) + "</span>";
       return '<div class="adm-enq adm-ord' + (paid ? "" : " adm-ord--" + esc(st)) + '">' +
         '<div class="adm-enq-top"><b>' + esc(item) + "</b>" + pill +
         '<span class="adm-ord-amt">$' + (o.amount / 100).toFixed(2) + " " + esc(o.currency || "AUD") + "</span>" +
@@ -894,13 +950,31 @@
               ? "⏳ Money not cleared yet — <b>do not print</b>. This updates itself when the bank confirms."
               : "✕ Payment failed — <b>do not print</b>. Kept here so you know it happened.") + "</p>"
           : /^https?:\/\//.test(o.artwork || "")
-            ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a></p>'
+            ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a>' + artWarn(o) + "</p>"
             : '<p class="adm-ord-art adm-ord-noart">⚠ No artwork file — chase the customer for it</p>') +
         "</div>";
     }).join("");
+
+    var count = ORDER_Q
+      ? shown.length + " of " + list.length + " match “" + esc(ORDER_Q) + "”"
+      : list.length + " total, newest first";
+
     return '<div class="dash-card"><div class="dash-card-h"><h2>All orders</h2>' +
-      '<span class="adm-note">' + list.length + " total, newest first</span></div>" +
-      '<div class="adm-enq-list">' + rows + "</div></div>";
+      '<span class="adm-note">' + count + "</span></div>" +
+      '<div class="adm-search"><input type="search" id="admOrderQ" placeholder="Search by reference, name, email, size…" ' +
+        'aria-label="Search orders" value="' + esc(ORDER_Q) + '">' +
+        (ORDER_Q ? '<button type="button" class="adm-search-x" id="admOrderQX" aria-label="Clear search">Clear</button>' : "") +
+      "</div>" +
+      (ORDER_Q && !shown.length
+        ? '<p class="dash-thin">Nothing matches that. Try just the reference, or part of the customer\'s email.</p>'
+        : '<div class="adm-enq-list">' + rows + "</div>") +
+      // Never let the list end without saying whether it is the whole list.
+      (ORDER_META.capped
+        ? '<p class="adm-note adm-cap">Showing the most recent ' + list.length + " of " +
+          ORDER_META.total + " orders. Older ones are still safe in Stripe and in storage — " +
+          "this list is capped so the dashboard stays quick.</p>"
+        : "") +
+      "</div>";
   }
 
   // ---- enquiry inbox ------------------------------------------------------

@@ -209,3 +209,22 @@
 .adm-imp-down { color: var(--teal); }
 .adm-imp-flat { color: var(--muted); }
 @media (max-width: 720px) { .adm-bandtr { grid-template-columns: 1fr 1fr; } .adm-imptr { grid-template-columns: 1.3fr 1fr .7fr; } .adm-imptr span:nth-child(2) { display: none; } }
+
+/* Order search. Ian's question is "where's that job for Kelly", never "show me
+   rows 40-60", so it's one box over everything printed on the card. */
+.adm-search { display: flex; gap: 10px; align-items: center; margin: 0 0 14px; }
+.adm-search input {
+  flex: 1; min-width: 0; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--line-soft); background: var(--bg-3); color: var(--text);
+  font-family: var(--font-round); font-size: 14px;
+}
+.adm-search input:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.22); }
+.adm-search-x {
+  flex: none; background: none; border: 1px solid var(--line-soft); border-radius: 10px;
+  padding: 9px 14px; color: var(--muted); font-family: var(--font-round); font-size: 13px; cursor: pointer;
+}
+.adm-search-x:hover { color: var(--text); border-color: var(--line-strong); }
+.adm-cap { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.adm-art-soon, .adm-art-gone { display: inline-block; margin-left: 10px; font-size: 12.5px; font-family: var(--font-round); }
+.adm-art-soon { color: #ffb454; }
+.adm-art-gone { color: #ff6b6b; }
