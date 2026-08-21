@@ -14,6 +14,7 @@ Disallow: /success.html
 # Internal documents and test suites. Pages publishes the whole repository, so
 # these paths exist; _redirects 301s them to the homepage, and this stops a
 # crawler asking in the first place. Adding a new internal file? Add it in both.
+Disallow: /handover.html
 Disallow: /README.md
 Disallow: /CLOUDFLARE.md
 Disallow: /PRICING.md

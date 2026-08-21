@@ -1,0 +1,533 @@
+<title>Running Neotype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;800&family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+:root {
+  /* Neutrals biased cool, toward the studio's own ink rather than a flat grey */
+  --paper:      #F7F8FA;
+  --card:       #FFFFFF;
+  --ink:        #151B22;
+  --ink-2:      #3C4855;
+  --muted:      #64727F;
+  --rule:       #E1E6EC;
+  --rule-2:     #CDD5DE;
+
+  /* Brand pair, darkened until they hold on paper */
+  --teal:       #00807A;
+  --teal-soft:  #E4F5F3;
+  --purple:     #5B3BB0;
+  --purple-soft:#EDE8FA;
+
+  /* Semantic, deliberately separate from the accent */
+  --warn:       #A9500F;
+  --warn-soft:  #FBEFE3;
+  --stop:       #A32020;
+  --stop-soft:  #FBEAEA;
+
+  --shadow: 0 1px 2px rgba(21,27,34,.05), 0 8px 24px -12px rgba(21,27,34,.14);
+  --measure: 68ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #12171D;
+    --card:       #1A212A;
+    --ink:        #E9EFF3;
+    --ink-2:      #B9C6D0;
+    --muted:      #8496A3;
+    --rule:       #2A343F;
+    --rule-2:     #3A4753;
+    --teal:       #2FD9D2;
+    --teal-soft:  #0E2E2D;
+    --purple:     #A88BF0;
+    --purple-soft:#231C3A;
+    --warn:       #F0A868;
+    --warn-soft:  #2E2115;
+    --stop:       #F08A8A;
+    --stop-soft:  #2E1717;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:      #12171D;
+  --card:       #1A212A;
+  --ink:        #E9EFF3;
+  --ink-2:      #B9C6D0;
+  --muted:      #8496A3;
+  --rule:       #2A343F;
+  --rule-2:     #3A4753;
+  --teal:       #2FD9D2;
+  --teal-soft:  #0E2E2D;
+  --purple:     #A88BF0;
+  --purple-soft:#231C3A;
+  --warn:       #F0A868;
+  --warn-soft:  #2E2115;
+  --stop:       #F08A8A;
+  --stop-soft:  #2E1717;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Literata", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---- masthead ---------------------------------------------------------- */
+.masthead {
+  padding: 64px 0 40px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 48px;
+}
+.eyebrow {
+  font-family: "Rubik", system-ui, sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--teal); margin: 0 0 14px;
+}
+h1 {
+  font-family: "Rubik", system-ui, sans-serif;
+  font-weight: 800; font-size: clamp(2.4rem, 6vw, 3.6rem);
+  line-height: 1.02; letter-spacing: -.025em; margin: 0 0 18px;
+  text-wrap: balance;
+}
+.standfirst {
+  font-size: 1.14rem; color: var(--ink-2); max-width: var(--measure);
+  margin: 0; text-wrap: pretty;
+}
+
+/* ---- sections ---------------------------------------------------------- */
+section { margin: 0 0 60px; scroll-margin-top: 24px; }
+h2 {
+  font-family: "Rubik", system-ui, sans-serif;
+  font-weight: 700; font-size: 1.6rem; letter-spacing: -.015em;
+  margin: 0 0 6px; text-wrap: balance;
+}
+h2 .n {
+  font-family: "IBM Plex Mono", monospace; font-size: .78rem; font-weight: 600;
+  color: var(--muted); margin-right: 12px; vertical-align: .28em;
+}
+h3 {
+  font-family: "Rubik", system-ui, sans-serif;
+  font-weight: 600; font-size: 1.06rem; letter-spacing: -.005em;
+  margin: 30px 0 8px;
+}
+p { max-width: var(--measure); margin: 0 0 16px; text-wrap: pretty; }
+.sub { color: var(--muted); font-size: .96rem; max-width: var(--measure); margin: 0 0 24px; }
+a { color: var(--teal); text-underline-offset: 3px; }
+
+ul, ol { max-width: var(--measure); padding-left: 22px; margin: 0 0 16px; }
+li { margin-bottom: 8px; }
+
+code, .mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .88em;
+  background: var(--teal-soft); color: var(--ink);
+  padding: 2px 6px; border-radius: 4px;
+}
+
+/* ---- the pipeline: real sequence, so it gets a real timeline ----------- */
+.pipeline { display: grid; gap: 0; margin: 26px 0 8px; max-width: 760px; }
+.stage {
+  display: grid; grid-template-columns: 40px 1fr; gap: 20px;
+  padding: 0 0 26px; position: relative;
+}
+.stage:not(:last-child)::before {
+  content: ""; position: absolute; left: 19px; top: 34px; bottom: 0;
+  width: 2px; background: var(--rule-2);
+}
+.dot {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--card); border: 2px solid var(--teal); color: var(--teal);
+  display: grid; place-items: center; position: relative; z-index: 1;
+  font-family: "Rubik", system-ui, sans-serif; font-weight: 700; font-size: .92rem;
+}
+.stage-b h4 {
+  font-family: "Rubik", system-ui, sans-serif; font-weight: 600;
+  font-size: 1.02rem; margin: 8px 0 4px;
+}
+.stage-b p { margin: 0 0 6px; font-size: .97rem; }
+.btn-name {
+  display: inline-block; font-family: "Rubik", system-ui, sans-serif;
+  font-size: .78rem; font-weight: 600; letter-spacing: .02em;
+  background: var(--purple-soft); color: var(--purple);
+  padding: 3px 10px; border-radius: 100px; border: 1px solid transparent;
+}
+
+/* ---- callouts ---------------------------------------------------------- */
+.note {
+  border-left: 3px solid var(--teal); background: var(--teal-soft);
+  padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 22px 0;
+  max-width: var(--measure);
+}
+.note.warn  { border-color: var(--warn); background: var(--warn-soft); }
+.note.stop  { border-color: var(--stop); background: var(--stop-soft); }
+.note p:last-child { margin-bottom: 0; }
+.note-h {
+  font-family: "Rubik", system-ui, sans-serif; font-weight: 600;
+  font-size: .82rem; letter-spacing: .06em; text-transform: uppercase;
+  margin: 0 0 6px; color: var(--teal);
+}
+.note.warn .note-h { color: var(--warn); }
+.note.stop .note-h { color: var(--stop); }
+
+/* ---- cards ------------------------------------------------------------- */
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin: 24px 0; }
+.card {
+  background: var(--card); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 20px 22px; box-shadow: var(--shadow);
+}
+.card h4 {
+  font-family: "Rubik", system-ui, sans-serif; font-weight: 600;
+  font-size: 1rem; margin: 0 0 6px;
+}
+.card p { font-size: .94rem; margin: 0; color: var(--ink-2); }
+
+/* ---- tables ------------------------------------------------------------ */
+.scroll { overflow-x: auto; margin: 22px 0; }
+table {
+  border-collapse: collapse; width: 100%; min-width: 480px;
+  font-family: "Rubik", system-ui, sans-serif; font-size: .93rem;
+}
+th {
+  text-align: left; font-weight: 600; font-size: .76rem; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 0 16px 10px 0; border-bottom: 1px solid var(--rule-2);
+}
+td {
+  padding: 12px 16px 12px 0; border-bottom: 1px solid var(--rule);
+  vertical-align: top; color: var(--ink-2);
+}
+td:first-child { color: var(--ink); font-weight: 500; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; }
+.up   { color: var(--stop); font-weight: 600; }
+.down { color: var(--teal); font-weight: 600; }
+
+/* ---- the decision box -------------------------------------------------- */
+.decide {
+  border: 2px solid var(--purple); border-radius: 12px;
+  padding: 26px 28px; margin: 28px 0; background: var(--card);
+}
+.decide .note-h { color: var(--purple); }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 52px 0; }
+
+footer {
+  border-top: 2px solid var(--ink); padding-top: 24px; margin-top: 60px;
+  font-family: "Rubik", system-ui, sans-serif; font-size: .88rem; color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 18px 64px; }
+  .masthead { padding: 40px 0 30px; margin-bottom: 36px; }
+  .stage { grid-template-columns: 32px 1fr; gap: 14px; }
+  .dot { width: 32px; height: 32px; font-size: .82rem; }
+  .stage:not(:last-child)::before { left: 15px; top: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Neotype Studio · Owner's guide</p>
+  <h1>Running Neotype</h1>
+  <p class="standfirst">Everything the website does on its own, everything it needs you to do, and what to
+  check when something looks wrong. No developer required for any of it.</p>
+</header>
+
+<section id="whatyouhave">
+  <h2><span class="n">01</span>What you have</h2>
+  <p class="sub">Four things, and they're already talking to each other.</p>
+
+  <div class="cards">
+    <div class="card">
+      <h4>The website</h4>
+      <p><span class="mono">neotype.au</span> — stickers, banners and corflute, each with a live price
+      calculator. Customers design, upload their art and pay by card without emailing anyone.</p>
+    </div>
+    <div class="card">
+      <h4>Your dashboard</h4>
+      <p><span class="mono">neotype.au/admin</span> — orders, enquiries and every price on the site.
+      It isn't linked from anywhere and search engines are told to skip it.</p>
+    </div>
+    <div class="card">
+      <h4>Stripe</h4>
+      <p>Takes the money and is the record of it. Refunds, payouts and disputes all live in Stripe,
+      not in your dashboard.</p>
+    </div>
+    <div class="card">
+      <h4>Your inbox</h4>
+      <p>Every order and enquiry lands in <span class="mono">kiko@neotype.au</span>. Hitting reply
+      writes back to the customer as Neotype.</p>
+    </div>
+  </div>
+
+  <h3>What happens the moment someone pays</h3>
+  <p>Without you touching anything: the order is recorded with their artwork attached, you get an email,
+  and the customer gets their own confirmation saying a real person will send a proof. That's the
+  promise the site makes on your behalf — the rest of this guide is you keeping it.</p>
+</section>
+
+<hr>
+
+<section id="signin">
+  <h2><span class="n">02</span>Getting into the dashboard</h2>
+  <p class="sub">Two ways in, so forgetting the password is an inconvenience rather than a phone call.</p>
+
+  <h3>The password</h3>
+  <p>Go to <span class="mono">neotype.au/admin</span> and type it in. Tick <strong>Stay signed in on this
+  device</strong> on your own phone or laptop and you won't be asked again. Don't tick it on anything
+  shared — anyone who picks that device up is straight into your orders.</p>
+
+  <h3>If you've forgotten it</h3>
+  <p>Click <strong>Forgotten the password? Email me a code instead</strong>. A six-digit code arrives at
+  your studio inbox, you type it in, and you're signed in for thirty days.</p>
+  <p>The code only ever goes to your own address — nobody can ask the site to send it somewhere else.
+  It expires after ten minutes, works once, and dies after five wrong guesses.</p>
+
+  <div class="note warn">
+    <p class="note-h">Worth doing once, today</p>
+    <p>Try the emailed code <em>before</em> you need it. It's the only way back in if the password is
+    ever lost, and five minutes now beats discovering a problem on a Friday afternoon.</p>
+  </div>
+</section>
+
+<hr>
+
+<section id="pipeline">
+  <h2><span class="n">03</span>Working an order</h2>
+  <p class="sub">Every paid order moves through four stages. The dashboard shows which stage each job is
+  at and how long it has left, based on the turnaround the customer actually paid for.</p>
+
+  <div class="pipeline">
+    <div class="stage">
+      <div class="dot">1</div>
+      <div class="stage-b">
+        <h4>New</h4>
+        <p>Money cleared, artwork attached, nothing done yet. Download the print file and check it.
+        When the proof is away, press <span class="btn-name">Send proof</span>.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="dot">2</div>
+      <div class="stage-b">
+        <h4>Proof sent</h4>
+        <p>Waiting on the customer. When they say yes, press <span class="btn-name">Mark approved</span>.
+        Nothing goes to the press before this.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="dot">3</div>
+      <div class="stage-b">
+        <h4>Approved</h4>
+        <p>Cleared to print. Once it's in the post, press <span class="btn-name">Mark shipped</span>.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="dot">4</div>
+      <div class="stage-b">
+        <h4>Shipped</h4>
+        <p>Done. It drops out of your open work and stays in the list.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Orders that aren't paid</h3>
+  <p>Most cards clear instantly. A few payment methods take days to settle, so an order can appear
+  before the money has. Those are marked and <strong>have no download button at all</strong> — the file
+  is deliberately out of reach so a job can't be printed on habit.</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>What you see</th><th>What it means</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>Nothing marked</td><td>Paid and cleared</td><td>Work it normally</td></tr>
+        <tr><td><strong>Awaiting payment</strong></td><td>With the customer's bank</td><td>Wait. It updates itself when the money lands</td></tr>
+        <tr><td><strong>Payment failed</strong></td><td>Didn't go through</td><td>Nothing to print. Kept visible so you know it happened</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Finding an old job</h3>
+  <p>The search box above the order list takes anything you remember — a reference, a customer's name,
+  part of their email, a size, a finish. Typing two things narrows it rather than widening it, so
+  <span class="mono">kelly holo</span> finds Kelly's holographic job and nothing else.</p>
+</section>
+
+<hr>
+
+<section id="artwork">
+  <h2><span class="n">04</span>Artwork files</h2>
+
+  <div class="note stop">
+    <p class="note-h">The one thing that bites later</p>
+    <p>Uploaded artwork is kept for <strong>90 days</strong>, then deleted. That's fine for a job you
+    print this week and a problem for a reprint six months on.</p>
+    <p><strong>Save the file with the job when you download it.</strong> Treat the website as the
+    delivery van, not the filing cabinet.</p>
+  </div>
+
+  <p>The dashboard warns you three weeks out, on the order itself, and tells you how many days are left.
+  Past the deadline it says the file has gone and to ask the customer to send it again.</p>
+  <p>If a customer paid but never uploaded anything, the order says so plainly — chase them for it
+  rather than guessing.</p>
+</section>
+
+<hr>
+
+<section id="prices">
+  <h2><span class="n">05</span>Changing your prices</h2>
+  <p class="sub">The <strong>Pricing</strong> tab. Everything is editable, every figure updates live as
+  you type, and nothing takes effect until you press Save.</p>
+
+  <p>Change a number and the example prices beside it move immediately, so you can see what a real order
+  would cost before committing. Save, and the website charges the new price on the very next order —
+  there's no waiting and nobody to ask.</p>
+
+  <h3>When you can't print something</h3>
+  <p>Every finish, shape and turnaround has an on/off switch. Turn one off — the laminate ran out, the
+  cutter's down — and it disappears from the website within seconds. It also becomes genuinely
+  unbuyable: even a customer with the page already open can't order it.</p>
+  <p>Turn it back on when stock lands. Nothing else to do.</p>
+</section>
+
+<hr>
+
+<section id="bands">
+  <h2><span class="n">06</span>Volume pricing — your decision</h2>
+  <p class="sub">Built, loaded with sensible numbers, and switched off until you say otherwise.</p>
+
+  <p>Today's pricing charges by area, which is why a 50 mm sticker costs nearly the same each at 2,000
+  as at 100 — the thing you flagged. The alternative is a flat rate per cm² that steps down as the order
+  grows, and it's sitting in the Pricing tab ready to go:</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Order size</th><th class="num">Rate</th><th>Works out at</th></tr></thead>
+      <tbody>
+        <tr><td>1–19</td><td class="num">2.40¢/cm²</td><td>$240 per m²</td></tr>
+        <tr><td>20–49</td><td class="num">1.80¢</td><td>$180 per m²</td></tr>
+        <tr><td>50–99</td><td class="num">1.40¢</td><td>$140 per m²</td></tr>
+        <tr><td>100–249</td><td class="num">1.10¢</td><td>$110 per m² — your commonest order</td></tr>
+        <tr><td>250–499</td><td class="num">0.85¢</td><td>$85 per m²</td></tr>
+        <tr><td>500–1999</td><td class="num">0.70¢</td><td>$70 per m²</td></tr>
+        <tr><td>2000+</td><td class="num">0.60¢</td><td>$60 per m² — the floor</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Against roughly $20 per m² of vinyl, ink and machine time, the bottom band still leaves about
+  two-thirds gross. It's a volume price, not a giveaway.</p>
+
+  <div class="note warn">
+    <p class="note-h">Read this before you switch it on</p>
+    <p>A rate per cm² can only see <em>how much vinyl</em> an order uses. It can't tell a 2″ sticker from
+    a 5″ one. So switching over makes small stickers cheaper and large ones in small quantities
+    <strong>dearer</strong>:</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Order</th><th class="num">Now</th><th class="num">With bands</th><th class="num">Change</th></tr></thead>
+      <tbody>
+        <tr><td>100 × 2″</td><td class="num">$40</td><td class="num">$28</td><td class="num down">−30%</td></tr>
+        <tr><td>500 × 3″</td><td class="num">$248</td><td class="num">$203</td><td class="num down">−18%</td></tr>
+        <tr><td>2,000 × 3″</td><td class="num">$987</td><td class="num">$697</td><td class="num down">−29%</td></tr>
+        <tr><td>100 × 4″</td><td class="num">$103</td><td class="num">$114</td><td class="num up">+11%</td></tr>
+        <tr><td>100 × 5″</td><td class="num">$145</td><td class="num">$177</td><td class="num up">+22%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The Pricing tab shows this same before-and-after table for a dozen real orders, recalculating as
+  you edit. Nothing changes on the website until you tick the switch and press Save.</p>
+
+  <div class="decide">
+    <p class="note-h">Your call</p>
+    <p><strong>Leave it off</strong> and prices stay exactly as they are.</p>
+    <p><strong>Switch it on</strong> and you undercut the market on small stickers, where you were
+    least competitive, and charge properly for the vinyl a big sticker actually uses.</p>
+    <p><strong>Or split the difference</strong> — drop the <span class="mono">100–249</span> band to
+    <span class="mono">1.00</span> and the 4″ rise disappears. One number, and the table beneath shows
+    you the result before you save.</p>
+  </div>
+
+  <h3>How much a customer can order</h3>
+  <p>Anything from 15 to 5,000 stickers, typed in freely rather than picked from a list. Above 5,000 the
+  site tells them to ask you for a trade price — that's about half a roll of vinyl and worth a
+  conversation rather than a card payment.</p>
+</section>
+
+<hr>
+
+<section id="wrong">
+  <h2><span class="n">07</span>When something looks wrong</h2>
+
+  <div class="cards">
+    <div class="card">
+      <h4>No order email arrived</h4>
+      <p>Check the dashboard first. If the order is there, the sale is safe and only the email failed —
+      check your junk folder before worrying.</p>
+    </div>
+    <div class="card">
+      <h4>A customer says they paid and got nothing</h4>
+      <p>Search their email in the order list. If it's marked <strong>Awaiting payment</strong>, their
+      bank hasn't released it yet — tell them not to pay again.</p>
+    </div>
+    <div class="card">
+      <h4>The price on screen looks wrong</h4>
+      <p>Open the Pricing tab and read the example figures. What they show is exactly what a customer's
+      card is charged — the two cannot disagree.</p>
+    </div>
+    <div class="card">
+      <h4>Money questions</h4>
+      <p>Refunds, payouts, disputes and receipts are all Stripe, not the dashboard. Stripe is the record
+      for anything involving money.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <p class="note-h">The rule of thumb</p>
+    <p>If an order is in your dashboard, the job exists and the customer's money is accounted for.
+    Everything else — an email that didn't arrive, a page that looked odd — is cosmetic by comparison
+    and can wait until Monday.</p>
+  </div>
+</section>
+
+<hr>
+
+<section id="housekeeping">
+  <h2><span class="n">08</span>Two things to do this week</h2>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Set a password you'll keep</h4>
+      <p>Pick the dashboard password, write it somewhere safe, then sign in once with the emailed code
+      to prove that route works too.</p>
+    </div>
+    <div class="card">
+      <h4>Change your email password</h4>
+      <p>The <span class="mono">kiko@neotype.au</span> password was shared during the build. Change it
+      in Microsoft 365 and it's yours alone again.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Neotype Studio · Brisbane · prepared at handover, August 2026</p>
+</footer>
+
+</div>
