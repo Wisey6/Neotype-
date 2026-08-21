@@ -730,7 +730,14 @@
       '<div class="an-stats">' +
         analyticsStat("Revenue, last 30 days", money0(cents30), last30.length + (last30.length === 1 ? " order" : " orders")) +
         analyticsStat("Average order", money0(avg), "across " + paid.length + " paid") +
-        analyticsStat("All time", money0(total), "since the shop opened") +
+        /* These add up only the orders the dashboard actually loaded, and that
+           list is capped. Saying "since the shop opened" over a truncated total
+           would be a wrong number stated confidently — the worst kind. */
+        analyticsStat(ORDER_META.capped ? "These " + paid.length + " orders" : "All time",
+          money0(total),
+          ORDER_META.capped
+            ? "the most recent " + ORDER_META.total.toLocaleString() + " are not all shown — Stripe has the full total"
+            : "since the shop opened") +
         analyticsStat("From the website", online + " of " + paid.length,
           paid.length - online === 0 ? "none typed in by hand" : (paid.length - online) + " added manually") +
       "</div>" +
@@ -744,6 +751,21 @@
   /* ======================================================================
      RECEIPTS — an index into Stripe, not a replacement for it.
      ====================================================================== */
+
+  /* Stripe's dashboard calls a PaymentIntent a "payment", and /payments/ only
+     resolves a pi_… . This used to be handed the checkout session id (cs_…),
+     so every link in this table landed on a not-found page.
+
+     Orders recorded before the PaymentIntent was captured have no pi_ to link
+     to. Rather than a dead link, those go to Stripe's search, which does find a
+     session by its id — one extra click instead of a wall. */
+  function stripeLink(o) {
+    var base = "https://dashboard.stripe.com" + (o.live === false ? "/test" : "");
+    return o.payment
+      ? base + "/payments/" + encodeURIComponent(o.payment)
+      : base + "/search?query=" + encodeURIComponent(o.session || o.ref || "");
+  }
+
   function renderReceipts() {
     var host = document.getElementById("admReceipts");
     if (!host) return;
@@ -765,8 +787,8 @@
           '<b class="rec-amt">' + esc(money0(o.amount || 0)) + "</b>" +
           (manual
             ? '<span class="rec-src">Added by hand</span>'
-            : '<a class="rec-link" href="https://dashboard.stripe.com/payments/' +
-              encodeURIComponent(o.session || "") + '" target="_blank" rel="noopener">Open in Stripe ↗</a>') +
+            : '<a class="rec-link" href="' + esc(stripeLink(o)) +
+              '" target="_blank" rel="noopener">Open in Stripe ↗</a>') +
           "</div>";
       }).join("") + "</div>" +
       '<p class="dash-thin">Stripe holds the tax record and handles refunds. ' +
