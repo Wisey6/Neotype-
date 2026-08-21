@@ -1,7 +1,7 @@
 /* ==========================================================================
    Neotype Studio - custom sticker studio
    Dark synthwave / glitch identity built on the brand kit
-   (Tailwind handles layout utilities; this file owns the identity)
+   This file owns the whole visual system — there is no CSS framework.
    ========================================================================== */
 
 :root {
@@ -500,6 +500,17 @@ section { position: relative; }
 .field > label b { color: var(--teal); font-weight: 700; }
 .opt-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .opt-help { font-family: var(--font-round); font-size: 12.5px; line-height: 1.5; color: var(--muted); margin: 9px 2px 0; }
+
+/* Free quantity entry — the buttons above it are shortcuts, this is the range. */
+.qty-any { display: flex; align-items: center; gap: 9px; margin-top: 10px; flex-wrap: wrap; }
+.qty-any label { font-family: var(--font-round); font-size: 12.5px; color: var(--muted); margin: 0; }
+.qty-any input {
+  width: 108px; padding: 8px 12px; border-radius: 10px;
+  border: 1.5px solid var(--line-strong); background: var(--bg-3); color: var(--text);
+  font-family: var(--font-round); font-size: 14.5px; font-weight: 700;
+}
+.qty-any input:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.28); }
+.qty-any-unit { font-family: var(--font-round); font-size: 13px; color: var(--muted); }
 .swatch-row { gap: 10px; align-items: center; }
 .fsw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); cursor: pointer; padding: 0; position: relative; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
 .fsw:hover { transform: scale(1.12); }

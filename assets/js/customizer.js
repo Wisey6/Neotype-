@@ -424,6 +424,63 @@
   function setTxt(id, t) { var e = $(id); if (e) e.textContent = t; }
   function renderAll() { renderPreview(); renderPrice(); renderLabels(); }
 
+  // ---- Quantity ---------------------------------------------------------
+  /* The seven buttons are one-tap shortcuts, not the range. Somebody who wants
+     750 shouldn't have to round up to 1,000 or down to 500 — and under quantity
+     bands, rounding down can quietly cost them the better rate. The box is the
+     real control; the buttons just fill it in. */
+  function setQty(n) {
+    state.qty = n;
+    var box = $("czQtyAny");
+    if (box && parseInt(box.value, 10) !== n) box.value = n;
+    syncQtyButtons(n);
+    renderAll();
+  }
+
+  function syncQtyButtons(n) {
+    var row = $("qtyOpts");
+    if (!row) return;
+    row.querySelectorAll("button[data-qty]").forEach(function (b) {
+      b.setAttribute("aria-pressed", parseInt(b.getAttribute("data-qty"), 10) === n ? "true" : "false");
+    });
+  }
+
+  function wireQtyBox() {
+    var box = $("czQtyAny"), help = $("czQtyHelp");
+    if (!box) return;
+    var lo = CORE.QTY_MIN, hi = CORE.QTY_MAX;
+    box.min = lo; box.max = hi; box.value = state.qty;
+    var was = help ? help.innerHTML : "";
+
+    function say(msg) { if (help) help.innerHTML = msg || was; }
+
+    /* Typing "1" on the way to "150" must not snap the box to 15 and eat the
+       keystrokes. So while typing we only price valid numbers and explain the
+       invalid ones; the clamp waits for blur. */
+    box.addEventListener("input", function () {
+      var n = parseInt(box.value, 10);
+      if (!isFinite(n) || box.value === "") return say("");
+      if (n < lo) return say("Our minimum run is " + lo + " stickers.");
+      if (n > hi) return say("Over " + hi.toLocaleString() + " is a trade job — " +
+        '<a href="index.html#contact">ask us for a price</a> and we\'ll beat the calculator.');
+      say("");
+      state.qty = n;
+      syncQtyButtons(n);
+      renderAll();
+    });
+
+    box.addEventListener("blur", function () {
+      var n = parseInt(box.value, 10);
+      if (!isFinite(n)) n = state.qty;
+      n = Math.max(lo, Math.min(hi, Math.round(n)));
+      say("");
+      setQty(n);
+    });
+
+    box.addEventListener("keydown", function (e) { if (e.key === "Enter") box.blur(); });
+    syncQtyButtons(state.qty);
+  }
+
   // ---- Option groups ----------------------------------------------------
   function wireGroup(containerId, attr, onPick) {
     var el = $(containerId);
@@ -721,7 +778,8 @@
       fillCustom.addEventListener("change", pickCustom);
     }
     wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
-    wireGroup("qtyOpts", "data-qty", function (v) { state.qty = parseInt(v, 10); renderAll(); });
+    wireGroup("qtyOpts", "data-qty", function (v) { setQty(parseInt(v, 10)); });
+    wireQtyBox();
     wireGroup("turnOpts", "data-turn", function (v) { state.turnaround = v; renderAll(); });
     wireGroup("bgOpts", "data-bg", function (v) { state.bg = v; renderPreview(); });
     wireGroup("borderColorOpts", "data-bcol", function (v) { state.dieBorderColor = v; regenDieCut(true); });

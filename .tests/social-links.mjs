@@ -26,7 +26,7 @@ for (const path of ["/index.html", "/customizer.html", "/banners.html", "/corflu
   check(path.padEnd(32) + "two visible social links", m.n === 2 && m.visible, m.hrefs.join("  "));
   check(path.padEnd(32) + 'rel includes "me"', m.rels.every(r => /\bme\b/.test(r)) && m.rels.every(r => /noopener/.test(r)));
   check(path.padEnd(32) + "each has an aria-label", m.labels.every(Boolean));
-  if (path === "/index.html") await p.screenshot({ path: `${OUT}/09-footer-social.png` });
+  if (OUT && path === "/index.html") await p.screenshot({ path: `${OUT}/09-footer-social.png` });
   await ctx.close();
 }
 console.log(`\n${pass} passed, ${fail} failed`);

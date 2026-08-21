@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=40" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=41" />
 
   <link rel="canonical" href="https://www.neotype.au/customizer" />
   <meta property="og:type" content="website" />
@@ -68,7 +68,7 @@
       <div class="wrap">
         <div class="section-head" style="max-width:720px">
           <span class="eyebrow">Live customizer</span>
-          <h2 class="display-lg" id="cz-h">Build your custom sticker.</h2>
+          <h1 class="display-lg" id="cz-h">Build your custom sticker.</h1>
           <p class="lead">Choose a finish, shape, size and quantity, then upload your art and <b class="tint-teal">place it exactly right</b>. Preview a proof and see the price before you buy.</p>
         </div>
 
@@ -100,8 +100,8 @@
               <div class="ce-row" id="ceBorderColorRow" hidden>
                 <label>Cut colour</label>
                 <div class="ce-swatches" id="borderColorOpts">
-                  <button class="ce-sw" data-bcol="#ffffff" aria-pressed="true" title="White border" style="background:#fff"></button>
-                  <button class="ce-sw" data-bcol="#111318" aria-pressed="false" title="Black border" style="background:#111318"></button>
+                  <button class="ce-sw" data-bcol="#ffffff" aria-pressed="true" title="White border" style="background:#fff" aria-label="White border"></button>
+                  <button class="ce-sw" data-bcol="#111318" aria-pressed="false" title="Black border" style="background:#111318" aria-label="Black border"></button>
                 </div>
               </div>
               <div class="ce-row">
@@ -143,8 +143,37 @@
                   <small>PNG, JPG, PDF, SVG or AI · 300 DPI · transparent background for die-cut</small>
                   <div class="dz-file" id="dzFile" hidden></div>
                 </span>
-                <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" hidden />
+                <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" aria-label="Upload your artwork" hidden />
               </div>
+            </div>
+
+            <div class="field">
+              <label>Size <b id="czSizeVal">3 × 3 in</b></label>
+              <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
+                <button class="opt sz" data-size="2" aria-pressed="false">2″</button>
+                <button class="opt sz" data-size="3" aria-pressed="true">3″</button>
+                <button class="opt sz" data-size="4" aria-pressed="false">4″</button>
+                <button class="opt sz" data-size="5" aria-pressed="false">5″</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Quantity <b id="czQtyVal">100 stickers</b></label>
+              <div class="opt-row" id="qtyOpts" role="group" aria-label="Quantity">
+                <button class="opt sz" data-qty="15" aria-pressed="false">15</button>
+                <button class="opt sz" data-qty="50" aria-pressed="false">50</button>
+                <button class="opt sz" data-qty="100" aria-pressed="true">100</button>
+                <button class="opt sz" data-qty="200" aria-pressed="false">200</button>
+                <button class="opt sz" data-qty="300" aria-pressed="false">300</button>
+                <button class="opt sz" data-qty="500" aria-pressed="false">500</button>
+                <button class="opt sz" data-qty="1000" aria-pressed="false">1000</button>
+              </div>
+              <div class="qty-any">
+                <label for="czQtyAny">Or type any quantity</label>
+                <input type="number" id="czQtyAny" inputmode="numeric" min="15" max="5000" step="1" value="100" aria-describedby="czQtyHelp">
+                <span class="qty-any-unit">stickers</span>
+              </div>
+              <p class="opt-help" id="czQtyHelp">Anything from 15 to 5,000. Need more than that? <a href="index.html#contact">Ask us for a trade price</a>.</p>
             </div>
 
             <div class="field">
@@ -177,42 +206,19 @@
             <div class="field" id="fillField">
               <label>Background <b id="czFillVal">Studio gradient</b></label>
               <div class="opt-row swatch-row" id="fillOpts" role="group" aria-label="Background colour">
-                <button class="fsw fsw-auto" data-fill="auto" aria-pressed="true" title="Studio gradient"></button>
-                <button class="fsw" data-fill="#06e4dd" aria-pressed="false" title="Teal" style="background:#06e4dd"></button>
-                <button class="fsw" data-fill="#764cd9" aria-pressed="false" title="Purple" style="background:#764cd9"></button>
-                <button class="fsw" data-fill="#ec008c" aria-pressed="false" title="Pink" style="background:#ec008c"></button>
-                <button class="fsw" data-fill="#00ff09" aria-pressed="false" title="Green" style="background:#00ff09"></button>
-                <button class="fsw" data-fill="#ffd400" aria-pressed="false" title="Yellow" style="background:#ffd400"></button>
-                <button class="fsw" data-fill="#212830" aria-pressed="false" title="Ink" style="background:#212830"></button>
-                <button class="fsw" data-fill="#ffffff" aria-pressed="false" title="White" style="background:#fff"></button>
+                <button class="fsw fsw-auto" data-fill="auto" aria-pressed="true" title="Studio gradient" aria-label="Studio gradient"></button>
+                <button class="fsw" data-fill="#06e4dd" aria-pressed="false" title="Teal" style="background:#06e4dd" aria-label="Teal"></button>
+                <button class="fsw" data-fill="#764cd9" aria-pressed="false" title="Purple" style="background:#764cd9" aria-label="Purple"></button>
+                <button class="fsw" data-fill="#ec008c" aria-pressed="false" title="Pink" style="background:#ec008c" aria-label="Pink"></button>
+                <button class="fsw" data-fill="#00ff09" aria-pressed="false" title="Green" style="background:#00ff09" aria-label="Green"></button>
+                <button class="fsw" data-fill="#ffd400" aria-pressed="false" title="Yellow" style="background:#ffd400" aria-label="Yellow"></button>
+                <button class="fsw" data-fill="#212830" aria-pressed="false" title="Ink" style="background:#212830" aria-label="Ink"></button>
+                <button class="fsw" data-fill="#ffffff" aria-pressed="false" title="White" style="background:#fff" aria-label="White"></button>
                 <label class="fsw fsw-custom" title="Custom colour">
                   <input type="color" id="fillCustom" value="#30bfbb" aria-label="Custom background colour" />
                 </label>
               </div>
               <p class="opt-help" id="fillHelp">Sets the colour behind your art. Great for a transparent logo.</p>
-            </div>
-
-            <div class="field">
-              <label>Size <b id="czSizeVal">3 × 3 in</b></label>
-              <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
-                <button class="opt sz" data-size="2" aria-pressed="false">2″</button>
-                <button class="opt sz" data-size="3" aria-pressed="true">3″</button>
-                <button class="opt sz" data-size="4" aria-pressed="false">4″</button>
-                <button class="opt sz" data-size="5" aria-pressed="false">5″</button>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Quantity <b id="czQtyVal">100 stickers</b></label>
-              <div class="opt-row" id="qtyOpts" role="group" aria-label="Quantity">
-                <button class="opt sz" data-qty="15" aria-pressed="false">15</button>
-                <button class="opt sz" data-qty="50" aria-pressed="false">50</button>
-                <button class="opt sz" data-qty="100" aria-pressed="true">100</button>
-                <button class="opt sz" data-qty="200" aria-pressed="false">200</button>
-                <button class="opt sz" data-qty="300" aria-pressed="false">300</button>
-                <button class="opt sz" data-qty="500" aria-pressed="false">500</button>
-                <button class="opt sz" data-qty="1000" aria-pressed="false">1000</button>
-              </div>
             </div>
 
             <div class="field">
@@ -316,9 +322,9 @@
   <script>
     window.NEOTYPE_CHECKOUT = { currency: "aud" };
   </script>
-  <script src="assets/js/pricing-core.js?v=34" defer></script>
+  <script src="assets/js/pricing-core.js?v=35" defer></script>
   <script src="assets/js/checkout.js?v=32" defer></script>
-  <script src="assets/js/customizer.js?v=34" defer></script>
+  <script src="assets/js/customizer.js?v=36" defer></script>
   <script src="assets/js/main.js?v=33" defer></script>
 </body>
 </html>

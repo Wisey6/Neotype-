@@ -50,7 +50,7 @@ const after = await p.locator("[data-bandunit='3']").innerText();
 check("editing a rate updates the example", before !== after, `${before} → ${after}`);
 check("clamp warning appears for a steep step", !(await p.locator("#admBandWarn").isHidden()));
 
-await p.screenshot({ path: `${OUT}/10-admin-bands.png` });
+if (OUT) await p.screenshot({ path: `${OUT}/10-admin-bands.png` });
 await p.click("#admSave"); await p.waitForTimeout(500);
 check("bands reach the save payload", !!(saved && saved.stickers && saved.stickers.qtyBands && saved.stickers.qtyBands.length === 7));
 check("rate stored in dollars, not cents", saved && saved.stickers.qtyBands[3].rate === 0.005,

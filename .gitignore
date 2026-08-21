@@ -1,3 +1,8 @@
 
 # Written by the WiseAI hub; never commit locally
 .wiseai/status.md
+
+# Test screenshots written when a suite is run with no output directory.
+# The suites now guard against this; the ignore is a second line of defence,
+# because Pages publishes every committed file and once did serve /undefined/.
+undefined/

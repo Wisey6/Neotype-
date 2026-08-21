@@ -69,7 +69,11 @@
   var SIZES = [2, 3, 4, 5];
   var QTYS = [15, 50, 100, 200, 300, 500, 1000];   // one-tap presets, not a limit
   var QTY_MIN = 15;      // published on the homepage and in the customizer meta
-  var QTY_MAX = 10000;   // above this, talk to a human — provisional, confirm with Ian
+  /* Above this the order stops being a web sale. 5,000 × 3" is about 29 m²,
+     roughly half a 50 m roll and a card payment north of $1,500 — a real
+     production commitment that deserves a stock check and a conversation.
+     It sits clear of the top 2,000+ band so that band is still sellable. */
+  var QTY_MAX = 5000;
 
   // Large-format metadata. `qtys` is the list the UI renders AND the server
   // validates against, so a hand-crafted request can't buy a quantity the

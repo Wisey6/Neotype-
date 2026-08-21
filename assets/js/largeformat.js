@@ -74,7 +74,7 @@
           '<span class="dz-txt"><strong>Drop your file or browse</strong><br>' +
           '<small>PNG, JPG, PDF, SVG or AI · print-ready at final size</small>' +
           '<div class="dz-file" id="lfFile" hidden></div></span>' +
-          '<input type="file" id="lfInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" hidden></div>' +
+          '<input type="file" id="lfInput" accept=".png,.jpg,.jpeg,.pdf,.svg,.ai" aria-label="Upload your artwork" hidden></div>' +
         '<div class="cz-editor" id="lfEditor" hidden>' +
           '<div class="ce-hint">✥ Drag the art, use the sliders, or scroll to zoom</div>' +
           '<div class="ce-row"><label for="lfZoom">Zoom</label><input type="range" id="lfZoom" min="0.2" max="4" step="0.01" value="1"></div>' +
@@ -89,8 +89,8 @@
         (presetOpts.length ? '<div class="field"><label>Common sizes</label>' + optRow("lfPresets", presetOpts, "", "data-lfpreset") + "</div>" : "") +
         '<div class="field"><label>Custom size <b id="lfSizeVal"></b></label>' +
           '<div class="lf-dims">' +
-            '<span><input type="number" id="lfW" step="0.05" min="' + META.wRange[0] + '" max="' + META.wRange[1] + '" value="' + state.w + '"> m wide</span>' +
-            '<span><input type="number" id="lfH" step="0.05" min="' + META.hRange[0] + '" max="' + META.hRange[1] + '" value="' + state.h + '"> m tall</span>' +
+            '<span><input type="number" id="lfW" aria-label="Width in metres" step="0.05" min="' + META.wRange[0] + '" max="' + META.wRange[1] + '" value="' + state.w + '"> m wide</span>' +
+            '<span><input type="number" id="lfH" aria-label="Height in metres" step="0.05" min="' + META.hRange[0] + '" max="' + META.hRange[1] + '" value="' + state.h + '"> m tall</span>' +
           '</div>' +
           '<p class="opt-help">Between ' + META.wRange[0] + '–' + META.wRange[1] + ' m wide and ' + META.hRange[0] + '–' + META.hRange[1] + ' m tall.</p>' +
         "</div>" +
