@@ -33,24 +33,28 @@
   var PROD = {
     stickers: {
       title: "Stickers", unitNote: "priced by area × quantity",
-      money: [{ path: "min", label: "Minimum order" }],
+      money: [
+        { path: "rate.base", label: "Rate per m² (large runs)" },
+        { path: "rate.extra", label: "Small-run premium per m²" },
+        { path: "min", label: "Minimum order" }
+      ],
       advanced: [
-        { path: "rate.base", label: "Base rate (per m², large runs)" },
-        { path: "rate.extra", label: "Small-run premium (per m²)" },
-        { path: "rate.decay", label: "How fast the bulk discount kicks in", plain: true }
+        { path: "rate.decay", label: "How fast the bulk discount kicks in", plain: true },
+        { path: "minMm", label: "Smallest the cutter can do (mm)", plain: true },
+        { path: "maxMm", label: "Largest the cutter can do (mm)", plain: true }
       ],
       groups: [
-        { key: "finish", title: "Finish / laminate", anchor: { size: 3, qty: 100, shape: "die" },
+        { key: "finish", title: "Finish / laminate", anchor: { w: 75, h: 75, qty: 100, shape: "die" },
           opts: CORE.FINISH_LABEL },
-        { key: "shape", title: "Shape / cut", anchor: { size: 3, qty: 100, finish: "vinyl-matte" },
+        { key: "shape", title: "Shape / cut", anchor: { w: 75, h: 75, qty: 100, finish: "vinyl-matte" },
           opts: CORE.SHAPE_LABEL },
-        { key: "turnaround", title: "Turnaround", anchor: { size: 3, qty: 100, finish: "vinyl-matte", shape: "die" },
+        { key: "turnaround", title: "Turnaround", anchor: { w: 75, h: 75, qty: 100, finish: "vinyl-matte", shape: "die" },
           opts: CORE.TURNAROUND_LABEL }
       ],
       examples: [
-        { label: "100 × 3″ matte, die-cut", size: 3, qty: 100, finish: "vinyl-matte", shape: "die" },
-        { label: "100 × 3″ holographic", size: 3, qty: 100, finish: "holographic", shape: "die" },
-        { label: "500 × 3″ matte, die-cut", size: 3, qty: 500, finish: "vinyl-matte", shape: "die" }
+        { label: "100 × 75 mm matte, die-cut", w: 75, h: 75, qty: 100, finish: "vinyl-matte", shape: "die" },
+        { label: "100 × 75 mm holographic", w: 75, h: 75, qty: 100, finish: "holographic", shape: "die" },
+        { label: "500 × 75 mm matte, die-cut", w: 75, h: 75, qty: 500, finish: "vinyl-matte", shape: "die" }
       ]
     },
     banner: {
@@ -164,13 +168,13 @@
     { from: 500, rate: 0.007 },  // $70/m²
     { from: 2000, rate: 0.006 }  // $60/m² — the floor
   ];
-  var BAND_REF = { size: 3, finish: "vinyl-matte", shape: "die", turnaround: "standard" };
+  var BAND_REF = { w: 75, h: 75, finish: "vinyl-matte", shape: "die", turnaround: "standard" };
   /* Deliberately spans both axes — every size at a small quantity and the common
      sizes at volume — because that is where the two pricing models disagree most. */
   var IMPACT = [
-    { size: 2, qty: 50 }, { size: 3, qty: 50 }, { size: 4, qty: 50 }, { size: 5, qty: 50 },
-    { size: 2, qty: 100 }, { size: 3, qty: 100 }, { size: 4, qty: 100 }, { size: 5, qty: 100 },
-    { size: 2, qty: 500 }, { size: 3, qty: 500 }, { size: 3, qty: 1000 }, { size: 3, qty: 2000 }
+    { w: 50, h: 50, qty: 50 },  { w: 75, h: 75, qty: 50 },  { w: 100, h: 100, qty: 50 },  { w: 125, h: 125, qty: 50 },
+    { w: 50, h: 50, qty: 100 }, { w: 75, h: 75, qty: 100 }, { w: 100, h: 100, qty: 100 }, { w: 125, h: 125, qty: 100 },
+    { w: 50, h: 50, qty: 500 }, { w: 75, h: 75, qty: 500 }, { w: 75, h: 75, qty: 1000 },  { w: 75, h: 75, qty: 2000 }
   ];
 
   function bandsHtml() {
@@ -185,7 +189,7 @@
         '<span class="adm-stock-txt">' + (on ? "Bands are pricing the shop" : "Using the sliding scale") + "</span></label>" +
       '<div class="adm-table adm-bandtable"' + (on ? "" : ' data-dim="1"') + '>' +
       '<div class="adm-tr adm-th adm-bandtr"><span>From quantity</span><span>Rate (¢ per cm²)</span>' +
-      '<span>3″ sticker</span><span>Order of that size</span></div>';
+      '<span>75 mm sticker</span><span>Order of that size</span></div>';
     rows.forEach(function (b, i) {
       html += '<div class="adm-tr adm-bandtr">' +
         '<span><input type="number" min="1" step="1" data-band="' + i + '.from" value="' + b.from + '"></span>' +
@@ -206,7 +210,9 @@
       '<div class="adm-table adm-impact"><div class="adm-tr adm-th adm-imptr">' +
       "<span>Order</span><span>Now</span><span>With bands</span><span>Change</span></div>" +
       IMPACT.map(function (row, i) {
-        return '<div class="adm-tr adm-imptr"><span>' + row.qty + ' × ' + row.size + '″</span>' +
+        // "100 × 50 mm" for a square, "100 × 100×50 mm" only when it needs both
+        var d = row.w === row.h ? row.w + " mm" : row.w + "×" + row.h + " mm";
+        return '<div class="adm-tr adm-imptr"><span>' + row.qty + ' × ' + d + '</span>' +
           '<span class="adm-opt-ex" data-impnow="' + i + '">—</span>' +
           '<span class="adm-opt-ex" data-impnew="' + i + '">—</span>' +
           '<span data-impdiff="' + i + '">—</span></div>';
@@ -221,7 +227,7 @@
     var probe = JSON.parse(JSON.stringify(D));
     probe.stickers = probe.stickers || {};
     probe.stickers.qtyBands = using;
-    var areaCm2 = Math.pow(BAND_REF.size * 2.54, 2);
+    var areaCm2 = (BAND_REF.w / 10) * (BAND_REF.h / 10);   // mm² → cm²
 
     using.forEach(function (b, i) {
       var qty = Math.max(CORE.QTY_MIN, Math.round(b.from));
@@ -252,7 +258,7 @@
     var plain = JSON.parse(JSON.stringify(probe));
     if (plain.stickers) delete plain.stickers.qtyBands;
     IMPACT.forEach(function (row, i) {
-      var opt = Object.assign({}, BAND_REF, { size: row.size, qty: row.qty });
+      var opt = Object.assign({}, BAND_REF, { w: row.w, h: row.h, qty: row.qty });
       var now = CORE.priceStickers(opt, plain);
       var next = CORE.priceStickers(opt, probe);
       var elNow = root.querySelector('[data-impnow="' + i + '"]');

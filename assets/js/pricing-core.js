@@ -30,6 +30,10 @@
   var DEFAULT_PRICING = {
     stickers: {
       min: 18,
+      // What the cutter can physically produce, per axis. PROVISIONAL — see the
+      // note on SIZE_MIN_MM. Editable in /admin so confirming them costs nothing.
+      minMm: 10,
+      maxMm: 300,
       rate: { base: 85, extra: 120, decay: 0.5 },
       finish: {
         "vinyl-matte": 1.00, "vinyl-gloss": 1.05, "satin": 1.03,
@@ -66,7 +70,58 @@
   };
   var TURNAROUND_LABEL = { standard: "Standard (~4 days)", "2day": "2 days", nextday: "Next day" };
 
+  /* ---- sticker size -----------------------------------------------------
+     Millimetres are the native unit now. Ian quotes in mm, his cutter is set in
+     mm, and every conversation with a customer crosses that boundary — inches
+     were a website-only convention that nobody in the shop actually used.
+
+     SIZES (inches) is kept because orders already in KV, and any page a customer
+     still has open, carry `size` in inches. It is a compatibility path, not a
+     second way to order: nothing in the UI writes it any more. */
   var SIZES = [2, 3, 4, 5];
+  var IN_MM = 25.4;
+
+  // One-tap presets, in mm. The old inch sizes to the nearest sensible round
+  // number, so a returning customer finds what they bought last time.
+  var SIZE_PRESETS_MM = [
+    { w: 50,  h: 50,  label: "50 × 50 mm" },
+    { w: 75,  h: 75,  label: "75 × 75 mm" },
+    { w: 100, h: 100, label: "100 × 100 mm" },
+    { w: 125, h: 125, label: "125 × 125 mm" }
+  ];
+
+  /* PROVISIONAL — confirm against the actual cutter before relying on these.
+     They are editable in /admin (Pricing → Stickers) precisely so a wrong guess
+     here costs thirty seconds rather than a redeploy. Too small and Ian turns
+     away work he could do; too large and the site sells a job the cutter can't. */
+  var SIZE_MIN_MM = 10;
+  var SIZE_MAX_MM = 300;
+
+  function sizeLimits(table) {
+    var S = (table && table.stickers) || DEFAULT_PRICING.stickers || {};
+    var lo = num(S.minMm, SIZE_MIN_MM), hi = num(S.maxMm, SIZE_MAX_MM);
+    if (!(lo > 0) || !(hi > lo)) { lo = SIZE_MIN_MM; hi = SIZE_MAX_MM; }
+    return { min: lo, max: hi };
+  }
+
+  /* Every caller hands us either {w,h} in mm or a legacy {size} in inches.
+     Resolving that in one place is the whole point — the alternative is each
+     call site deciding, and one of them getting it wrong on the money path. */
+  function dimsMm(opt, table) {
+    var lim = sizeLimits(table);
+    var w = Math.round(num(opt.w, 0)), h = Math.round(num(opt.h, 0));
+    if (w > 0 && h > 0) {
+      if (w < lim.min || h < lim.min || w > lim.max || h > lim.max) return null;
+      return { w: w, h: h, custom: true };
+    }
+    var inches = parseInt(opt.size, 10);
+    if (SIZES.indexOf(inches) === -1) return null;
+    return { w: Math.round(inches * IN_MM), h: Math.round(inches * IN_MM), custom: false, inches: inches };
+  }
+
+  function sizeLabel(d) {
+    return d.w === d.h ? d.w + " × " + d.h + " mm" : d.w + " × " + d.h + " mm";
+  }
   var QTYS = [15, 50, 100, 200, 300, 500, 1000];   // one-tap presets, not a limit
   var QTY_MIN = 15;      // published on the homepage and in the customizer meta
   /* Above this the order stops being a web sale. 5,000 × 3" is about 29 m²,
@@ -104,7 +159,8 @@
 
   // ---- maths -------------------------------------------------------------
   function num(v, d) { return typeof v === "number" && isFinite(v) ? v : d; }
-  function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }   // per sticker
+  function areaM2(sizeIn) { var m = sizeIn * 0.0254; return m * m; }   // per sticker, legacy inches
+  function areaM2Mm(w, h) { return (w / 1000) * (h / 1000); }          // per sticker, mm
   function ratePerM2(totalArea, r) {
     return num(r && r.base, 85) + num(r && r.extra, 120) * Math.exp(-totalArea / num(r && r.decay, 0.5));
   }
@@ -188,9 +244,12 @@
     table = table || DEFAULT_PRICING;
     var finish = String(opt.finish || ""), shape = String(opt.shape || "");
     var turn = String(opt.turnaround || "standard");
-    var size = parseInt(opt.size, 10), qty = parseInt(opt.qty, 10);
+    var qty = parseInt(opt.qty, 10);
     if (!FINISH_LABEL[finish] || !SHAPE_LABEL[shape] || !TURNAROUND_LABEL[turn]) return null;
-    if (SIZES.indexOf(size) === -1) return null;
+    // Accepts {w,h} in mm or a legacy {size} in inches; refuses anything outside
+    // what the cutter can actually produce.
+    var dim = dimsMm(opt, table);
+    if (!dim) return null;
     /* Quantity is free entry between the published minimum and a ceiling above
        which an order should reach a person rather than Stripe. The old fixed
        list existed because the curve was only ever sampled at those points; both
@@ -201,7 +260,8 @@
         isOff(table, "stickers", "turnaround", turn)) return null;
 
     var S = table.stickers || DEFAULT_PRICING.stickers;
-    var area = areaM2(size) * qty;
+    var each = areaM2Mm(dim.w, dim.h);
+    var area = each * qty;
     var bands = bandsOf(table, "stickers");
     // bands price per cm² of ONE sticker × quantity; the curve prices the whole
     // sheet by total area. Same units out, different shape.
@@ -232,24 +292,28 @@
         if (from > qty) { next = from; break; }
       }
       if (next !== null) {
-        var atNext = areaM2(size) * next * (bandRate(bands, next) * 10000) * sM * fM * tM;
+        var atNext = each * next * (bandRate(bands, next) * 10000) * sM * fM * tM;
         if (atNext < raw) raw = atNext;
       }
     }
 
     var total = Math.max(min, raw);
 
+    var label = sizeLabel(dim);
     return {
       total: money(total), amount: cents(total),
       unit: total / qty, area: area, minApplied: raw < min,
+      // Echoed back so the caller never has to re-derive them — the customizer,
+      // the admin examples and the Stripe line item all read the same numbers.
+      w: dim.w, h: dim.h, custom: dim.custom,
       lines: quoteLines([
-        [qty + " × " + size + "″ " + SHAPE_LABEL[shape].toLowerCase(), base],
+        [qty + " × " + label + " " + SHAPE_LABEL[shape].toLowerCase(), base],
         [FINISH_LABEL[finish] + " finish", base * (fM - 1)],
         [TURNAROUND_LABEL[turn] + " turnaround", base * fM * (tM - 1)]
       ], total, min),
       labels: {
         finish: FINISH_LABEL[finish], shape: SHAPE_LABEL[shape],
-        turnaround: TURNAROUND_LABEL[turn], size: size + " in", quantity: String(qty)
+        turnaround: TURNAROUND_LABEL[turn], size: label, quantity: String(qty)
       }
     };
   }
@@ -321,6 +385,8 @@
     DEFAULT_PRICING: DEFAULT_PRICING,
     FINISH_LABEL: FINISH_LABEL, SHAPE_LABEL: SHAPE_LABEL, TURNAROUND_LABEL: TURNAROUND_LABEL,
     SIZES: SIZES, QTYS: QTYS, LF_META: LF_META,
+    SIZE_PRESETS_MM: SIZE_PRESETS_MM, sizeLimits: sizeLimits,
+    dimsMm: dimsMm, sizeLabel: sizeLabel, areaM2Mm: areaM2Mm, IN_MM: IN_MM,
     areaM2: areaM2, ratePerM2: ratePerM2, lfQtyMult: lfQtyMult,
     priceStickers: priceStickers, isOff: isOff,
     bandsOf: bandsOf, bandRate: bandRate, bandBreaks: bandBreaks,
