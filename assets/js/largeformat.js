@@ -16,6 +16,11 @@
   if (!META) return;
   var PRICES = CORE.DEFAULT_PRICING;      // replaced by the live table from /api/pricing
 
+  /* The preset row is one-tap shortcuts, not the range. `qtyMax` in pricing-core
+     is the real ceiling, and the server validates against the same number. */
+  var QTY_CEIL = META.qtyMax > 0 ? META.qtyMax : META.qtys[META.qtys.length - 1];
+  var UNITS = (CFG.label || "unit").toLowerCase() + "s";
+
   var state = {
     w: CFG.defaultW, h: CFG.defaultH, qty: META.qtys[0],
     choices: {}, file: null, fileName: null, fileURL: null,
@@ -95,7 +100,14 @@
           '<p class="opt-help">Between ' + META.wRange[0] + '–' + META.wRange[1] + ' m wide and ' + META.hRange[0] + '–' + META.hRange[1] + ' m tall.</p>' +
         "</div>" +
         choicesHtml +
-        '<div class="field"><label>Quantity <b id="lfQtyVal"></b></label>' + optRow("lfQtys", qtyOpts, String(state.qty), "data-lfqty") + "</div>" +
+        '<div class="field"><label>Quantity <b id="lfQtyVal"></b></label>' + optRow("lfQtys", qtyOpts, String(state.qty), "data-lfqty") +
+          '<div class="qty-any">' +
+            '<label for="lfQtyAny">Or type any quantity</label>' +
+            '<input type="number" id="lfQtyAny" inputmode="numeric" min="1" max="' + QTY_CEIL + '" step="1" value="' + state.qty + '" aria-describedby="lfQtyHelp">' +
+            '<span class="qty-any-unit">' + UNITS + '</span>' +
+          "</div>" +
+          '<p class="opt-help" id="lfQtyHelp">Anything from 1 to ' + QTY_CEIL.toLocaleString() + '. Need more? <a href="index.html#contact">Ask us for a trade price</a>.</p>' +
+        "</div>" +
         '<div class="cz-price"><div class="price-row">' +
           '<div class="price-total"><sup>$</sup><span id="lfTotal">0</span> <span style="font-family:var(--font-round);font-size:.9rem;color:var(--muted)">AUD</span></div>' +
           '<div class="price-per"><div><b id="lfPer">$0</b> / unit</div></div>' +
@@ -170,6 +182,45 @@
   }
 
   // ---- wiring -----------------------------------------------------------
+  /* One place sets the quantity, so the buttons, the box and the price can
+     never disagree — whichever control the customer used. */
+  function setQty(n) {
+    state.qty = n;
+    var box = document.getElementById("lfQtyAny");
+    if (box && parseInt(box.value, 10) !== n) box.value = n;
+    pressGroup("lfQtys", "data-lfqty", String(n));
+    render();
+  }
+
+  function wireQtyBox() {
+    var box = document.getElementById("lfQtyAny"), help = document.getElementById("lfQtyHelp");
+    if (!box) return;
+    var was = help ? help.innerHTML : "";
+    function say(msg) { if (help) help.innerHTML = msg || was; }
+
+    /* Typing "1" on the way to "12" must not snap the box to 1 and eat the
+       keystrokes, so the clamp waits for blur. In between we price what is
+       valid and explain what isn't. */
+    box.addEventListener("input", function () {
+      var n = parseInt(box.value, 10);
+      if (!isFinite(n) || box.value === "") return say("");
+      if (n < 1) return say("One is the smallest order.");
+      if (n > QTY_CEIL) return say("Over " + QTY_CEIL.toLocaleString() + " " + UNITS + " is a trade run — " +
+        '<a href="index.html#contact">ask us for a price</a> and we\'ll beat the calculator.');
+      say("");
+      setQty(n);
+    });
+
+    box.addEventListener("blur", function () {
+      var n = parseInt(box.value, 10);
+      if (!isFinite(n)) n = state.qty;
+      say("");
+      setQty(Math.max(1, Math.min(QTY_CEIL, Math.round(n))));
+    });
+
+    box.addEventListener("keydown", function (e) { if (e.key === "Enter") box.blur(); });
+  }
+
   function pressGroup(containerId, attr, val) {
     var el = document.getElementById(containerId);
     if (!el) return;
@@ -178,7 +229,51 @@
     });
   }
 
-  function wire() {
+  /* Two halves, and the split is load-bearing.
+
+     `build()` runs a second time when the live price list arrives, and it does
+     it by replacing root.innerHTML — which throws away every element inside and
+     every listener attached directly to one. Anything wired by element id has
+     to be wired again against the new nodes; anything delegated from `root`
+     itself survives, and must NOT be attached twice or one click counts twice.
+
+     Getting this wrong is silent: the panel looks right and does nothing. */
+  function wireOnce() {
+    root.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-lfpreset]");
+      if (b) {
+        var p = CFG.presets[parseInt(b.getAttribute("data-lfpreset"), 10)];
+        // looked up now, not closed over: the boxes are replaced on every build
+        var wIn = document.getElementById("lfW"), hIn = document.getElementById("lfH");
+        state.w = p.w; state.h = p.h;
+        if (wIn) wIn.value = p.w;
+        if (hIn) hIn.value = p.h;
+        pressGroup("lfPresets", "data-lfpreset", b.getAttribute("data-lfpreset"));
+        render(); return;
+      }
+      var q = e.target.closest("button[data-lfqty]");
+      if (q) { setQty(parseInt(q.getAttribute("data-lfqty"), 10)); return; }
+      Object.keys(META.groups).forEach(function (g) {
+        var c = e.target.closest("button[data-lfc-" + g + "]");
+        if (c) { state.choices[g] = c.getAttribute("data-lfc-" + g); pressGroup("lfchoice-" + g, "data-lfc-" + g, state.choices[g]); render(); }
+      });
+    });
+
+    // fit / fill / center / reset
+    root.addEventListener("click", function (e) {
+      var f = e.target.closest("button[data-lffit]");
+      if (!f) return;
+      var mode = f.getAttribute("data-lffit");
+      if (mode === "fit") state.img.fill = false;
+      else if (mode === "fill") state.img.fill = true;
+      else if (mode === "center") { state.img.x = 0; state.img.y = 0; }
+      else if (mode === "reset") state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
+      syncEditor(); applyImgTransform();
+    });
+  }
+
+  function wirePanel() {
+    wireQtyBox();
     var wIn = document.getElementById("lfW"), hIn = document.getElementById("lfH");
     function syncDims() {
       state.w = clamp(parseFloat(wIn.value) || META.wRange[0], META.wRange[0], META.wRange[1]);
@@ -190,22 +285,6 @@
     hIn.addEventListener("input", syncDims);
     wIn.addEventListener("blur", function () { wIn.value = state.w; });
     hIn.addEventListener("blur", function () { hIn.value = state.h; });
-
-    root.addEventListener("click", function (e) {
-      var b = e.target.closest("button[data-lfpreset]");
-      if (b) {
-        var p = CFG.presets[parseInt(b.getAttribute("data-lfpreset"), 10)];
-        state.w = p.w; state.h = p.h; wIn.value = p.w; hIn.value = p.h;
-        pressGroup("lfPresets", "data-lfpreset", b.getAttribute("data-lfpreset"));
-        render(); return;
-      }
-      var q = e.target.closest("button[data-lfqty]");
-      if (q) { state.qty = parseInt(q.getAttribute("data-lfqty"), 10); pressGroup("lfQtys", "data-lfqty", q.getAttribute("data-lfqty")); render(); return; }
-      Object.keys(META.groups).forEach(function (g) {
-        var c = e.target.closest("button[data-lfc-" + g + "]");
-        if (c) { state.choices[g] = c.getAttribute("data-lfc-" + g); pressGroup("lfchoice-" + g, "data-lfc-" + g, state.choices[g]); render(); }
-      });
-    });
 
     // upload
     var dz = document.getElementById("lfDrop"), input = document.getElementById("lfInput");
@@ -235,18 +314,6 @@
     onSlider("lfRotr", function (v) { state.img.rot = v; });
     onSlider("lfMx", function (v) { state.img.x = v; });
     onSlider("lfMy", function (v) { state.img.y = v; });
-
-    // fit / fill / center / reset
-    root.addEventListener("click", function (e) {
-      var f = e.target.closest("button[data-lffit]");
-      if (!f) return;
-      var mode = f.getAttribute("data-lffit");
-      if (mode === "fit") state.img.fill = false;
-      else if (mode === "fill") state.img.fill = true;
-      else if (mode === "center") { state.img.x = 0; state.img.y = 0; }
-      else if (mode === "reset") state.img = { x: 0, y: 0, scale: 1, rot: 0, fill: false };
-      syncEditor(); applyImgTransform();
-    });
 
     // drag to move + scroll to zoom, on the preview rectangle
     var rect = document.getElementById("lfRect");
@@ -293,9 +360,14 @@
         if (!d || !d[CFG.key]) return;
         PRICES = d;
         // rebuild rather than re-render: the live table may have switched an
-        // option off, and the buttons were built from the defaults
+        // option off, and the buttons were built from the defaults. Every
+        // element is new after this, so everything wired by id must be wired
+        // again and the customer's artwork put back on the fresh preview.
         build();
+        wirePanel();
         render();
+        syncEditor();
+        showArt();
       })
       .catch(function () {});
   }
@@ -303,7 +375,8 @@
   build();
   render();
   showArt();
-  wire();
+  wireOnce();
+  wirePanel();
   fetchLivePricing();
   // highlight the preset that matches the default size, if any
   (CFG.presets || []).some(function (p, i) {

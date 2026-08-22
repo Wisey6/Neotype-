@@ -1,27 +1,22 @@
 # Tests
 
-Cloudflare builds this repo from the root with no build step, so **every file in
-this repo is published on neotype.au**, including this directory. Two attempts to
-prevent that both failed, each verified on a preview deploy:
+Cloudflare Pages publishes the whole repository, this directory included. Two
+attempts to prevent that both failed, each verified on a preview deploy:
 
 | Attempt | Result |
 |---|---|
 | Put it in a dot-directory | Served — a leading dot means nothing to Pages |
 | `.assetsignore` at the root | Served — that is a Workers Static Assets feature, not Pages |
 
-Pages has no repo-level exclude. The only real fixes are a **build output
-directory** that contains just the site (a build command staging the public files
-into `dist/`, with the output directory changed to match), or **Redirect Rules**
-in the dashboard for the specific paths. Both need a dashboard change, so neither
-is done yet — see CLOUDFLARE.md.
+Pages has no repo-level exclude. What works is `_redirects`, which is documented
+to be consulted *"regardless of whether or not an asset matches the incoming
+request"* — so `/.tests/*` 301s to the homepage while the files stay in the repo.
+That is shipped; see the comment in `_redirects` before adding a new internal
+document, because a new one needs a line there in the same commit.
 
-Nothing here is secret: a stub key and a webhook shape that is public Stripe API.
-It is untidy rather than dangerous, which is why it is recorded rather than
-rushed.
-
-When you do fix it, verify on the preview URL and check the **content type**, not
-the status code — every missing path on this host answers `200` with `text/html`,
-so a status code alone tells you nothing.
+When you check it, check the **content type**, not the status code — every
+missing path on this host answers `200` with `text/html`, so a status code alone
+tells you nothing.
 
 Run from the repo root:
 
@@ -65,3 +60,18 @@ button disappears in the customizer.
 
 The server-side half matters most. Hiding a button stops an honest customer and
 nobody else — a stale tab or a hand-made request still reaches /api/checkout.
+
+**lf-quantity.mjs** covers banner and corflute quantity. The preset row used to
+be the whitelist too, so seven banners was unbuyable — you rounded to five or
+ten. It asserts every integer up to the ceiling prices, that the ceiling still
+refuses everything past it, that more never costs more per unit, and then drives
+both builders in Chromium.
+
+    NODE_PATH=/tmp/pw/node_modules node .tests/lf-quantity.mjs
+
+Its last third is the part worth keeping. `largeformat.js` rebuilds the whole
+panel when the live price list arrives, replacing every element and with them
+every listener attached to one — which had left the banner and corflute pages
+with a dead upload box, dead size fields and a **dead checkout button** a few
+hundred milliseconds after load, on every real visit. Nothing threw, and the
+panel looked perfectly normal. Those checks run deliberately *after* the rebuild.

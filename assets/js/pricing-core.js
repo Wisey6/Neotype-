@@ -130,13 +130,20 @@
      It sits clear of the top 2,000+ band so that band is still sellable. */
   var QTY_MAX = 5000;
 
-  // Large-format metadata. `qtys` is the list the UI renders AND the server
-  // validates against, so a hand-crafted request can't buy a quantity the
-  // shop never offered (and claim its bulk discount).
+  /* Large-format metadata. `qtys` is the one-tap preset row; `qtyMax` is the
+     actual ceiling the server validates against.
+
+     These were the same list until now — the presets WERE the whitelist — which
+     meant somebody wanting 7 banners had to buy 5 or 10, the same rounding
+     problem stickers had. The quantity multiplier below is continuous, so every
+     integer in range already prices correctly; only the whitelist stood in the
+     way. Above the ceiling it stops being a web sale: 50 banners at 3 × 1 m is
+     150 m² of PVC, and that deserves a conversation, not a card payment. */
   var LF_META = {
     banner: {
       label: "Banner", wRange: [0.3, 6], hRange: [0.3, 3],
       qtys: [1, 2, 3, 5, 10, 25],
+      qtyMax: 50,
       groups: {
         material: { "vinyl-440": "440gsm PVC", "mesh": "Mesh (windy sites)" },
         finishing: { "hem-eyelets": "Hemmed + eyelets", "trim-eyelets": "Trimmed + eyelets", "trim": "Trimmed to size", "pole": "Pole pockets" },
@@ -148,6 +155,7 @@
     corflute: {
       label: "Corflute sign", wRange: [0.3, 2.4], hRange: [0.3, 1.2],
       qtys: [1, 2, 5, 10, 25, 50, 100],
+      qtyMax: 500,
       groups: {
         thickness: { "3mm": "3 mm", "5mm": "5 mm" },
         sides: { single: "Single-sided", double: "Double-sided" },
@@ -326,7 +334,8 @@
     var w = parseFloat(opt.w), h = parseFloat(opt.h), qty = parseInt(opt.qty, 10);
     if (!(w >= meta.wRange[0] && w <= meta.wRange[1])) return null;
     if (!(h >= meta.hRange[0] && h <= meta.hRange[1])) return null;
-    if (meta.qtys.indexOf(qty) === -1) return null;
+    var qMax = num(meta.qtyMax, meta.qtys[meta.qtys.length - 1]);
+    if (!(qty >= 1 && qty <= qMax) || qty !== Math.floor(qty)) return null;
 
     var P = table[product] || DEFAULT_PRICING[product];
     var area = w * h;
