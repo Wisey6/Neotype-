@@ -55,7 +55,9 @@ before and after so the change is visible before it is made — a per-cm² rate
 keyed on quantity cannot distinguish a 2″ sticker from a 5″ one, so switching
 over cuts small stickers and raises large ones at low quantity.
 
-Banners and corflute price per square metre with a quantity discount.
+Banners and corflute price per square metre with a quantity discount that
+fades as the run grows — 1 to 50 banners, 1 to 500 corflute signs, any number
+in between.
 
 ## Signing in to /admin
 
