@@ -476,6 +476,14 @@ function toOrder(s, status) {
     // or a short session id leaks part of its "cs_test_" prefix into the ref.
     ref: String(s.id).replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase(),
     session: s.id,
+    /* The PaymentIntent, which is what the Stripe dashboard calls a "payment".
+       The session id is a cs_… and Stripe's /payments/ route only resolves a
+       pi_… — linking the wrong one lands Ian on a not-found page every time.
+       It arrives as a bare id or an expanded object depending on the call. */
+    payment: typeof s.payment_intent === "string"
+      ? s.payment_intent
+      : (s.payment_intent && s.payment_intent.id) || "",
+    live: s.livemode !== false,
     when: new Date((s.created || 0) * 1000).toISOString(),
     amount: s.amount_total,
     currency: (s.currency || "aud").toUpperCase(),

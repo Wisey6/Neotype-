@@ -41,7 +41,7 @@ const settle = async () => { await p.waitForTimeout(420); return (await total())
 
 await box.fill("750");
 const at750 = await settle();
-const expect750 = CORE.priceStickers({ size: 3, qty: 750, finish: "vinyl-matte", shape: "die", turnaround: "standard" }, CORE.DEFAULT_PRICING).total;
+const expect750 = CORE.priceStickers({ w: 75, h: 75, qty: 750, finish: "vinyl-matte", shape: "die", turnaround: "standard" }, CORE.DEFAULT_PRICING).total;
 check("750 — a quantity no button offers — prices", Number(at750) === expect750, at750 + " vs " + expect750);
 check("the label follows", (await p.locator("#czQtyVal").innerText()).includes("750"), await p.locator("#czQtyVal").innerText());
 check("no preset is left looking selected",
@@ -73,7 +73,7 @@ check("typing towards a bigger number is not snapped mid-keystroke",
   await box.inputValue() === "1", await box.inputValue());
 await box.fill("150");
 await p.waitForTimeout(420);
-const expect150 = CORE.priceStickers({ size: 3, qty: 150, finish: "vinyl-matte", shape: "die", turnaround: "standard" }, CORE.DEFAULT_PRICING).total;
+const expect150 = CORE.priceStickers({ w: 75, h: 75, qty: 150, finish: "vinyl-matte", shape: "die", turnaround: "standard" }, CORE.DEFAULT_PRICING).total;
 check("…and 150 then prices correctly", Number(await settle()) === expect150);
 if (OUT) await p.locator(".cz-panel, .customizer, main").first().screenshot({ path: OUT + "/qty-box.png" }).catch(() => {});
 
@@ -93,19 +93,19 @@ const cells = await rows.evaluateAll(rs => rs.map(r => [...r.children].map(c => 
 check("no cell is still a placeholder", cells.every(c => c.every(v => v !== "—")), JSON.stringify(cells[0]));
 check("percentages are signed", cells.every(c => /^[+-]?\d+%$/.test(c[3])), cells.map(c => c[3]).join(" "));
 
-const twoInch = cells.find(c => c[0] === "100 × 2″");
-check("2″ × 100 gets cheaper — the change Ian asked for", twoInch && twoInch[3].startsWith("-"), JSON.stringify(twoInch));
-const fiveInch = cells.find(c => c[0] === "100 × 5″");
-check("5″ × 100 gets dearer, and is shown as such", fiveInch && fiveInch[3].startsWith("+"), JSON.stringify(fiveInch));
+const twoInch = cells.find(c => c[0] === "100 × 50 mm");
+check("50 mm × 100 gets cheaper — the change Ian asked for", twoInch && twoInch[3].startsWith("-"), JSON.stringify(twoInch));
+const fiveInch = cells.find(c => c[0] === "100 × 125 mm");
+check("125 mm × 100 gets dearer, and is shown as such", fiveInch && fiveInch[3].startsWith("+"), JSON.stringify(fiveInch));
 const upClass = await p.locator('[data-impdiff]').evaluateAll(es => es.filter(e => e.className === "adm-imp-up").length);
 check("rises are marked with the warning class", upClass >= 1, String(upClass) + " rises");
 
 // the table must react to the editor, or it is decoration
-const before = cells.find(c => c[0] === "500 × 3″")[2];
+const before = cells.find(c => c[0] === "500 × 75 mm")[2];
 await p.locator('[data-band="5.rate"]').fill("0.400");
 await p.waitForTimeout(400);
 const after = await p.locator('.adm-imptr:not(.adm-th)').evaluateAll(rs => {
-  const r = rs.find(x => x.children[0].textContent.trim() === "500 × 3″");
+  const r = rs.find(x => x.children[0].textContent.trim() === "500 × 75 mm");
   return r ? r.children[2].textContent.trim() : null;
 });
 check("editing a rate moves the impact figures", after && after !== before, before + " → " + after);

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css?v=41" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=42" />
 
   <link rel="canonical" href="https://www.neotype.au/customizer" />
   <meta property="og:type" content="website" />
@@ -148,13 +148,22 @@
             </div>
 
             <div class="field">
-              <label>Size <b id="czSizeVal">3 × 3 in</b></label>
-              <div class="opt-row" id="sizeOpts" role="group" aria-label="Size">
-                <button class="opt sz" data-size="2" aria-pressed="false">2″</button>
-                <button class="opt sz" data-size="3" aria-pressed="true">3″</button>
-                <button class="opt sz" data-size="4" aria-pressed="false">4″</button>
-                <button class="opt sz" data-size="5" aria-pressed="false">5″</button>
+              <label>Size (mm) <b id="czSizeVal">75 × 75 mm</b></label>
+              <select id="czSizeSel" class="cz-select" aria-label="Sticker size">
+                <option value="50x50">50 × 50 mm</option>
+                <option value="75x75" selected>75 × 75 mm</option>
+                <option value="100x100">100 × 100 mm</option>
+                <option value="125x125">125 × 125 mm</option>
+                <option value="custom">Custom size…</option>
+              </select>
+              <div class="cz-dims" id="czDims" hidden>
+                <label class="cz-dim"><span>Width (mm)</span>
+                  <input type="number" id="czW" inputmode="numeric" step="1" value="75"></label>
+                <span class="cz-dim-x" aria-hidden="true">×</span>
+                <label class="cz-dim"><span>Height (mm)</span>
+                  <input type="number" id="czH" inputmode="numeric" step="1" value="75"></label>
               </div>
+              <p class="opt-help" id="czSizeHelp">Any size from 10 mm to 300 mm on each side, square or rectangular.</p>
             </div>
 
             <div class="field">
@@ -322,9 +331,9 @@
   <script>
     window.NEOTYPE_CHECKOUT = { currency: "aud" };
   </script>
-  <script src="assets/js/pricing-core.js?v=35" defer></script>
+  <script src="assets/js/pricing-core.js?v=36" defer></script>
   <script src="assets/js/checkout.js?v=32" defer></script>
-  <script src="assets/js/customizer.js?v=36" defer></script>
+  <script src="assets/js/customizer.js?v=37" defer></script>
   <script src="assets/js/main.js?v=33" defer></script>
 </body>
 </html>

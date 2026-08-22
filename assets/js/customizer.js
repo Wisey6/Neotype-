@@ -10,8 +10,8 @@
     finish: "vinyl-matte",
     shape: "die",
     turnaround: "standard",
-    size: 3,
     qty: 100,
+    w: 75, h: 75,        // millimetres — the unit the shop actually works in
     fileName: null,
     file: null,
     fileURL: null,
@@ -80,13 +80,13 @@
 
   function quote() {
     return CORE.priceStickers({
-      size: state.size, qty: state.qty, finish: state.finish,
+      w: state.w, h: state.h, qty: state.qty, finish: state.finish,
       shape: state.shape, turnaround: state.turnaround
     }, PRICES);
   }
   function savings() {
     return CORE.stickerSavings({
-      size: state.size, qty: state.qty, finish: state.finish,
+      w: state.w, h: state.h, qty: state.qty, finish: state.finish,
       shape: state.shape, turnaround: state.turnaround
     }, PRICES);
   }
@@ -103,7 +103,19 @@
   }
 
   // ---- Preview visuals --------------------------------------------------
-  var SIZE_PX = { 2: 120, 3: 162, 4: 208, 5: 250 };
+  /* The preview is indicative, not to scale — a 300 mm sticker rendered at true
+     ratio against a 10 mm one would be unusable. Longer side maps into a fixed
+     band and the other follows, so proportion stays honest even when size isn't. */
+  var PX_MIN = 96, PX_MAX = 252;
+  function previewPx(w, h) {
+    var lim = CORE.sizeLimits(PRICES);
+    var long = Math.max(w, h), short = Math.min(w, h);
+    var t = (long - lim.min) / Math.max(1, lim.max - lim.min);
+    var px = PX_MIN + Math.max(0, Math.min(1, t)) * (PX_MAX - PX_MIN);
+    return long === w
+      ? { w: Math.round(px), h: Math.round(px * (short / long)) }
+      : { w: Math.round(px * (short / long)), h: Math.round(px) };
+  }
   var FINISH_BG = {
     "vinyl-matte": "linear-gradient(150deg, #06e4dd, #04a49f 45%, #764cd9)",
     "vinyl-gloss": "linear-gradient(140deg, #3af0ea, #06e4dd 45%, #8f6ce6)",
@@ -314,10 +326,14 @@
     if (kiss) cls += " is-kiss";
     art.className = cls;
 
-    var px = SIZE_PX[state.size] || 162;
-    var h = px;
-    if (state.shape === "sheet") h = Math.round(px * 0.78);
-    else if (state.shape === "rect") h = Math.round(px * 0.66);
+    var box = previewPx(state.w, state.h);
+    var px = box.w, h = box.h;
+    /* The sheet and rect cuts carry their own aspect, but only as a stand-in for
+       dimensions we now have. Applying both would squash a 100 × 50 twice. */
+    if (state.w === state.h) {
+      if (state.shape === "sheet") h = Math.round(px * 0.78);
+      else if (state.shape === "rect") h = Math.round(px * 0.66);
+    }
     art.style.width = px + "px";
     art.style.height = h + "px";
 
@@ -357,9 +373,8 @@
       }
     }
 
-    var sizeText = state.size + " in";
-    if (els.labelW) els.labelW.textContent = state.shape === "sheet" ? "sheet" : sizeText;
-    if (els.labelH) els.labelH.textContent = sizeText;
+    if (els.labelW) els.labelW.textContent = state.shape === "sheet" ? "sheet" : state.w + " mm";
+    if (els.labelH) els.labelH.textContent = state.h + " mm";
 
     if (els.paper) {
       els.paper.classList.remove("pg-white", "pg-black");
@@ -413,7 +428,7 @@
   function renderLabels() {
     setTxt("czFinishVal", FINISH_LABEL[state.finish]);
     setTxt("czShapeVal", SHAPE_LABEL[state.shape]);
-    setTxt("czSizeVal", state.size + " × " + state.size + " in");
+    setTxt("czSizeVal", state.w + " × " + state.h + " mm");
     setTxt("czQtyVal", state.qty.toLocaleString() + " stickers");
     setTxt("czTurnVal", TURNAROUND_LABEL[state.turnaround]);
     var help = document.getElementById("shapeHelp");
@@ -423,6 +438,72 @@
   }
   function setTxt(id, t) { var e = $(id); if (e) e.textContent = t; }
   function renderAll() { renderPreview(); renderPrice(); renderLabels(); }
+
+  // ---- Size -------------------------------------------------------------
+  /* One control, four presets and a custom option, following the pattern the
+     trade sites use — rather than a preset row with a separate custom toggle
+     beside it, which makes the two look like competing ways to answer the same
+     question. Choosing "Custom size…" reveals the two boxes and nothing else
+     changes. */
+  function wireSize() {
+    var sel = $("czSizeSel"), dims = $("czDims"), wIn = $("czW"), hIn = $("czH"), help = $("czSizeHelp");
+    if (!sel) return;
+    var lim = CORE.sizeLimits(PRICES);
+    var baseHelp = "Any size from " + lim.min + " mm to " + lim.max + " mm on each side, square or rectangular.";
+    if (help) help.textContent = baseHelp;
+    [wIn, hIn].forEach(function (el) { if (el) { el.min = lim.min; el.max = lim.max; } });
+
+    function say(msg) { if (help) help.textContent = msg || baseHelp; }
+
+    function apply(w, h) {
+      state.w = w; state.h = h;
+      setTxt("czSizeVal", w + " × " + h + " mm");
+      renderAll();
+    }
+
+    sel.addEventListener("change", function () {
+      if (sel.value === "custom") {
+        dims.hidden = false;
+        if (wIn) { wIn.value = state.w; hIn.value = state.h; wIn.focus(); wIn.select(); }
+        return;
+      }
+      dims.hidden = true;
+      say("");
+      var p = sel.value.split("x");
+      apply(parseInt(p[0], 10), parseInt(p[1], 10));
+    });
+
+    /* Same reasoning as the quantity box: typing "1" on the way to "120" must not
+       snap to the minimum and eat the keystrokes, so invalid values are explained
+       while typing and clamped only on blur. */
+    function typed() {
+      var w = parseInt(wIn.value, 10), h = parseInt(hIn.value, 10);
+      if (!isFinite(w) || !isFinite(h)) return say("");
+      if (w < lim.min || h < lim.min) return say("Our cutter's minimum is " + lim.min + " mm on each side.");
+      if (w > lim.max || h > lim.max) {
+        return say("Over " + lim.max + " mm is a large-format job — try " +
+          "a banner, or ask us for a price.");
+      }
+      say("");
+      apply(w, h);
+    }
+    function settle() {
+      var w = parseInt(wIn.value, 10), h = parseInt(hIn.value, 10);
+      if (!isFinite(w)) w = state.w;
+      if (!isFinite(h)) h = state.h;
+      w = Math.max(lim.min, Math.min(lim.max, Math.round(w)));
+      h = Math.max(lim.min, Math.min(lim.max, Math.round(h)));
+      wIn.value = w; hIn.value = h;
+      say("");
+      apply(w, h);
+    }
+    [wIn, hIn].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener("input", typed);
+      el.addEventListener("blur", settle);
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter") el.blur(); });
+    });
+  }
 
   // ---- Quantity ---------------------------------------------------------
   /* The seven buttons are one-tap shortcuts, not the range. Somebody who wants
@@ -639,7 +720,7 @@
         chip(FINISH_LABEL[state.finish]) +
         chip(SHAPE_LABEL[state.shape]) +
         chip(TURNAROUND_LABEL[state.turnaround]) +
-        chip(state.size + "×" + state.size + "″") +
+        chip(state.w + " × " + state.h + " mm") +
         chip(state.qty.toLocaleString() + " stickers") +
         '<span class="proof-chip price"><b>$' + r.total + "</b> " + CURRENCY + "</span>";
     }
@@ -717,7 +798,7 @@
         finish: state.finish,
         shape: state.shape,
         turnaround: state.turnaround,
-        size: state.size,
+        w: state.w, h: state.h,
         qty: state.qty,
         background: state.fillColor === "auto" ? "Studio gradient" : state.fillColor,
         cutColour: state.dieBorderColor
@@ -731,7 +812,7 @@
     // no checkout keys configured yet -> keep the demo behaviour
     var r = quote();
     window.dispatchEvent(new CustomEvent("neotype:toast", {
-      detail: "Added " + state.qty + " × " + state.size + "″ " + FINISH_LABEL[state.finish] + ", $" + r.total + " AUD"
+      detail: "Added " + state.qty + " × " + state.w + "×" + state.h + "mm " + FINISH_LABEL[state.finish] + ", $" + r.total + " AUD"
     }));
   }
 
@@ -777,7 +858,7 @@
       fillCustom.addEventListener("input", pickCustom);
       fillCustom.addEventListener("change", pickCustom);
     }
-    wireGroup("sizeOpts", "data-size", function (v) { state.size = parseInt(v, 10); renderAll(); });
+    wireSize();
     wireGroup("qtyOpts", "data-qty", function (v) { setQty(parseInt(v, 10)); });
     wireQtyBox();
     wireGroup("turnOpts", "data-turn", function (v) { state.turnaround = v; renderAll(); });
