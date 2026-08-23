@@ -4,43 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#ffffff" />
   <title>Dashboard — Neotype Studio</title>
   <link rel="icon" type="image/png" href="assets/img/favicon.png?v=21" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Varela+Round&family=Comfortaa:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/styles.css?v=42" />
-  <link rel="stylesheet" href="assets/css/admin.css?v=6" />
-</head>
-<body>
-  <header class="site-header">
-    <div class="wrap nav">
-      <a href="index.html" aria-label="Neotype Studio home">
-        <span class="glitch" data-glitch>
-          <img class="brand-logo glitch-base" src="assets/img/neotype-logo.png" alt="Neotype Studio" />
-          <img class="brand-logo glitch-layer gl-a" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
-          <img class="brand-logo glitch-layer gl-b" src="assets/img/neotype-logo.png" alt="" aria-hidden="true" />
-        </span>
-      </a>
-      <div class="nav-cta"><span class="adm-badge">Owner dashboard</span></div>
-    </div>
-  </header>
-  <div class="signal-bar"></div>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!--
+    The dashboard does NOT load the site's styles.css.
 
-  <main id="top">
-    <section class="section-pad">
-      <div class="wrap" style="max-width:1320px">
-        <div id="admRoot"></div>
-      </div>
-    </section>
-  </main>
+    It used to, and inherited the dark synthwave canvas, the 148px marketing
+    header and the glitching logo along with it — an identity built to sell to
+    strangers, wrapped round a tool one person uses to run a print shop. Ian
+    asked for something that looks like a normal, professional web application,
+    and the honest way to do that is to stop inheriting a theme designed for the
+    opposite job rather than to fight it with overrides.
+
+    So admin.css is standalone: its own light palette, its own buttons, its own
+    everything. Nothing here is shared with the customer-facing site, which also
+    means no change to the shop's look can break the dashboard, and no change
+    here can leak out to a customer.
+  -->
+  <link rel="stylesheet" href="assets/css/admin.css?v=7" />
+</head>
+<body class="adm-body">
+  <!-- admin.js renders the whole application into this element: the left rail
+       and every panel. It is the grid that gives the rail its full height. -->
+  <div id="admRoot"></div>
 
   <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg">Saved</span></div>
 
   <!-- The admin talks to this site's own /api function. Nothing to configure. -->
   <script>window.NEOTYPE_ADMIN = {};</script>
   <script src="assets/js/pricing-core.js?v=37"></script>
-  <script src="assets/js/admin.js?v=42" defer></script>
+  <script src="assets/js/admin.js?v=43" defer></script>
   <script src="assets/js/main.js?v=33" defer></script>
 </body>
 </html>

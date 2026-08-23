@@ -1,230 +1,634 @@
 /* ==========================================================================
-   Neotype admin — the workshop dashboard.
+   Neotype — owner dashboard.
 
-   A separate stylesheet on purpose: this is an internal tool for one person,
-   and none of it ships to customers, so it has no business inflating the
-   site's own styles.css. It inherits every brand token from there (--teal,
-   --purple, --bg-card, --line…) and adds only dashboard furniture.
+   STANDALONE. This file does not load, extend or inherit styles.css, and that
+   is deliberate: the shop's stylesheet is a dark synthwave identity built to
+   sell to strangers, and this is a back-office tool one person uses to run a
+   print shop. Wrapping the second in the first meant a 148px marketing header,
+   a glitching logo and a black canvas above a table of orders. Ian asked for a
+   normal, professional web application, so the fix is to stop inheriting a
+   theme built for the opposite job — not to fight it with overrides.
 
-   Dark-first canvas with a single teal accent on neutral — the site's own
-   identity, not a borrowed one. Chart colours are validated: see the note
-   above MIX in admin.js.
+   The consequence to know: every class admin.js emits is defined HERE. If a
+   panel renders unstyled, the class is missing from this file, not from
+   styles.css. In exchange, nothing the shop's design does can break the
+   dashboard, and nothing done here can leak out to a customer.
+
+   Look: white surfaces, hairline rules, one teal accent, and monospaced
+   figures. Money, references, dates and quantities are the things Ian actually
+   reads off this screen, so they get a tabular monospace and everything else
+   gets out of their way.
    ========================================================================== */
 
-/* ---- shell: fixed left rail + scrolling content ------------------------- */
-.adm-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 32px; align-items: start; }
-.adm-main { min-width: 0; }
+/* ---- tokens -------------------------------------------------------------
+   Every colour here is checked, not chosen by eye. Text and icons carry at
+   least 4.5:1 on the surface behind them; chart fills carry at least 3:1 as
+   graphical objects. The chart hues additionally passed the categorical
+   validator on a light surface — lightness band, chroma floor, CVD separation
+   and normal-vision separation — which the old dark-surface set did not.
+   -------------------------------------------------------------------------- */
+:root {
+  --bg: #f4f6f8;            /* app canvas behind the cards */
+  --surface: #ffffff;       /* cards, rail, rows */
+  --surface-2: #f8fafc;     /* table headers, inset wells */
+  --surface-3: #eef2f6;     /* pressed / hovered chrome */
+
+  --text: #101828;          /* 17.8:1 on white */
+  --muted: #475467;         /*  7.6:1 */
+  /* The floor. Checked against the CANVAS, not white: micro-labels sit on
+     #f4f6f8 as often as on a card, and #64748b passes on one and fails on the
+     other at 4.39:1. Pick the darker step and both hold. */
+  --muted-2: #5f6d7e;
+
+  --line: #d5dbe3;
+  --line-soft: #e7ebf0;
+
+  /* Brand teal, stepped down until it is legible on white. #06e4dd — the shop's
+     own teal — is 1.5:1 here and unusable for anything but decoration. */
+  --accent: #0f766e;        /* 5.5:1 — text, borders, active nav */
+  --accent-fill: #0d9488;   /* 3.7:1 — fills and bars */
+  --accent-ink: #ffffff;    /* text on an accent fill */
+  --accent-tint: #effcfa;
+  --accent-line: #99e2dc;
+
+  /* Reserved status colours. Never used for a chart series. */
+  --bad: #b42318;   --bad-tint: #fef3f2;   --bad-line: #fda29b;
+  --warn: #b54708;  --warn-tint: #fffaeb;  --warn-line: #fec84b;
+  --good: #067647;  --good-tint: #ecfdf3;  --good-line: #a6f4c5;
+
+  /* Categorical series, fixed order, never cycled. Validated together. */
+  --cat-1: #0d9488;   /* stickers */
+  --cat-2: #7c3aed;   /* banners  */
+  --cat-3: #c11574;   /* corflute */
+  --cat-4: #5c6ac4;   /* other    */
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+  --shadow-md: 0 4px 14px -6px rgba(16, 24, 40, .14);
+  --shadow-pop: 0 12px 32px -12px rgba(16, 24, 40, .28);
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --rail-w: 248px;
+
+  --font: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* System monospace: the terminal texture with no extra font request. */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.adm-body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.adm-body h1, .adm-body h2, .adm-body h3, .adm-body p { margin: 0; }
+.adm-body a { color: var(--accent); text-decoration: none; }
+.adm-body a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* Figures are read, not skimmed. One class, used everywhere a number lives. */
+.adm-body [data-num], .adm-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   SHELL — a full-height rail beside a scrolling column
+   ========================================================================== */
+/* admin.js sets this class on #admRoot once you are signed in, and clears it
+   for the sign-in screen. So the grid only exists when there is a rail to put
+   in it, and the lock screen below can centre itself freely. */
+.adm-shell {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  min-height: 100vh;
+}
 
 .adm-rail {
-  /* Clear the sticky site header, or the top nav buttons hide behind it. The
-     header height is a variable in styles.css for exactly this reason. */
-  position: sticky; top: calc(var(--header-h, 148px) + 20px);
-  max-height: calc(100vh - var(--header-h, 148px) - 40px);
-  overflow-y: auto;
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 16px 12px;
-  background: var(--bg-card); border: 1px solid var(--line-soft);
-  border-radius: var(--radius, 16px);
+  position: sticky; top: 0;
+  height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 18px 14px 22px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
 }
+/* The wordmark. A quiet one — this is a tool, and the person using it already
+   knows whose shop it is. */
 .adm-rail-h {
-  font-family: var(--font-display); font-size: .72rem; font-weight: 800;
-  letter-spacing: .16em; text-transform: uppercase;
-  color: var(--muted-2); padding: 4px 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 10px 20px;
+  font-weight: 800; font-size: 1.02rem; letter-spacing: -.01em; color: var(--text);
 }
+.adm-rail-h img { display: block; height: 26px; width: auto; }
+.adm-rail-h small {
+  display: block; font-size: .66rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2);
+}
+
 .adm-navbtn {
   display: flex; align-items: center; gap: 11px;
-  padding: 10px 12px; border: 0; border-radius: 10px;
+  padding: 9px 11px; border: 0; border-radius: var(--radius-sm);
   background: transparent; color: var(--muted);
-  font: inherit; font-size: .95rem; font-weight: 600; text-align: left;
+  font: inherit; font-size: .94rem; font-weight: 600; text-align: left;
   text-decoration: none; cursor: pointer;
-  transition: background .15s ease, color .15s ease;
+  transition: background .12s ease, color .12s ease;
 }
-.adm-navbtn:hover { background: rgba(255, 255, 255, .04); color: var(--text); }
-.adm-navbtn[aria-current="page"] {
-  background: rgba(6, 228, 221, .1); color: var(--teal);
-  box-shadow: inset 2px 0 0 var(--teal);
-}
-.adm-navic { width: 18px; text-align: center; font-size: 1rem; opacity: .9; }
-.adm-navbtn--out { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line-soft); border-radius: 0 0 10px 10px; }
+.adm-navbtn:hover { background: var(--surface-3); color: var(--text); text-decoration: none; }
+.adm-navbtn[aria-current="page"] { background: var(--accent-tint); color: var(--accent); }
+.adm-navic { width: 18px; text-align: center; font-size: .95rem; flex: none; }
+/* Everything below the rule leaves the dashboard, so it sits apart from the
+   sections and gets pushed to the bottom of the rail. */
+.adm-navbtn--out { margin-top: auto; padding-top: 16px; }
+.adm-navbtn--out, .adm-navbtn--out + .adm-navbtn { border-top: 1px solid var(--line-soft); border-radius: 0; }
+.adm-navbtn--out + .adm-navbtn { padding-top: 12px; }
 
-/* hidden panels must be gone, not just transparent */
+.adm-main { min-width: 0; padding: 30px 36px 72px; }
 .adm-panel[hidden] { display: none; }
 
-/* ---- analytics: stat row ------------------------------------------------ */
-/* Four single numbers. Per the dataviz form heuristic, a headline figure is a
-   stat tile, not a chart — plotting one number is noise. */
-.an-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 22px; }
+/* ---- panel heading ------------------------------------------------------ */
+.section-head { margin: 0 0 24px; }
+.eyebrow {
+  display: block; font-size: .7rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2);
+  margin-bottom: 5px;
+}
+.display-lg { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.lead { color: var(--muted); font-size: .96rem; margin-top: 6px !important; }
+.lead b { color: var(--text); font-weight: 700; }
+.opt-help { font-size: .86rem; color: var(--muted); }
+
+/* ==========================================================================
+   CONTROLS
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px; border-radius: var(--radius-sm);
+  font: inherit; font-size: .89rem; font-weight: 600; white-space: nowrap;
+  border: 1px solid var(--accent-fill); background: var(--accent-fill); color: var(--accent-ink);
+  cursor: pointer; text-decoration: none;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:hover { background: var(--accent); border-color: var(--accent); text-decoration: none; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn--accent { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); }
+.btn--ghost { background: var(--surface); border-color: var(--line); color: var(--text); }
+.btn--ghost:hover { background: var(--surface-3); border-color: var(--line); color: var(--text); }
+.btn--sm { padding: 6px 11px; font-size: .82rem; }
+
+.adm-badge {
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-tint);
+  border: 1px solid var(--accent-line); border-radius: 100px; padding: 4px 11px;
+}
+.adm-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: .89rem; color: var(--accent);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.adm-link:hover { color: var(--text); }
+.adm-link:disabled { color: var(--muted-2); cursor: default; text-decoration: none; }
+
+/* one input treatment, used by every text field on the page */
+.adm-lock input, .adm-search input, .adm-money input, .adm-pct input,
+.adm-bandtable input, .mf-field input, .mf-field select, .mf-field textarea {
+  font: inherit; font-size: .92rem; color: var(--text);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+}
+.adm-lock input:focus, .adm-search input:focus, .mf-field input:focus,
+.mf-field select:focus, .mf-field textarea:focus,
+.adm-money:focus-within, .adm-pct:focus-within {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15, 118, 110, .13);
+}
+.adm-money input:focus, .adm-pct input:focus { outline: none; box-shadow: none; }
+
+/* ==========================================================================
+   SIGN IN — the one screen with no rail
+   ========================================================================== */
+#admRoot:not(.adm-shell) {
+  display: block; width: min(430px, calc(100% - 32px));
+  margin: 9vh auto 60px; padding: 34px 32px 32px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow-md);
+}
+#admRoot:not(.adm-shell) .section-head { margin-bottom: 24px; }
+.adm-lockmark { display: block; height: 30px; width: auto; margin: 0 0 22px; }
+.adm-lock { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 20px; }
+.adm-lock input { flex: 1; min-width: 190px; }
+.adm-remember { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; cursor: pointer; }
+.adm-remember input { margin-top: 3px; accent-color: var(--accent-fill); flex: none; }
+.adm-remember span { font-size: .9rem; color: var(--muted); }
+.adm-remember em { display: block; font-style: normal; font-size: .82rem; color: var(--muted-2); }
+.adm-forgot { margin: 18px 0 0; }
+.adm-code { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+.adm-code-h { font-size: 1rem; font-weight: 700; margin: 0 0 4px; }
+.adm-code .adm-lock { margin-top: 10px; }
+.adm-code input { letter-spacing: .3em; font-weight: 700; text-align: center; font-family: var(--font-mono); }
+.adm-lockmsg { color: var(--bad); margin-top: 14px; }
+.adm-lockmsg.is-ok { color: var(--good); }
+
+/* ==========================================================================
+   CARDS
+   ========================================================================== */
+.adm-card, .dash-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 20px 22px; margin: 0 0 18px;
+  box-shadow: var(--shadow-sm);
+}
+.adm-card { margin-top: 18px; }
+.adm-card-h, .dash-card-h {
+  display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin: 0 0 16px;
+}
+.adm-card h2, .dash-card-h h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+.adm-note, .dash-thin, .adm-hint { font-size: .84rem; color: var(--muted-2); }
+.adm-sub { font-size: .95rem; font-weight: 700; margin: 24px 0 9px; }
+
+/* ==========================================================================
+   DASHBOARD — the numbers row
+   A headline figure is a stat tile, not a chart: plotting one number is noise.
+   Every tone ships with its own words underneath, so the colour is never the
+   only thing carrying the meaning.
+   ========================================================================== */
+.dash-tiles {
+  display: grid; gap: 12px; margin: 0 0 18px;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+}
+.dash-tile {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 15px 17px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+}
+.dash-n {
+  font-family: var(--font-mono); font-weight: 700;
+  font-size: clamp(1.55rem, 3vw, 2rem); line-height: 1.1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em;
+}
+.dash-l { font-size: .9rem; font-weight: 600; }
+.dash-note { font-size: .77rem; color: var(--muted-2); }
+.dash-tile.is-bad    { border-color: var(--bad-line);  background: var(--bad-tint); }
+.dash-tile.is-bad .dash-n  { color: var(--bad); }
+.dash-tile.is-warn   { border-color: var(--warn-line); background: var(--warn-tint); }
+.dash-tile.is-warn .dash-n { color: var(--warn); }
+.dash-tile.is-good .dash-n, .dash-tile.is-accent .dash-n { color: var(--accent); }
+
+/* ---- pipeline ----------------------------------------------------------- */
+.pipe { display: grid; gap: 12px; align-items: start; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pipe-col {
+  background: var(--surface-2); border: 1px solid var(--line-soft);
+  border-radius: var(--radius); padding: 10px; min-width: 0;
+}
+.pipe-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted-2); padding: 3px 4px 10px;
+}
+.pipe-count {
+  background: var(--surface-3); color: var(--muted);
+  border-radius: 100px; padding: 1px 8px; font-size: .78rem;
+  font-family: var(--font-mono); font-weight: 600;
+}
+.pipe-empty { margin: 0; padding: 8px 4px; font-size: .8rem; color: var(--muted-2); }
+.pipe-job {
+  background: var(--surface); border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-fill);
+  border-radius: var(--radius-sm); padding: 10px 11px; margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+}
+.pipe-job:last-child { margin-bottom: 0; }
+.pipe-job.is-late  { border-left-color: var(--bad); }
+.pipe-job.is-today { border-left-color: var(--warn); }
+.pipe-job.is-soon  { border-left-color: var(--cat-2); }
+.pipe-job-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pipe-job-top b { font-size: .86rem; font-weight: 600; line-height: 1.35; }
+.pipe-amt {
+  font-family: var(--font-mono); font-size: .82rem; font-weight: 600;
+  color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pipe-job-meta { font-size: .76rem; color: var(--muted-2); margin: 5px 0 0; line-height: 1.45; }
+.pipe-due { font-weight: 700; }
+.pipe-due.is-late  { color: var(--bad); }
+.pipe-due.is-today { color: var(--warn); }
+.pipe-due.is-soon  { color: var(--cat-2); }
+.pipe-due.is-ok, .pipe-due.is-done { color: var(--muted-2); }
+.pipe-job-act { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; align-items: center; }
+.pipe-mini {
+  font-size: .74rem; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--line); color: var(--muted);
+  background: var(--surface); text-decoration: none; white-space: nowrap;
+}
+.pipe-mini:hover { border-color: var(--muted-2); color: var(--text); text-decoration: none; }
+.pipe-mini.is-off { color: var(--muted-2); border-style: dashed; }
+.pipe-adv {
+  font: inherit; font-size: .74rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  background: var(--accent-fill); color: var(--accent-ink); border: 1px solid var(--accent-fill);
+  margin-left: auto; white-space: nowrap;
+}
+.pipe-adv:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.pipe-adv:disabled { opacity: .5; cursor: default; }
+
+/* ---- revenue bars -------------------------------------------------------
+   One series, so no legend — the card title names it. Bars are anchored to the
+   baseline with a 4px rounded data-end, and the current week is the darker
+   step so "where are we now" reads without a caption.
+   -------------------------------------------------------------------------- */
+.rev-chart { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; height: 178px; align-items: end; }
+/* A column, not a 3-row grid. A grid pins every value label to the top of the
+   plot, so a $43 week's label floated level with the $761 week's and you had to
+   trace downwards to work out which bar it belonged to. Flexed and end-aligned,
+   each label sits on top of its own bar where it can only mean one thing. */
+.rev-col { display: flex; flex-direction: column; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+.rev-col .rev-bar { flex: 0 0 auto; }
+.rev-val {
+  font-family: var(--font-mono); font-size: .7rem; color: var(--muted-2);
+  text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.rev-bar { align-self: end; width: 100%; min-height: 3px; background: var(--accent-fill); border-radius: 4px 4px 0 0; }
+.rev-bar.is-now { background: var(--accent); }
+.rev-x { font-size: .7rem; color: var(--muted-2); text-align: center; white-space: nowrap; }
+/* A week with no revenue is a baseline tick, never a short bar — a stub would
+   read as a small amount of money, which is a different answer. */
+.rev-zero { display: block; height: 1px; width: 100%; background: var(--line); }
+
+/* ==========================================================================
+   ORDERS + ENQUIRIES
+   ========================================================================== */
+.adm-search { display: flex; gap: 9px; align-items: center; margin: 0 0 14px; }
+.adm-search input { flex: 1; min-width: 0; }
+.adm-search-x {
+  flex: none; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 9px 14px;
+  color: var(--muted); font: inherit; font-size: .86rem; cursor: pointer;
+}
+.adm-search-x:hover { color: var(--text); background: var(--surface-3); }
+.adm-cap { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+
+.adm-enq-list { display: grid; gap: 10px; }
+.adm-enq {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.adm-enq-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.adm-enq-top b { font-size: 1rem; font-weight: 600; }
+.adm-enq-topic {
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 100px;
+  background: var(--accent-tint); color: var(--accent);
+}
+.adm-enq-when {
+  font-family: var(--font-mono); font-size: .78rem; color: var(--muted-2);
+  margin-left: auto; font-variant-numeric: tabular-nums;
+}
+.adm-enq-mail { display: inline-block; margin: 3px 0 8px; font-size: .88rem; }
+.adm-enq-msg { margin: 0; white-space: pre-wrap; line-height: 1.55; color: var(--muted); }
+
+.adm-ord-amt {
+  font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 2px 9px; border-radius: 100px;
+  background: var(--surface-3); color: var(--text);
+}
+.adm-ord-meta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-size: .82rem; color: var(--muted-2); margin: 7px 0 2px;
+}
+.adm-ord-meta b { font-family: var(--font-mono); font-weight: 600; color: var(--muted); }
+.adm-ord-art { margin: 10px 0 0; }
+.adm-ord-noart { font-size: .86rem; color: var(--warn); }
+/* Payment state. An unpaid order must not read as ready-to-print at a glance,
+   so the whole card is tinted, not just a pill in the corner. */
+.adm-ord-pill {
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 100px; white-space: nowrap;
+}
+.adm-ord-pill.is-pending { background: var(--warn-tint); color: var(--warn); border: 1px solid var(--warn-line); }
+.adm-ord-pill.is-failed  { background: var(--bad-tint);  color: var(--bad);  border: 1px solid var(--bad-line); }
+.adm-ord--pending { border-color: var(--warn-line); background: var(--warn-tint); }
+.adm-ord--failed  { border-color: var(--bad-line);  background: var(--bad-tint); }
+.adm-ord-hold { margin: 10px 0 0; font-size: .86rem; line-height: 1.5; font-weight: 600; }
+.adm-ord--pending .adm-ord-hold { color: var(--warn); }
+.adm-ord--failed  .adm-ord-hold { color: var(--bad); }
+.adm-art-soon, .adm-art-gone { display: inline-block; margin-left: 10px; font-size: .8rem; font-weight: 600; }
+.adm-art-soon { color: var(--warn); }
+.adm-art-gone { color: var(--bad); }
+
+/* ==========================================================================
+   ANALYTICS
+   ========================================================================== */
+.an-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .an-stat {
-  display: flex; flex-direction: column; gap: 3px;
-  padding: 16px 18px; background: var(--bg-card);
-  border: 1px solid var(--line-soft); border-radius: 14px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 15px 17px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
 }
-.an-stat-l { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-2); }
-.an-stat-v { font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.an-stat-s { font-size: .84rem; color: var(--muted); }
+.an-stat-l { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); }
+.an-stat-v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.an-stat-s { font-size: .82rem; color: var(--muted-2); }
 
-/* ---- product mix: horizontal bars -------------------------------------- */
 /* Bars, not a pie: three similar shares are unreadable as wedges. Every bar
-   carries its own value and a colour dot beside its name, so identity never
+   carries its own value and a colour chip beside its name, so identity never
    depends on colour alone. */
-.mix-chart { display: grid; gap: 10px; }
-.mix-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) 78px 44px; gap: 12px; align-items: center; }
-.mix-label { display: flex; align-items: center; gap: 8px; font-size: .92rem; font-weight: 600; }
+.mix-chart { display: grid; gap: 9px; }
+.mix-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) 82px 46px; gap: 12px; align-items: center; }
+.mix-label { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; }
 .mix-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-.mix-track { height: 22px; background: rgba(255, 255, 255, .05); border-radius: 5px; overflow: hidden; }
-/* 4px rounded data-end, anchored to the baseline */
+.mix-track { height: 20px; background: var(--surface-3); border-radius: 5px; overflow: hidden; }
 .mix-bar { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 3px; }
-.mix-val { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
-.mix-share { font-size: .86rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.mix-val { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.mix-share { font-family: var(--font-mono); font-size: .84rem; color: var(--muted-2); font-variant-numeric: tabular-nums; text-align: right; }
 
-/* ---- the table view behind every chart --------------------------------- */
-.an-details { margin-top: 18px; }
-.an-details summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
-.an-details summary:hover { color: var(--teal); }
-.an-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .9rem; }
-.an-table caption { text-align: left; padding-bottom: 8px; }
+/* Every chart has a table behind it. Colour is a shortcut, not the record. */
+.an-details { margin-top: 16px; }
+.an-details summary { cursor: pointer; color: var(--muted); font-size: .86rem; }
+.an-details summary:hover { color: var(--accent); }
+.an-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .88rem; }
+.an-table caption { text-align: left; padding-bottom: 8px; color: var(--muted-2); }
 .an-table th, .an-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); }
-.an-table th { font-size: .76rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-2); font-weight: 700; }
-.an-table td:not(:first-child), .an-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.an-table th { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2); }
+.an-table td:not(:first-child), .an-table th:not(:first-child) { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-/* ---- receipts ---------------------------------------------------------- */
-.rec-list { display: grid; gap: 2px; }
+/* ==========================================================================
+   RECEIPTS — a ledger, so it reads like one
+   ========================================================================== */
+.rec-list { display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .rec-row {
-  display: grid; grid-template-columns: 108px minmax(0, 1fr) 96px 92px 130px;
-  gap: 12px; align-items: center; padding: 11px 12px; border-radius: 9px;
+  display: grid; grid-template-columns: 152px minmax(0, 1fr) 104px 96px 130px;
+  gap: 12px; align-items: center; padding: 10px 14px;
+  border-top: 1px solid var(--line-soft); background: var(--surface);
 }
-.rec-row:nth-child(odd) { background: rgba(255, 255, 255, .022); }
-.rec-when { font-size: .86rem; color: var(--muted); }
+.rec-row:first-child { border-top: 0; }
+.rec-row:hover { background: var(--surface-2); }
+.rec-when { font-family: var(--font-mono); font-size: .8rem; color: var(--muted-2); white-space: nowrap; }
 .rec-who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rec-ref { font-size: .82rem; color: var(--muted-2); font-variant-numeric: tabular-nums; }
-.rec-amt { font-variant-numeric: tabular-nums; text-align: right; }
-.rec-link { font-size: .86rem; text-align: right; }
-.rec-src { font-size: .82rem; color: var(--muted-2); text-align: right; }
+.rec-ref { font-family: var(--font-mono); font-size: .8rem; color: var(--muted-2); }
+.rec-amt { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.rec-link { font-size: .84rem; text-align: right; }
+.rec-src { font-size: .8rem; color: var(--muted-2); text-align: right; }
 
-/* ---- manual order form ------------------------------------------------- */
-.mf-card { margin-top: 26px; }
-.mf-card > summary { cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
-.mf-card > summary b { font-size: 1.02rem; }
+/* ==========================================================================
+   PRICING
+   ========================================================================== */
+.adm-ex-box {
+  background: var(--accent-tint); border: 1px solid var(--accent-line);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px;
+}
+.adm-ex-title { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.adm-ex-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 20px; margin-top: 9px; }
+.adm-ex-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px dashed var(--accent-line); padding-bottom: 6px; }
+.adm-ex-row span { font-size: .82rem; color: var(--muted); }
+.adm-ex-row b { font-family: var(--font-mono); font-weight: 700; font-size: 1.02rem; color: var(--text); white-space: nowrap; }
+
+.adm-money-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.adm-money-row .adm-field { flex: 1; min-width: 200px; }
+.adm-field { display: grid; gap: 6px; }
+.adm-field > span { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.adm-money { display: flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+.adm-money > span { padding: 0 2px 0 12px; color: var(--muted-2); font-family: var(--font-mono); font-weight: 600; }
+.adm-money input { border: 0; background: none; padding: 10px 12px 10px 4px; width: 100%; border-radius: 0; font-family: var(--font-mono); font-weight: 600; font-size: 1rem; }
+
+.adm-table { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.adm-tr { display: grid; grid-template-columns: 1.6fr 1fr 1fr 148px; align-items: center; gap: 12px; padding: 10px 15px; border-top: 1px solid var(--line-soft); }
+.adm-tr:first-child { border-top: 0; }
+.adm-th { background: var(--surface-2); }
+.adm-th span { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2); }
+.adm-opt { font-size: .9rem; font-weight: 600; color: var(--text); }
+.adm-opt-ex { font-family: var(--font-mono); font-size: .86rem; color: var(--muted-2); }
+.adm-opt-ex b { font-weight: 600; color: var(--text); }
+.adm-pct { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); max-width: 108px; }
+.adm-pct input { width: 62px; border: 0; background: none; padding: 7px 2px 7px 10px; border-radius: 0; font-family: var(--font-mono); font-weight: 600; text-align: right; }
+.adm-pct > span { padding: 0 10px 0 2px; color: var(--muted-2); }
+.adm-std { font-size: .74rem; color: var(--muted-2); font-style: normal; margin-left: 8px; }
+
+.adm-adv { margin-top: 18px; }
+.adm-adv summary { cursor: pointer; font-size: .86rem; color: var(--accent); }
+
+/* Sticky, because the pricing panel is long and the save button being at the
+   bottom of it means saving is something you have to go and find. */
+.adm-savebar {
+  position: sticky; bottom: 18px; z-index: 5;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 26px; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow-pop);
+}
+.adm-savebar .btn { flex: 0 0 auto; }
+
+/* ---- stock switch -------------------------------------------------------
+   Ian turns an option off when he cannot print it. A hidden option is dimmed
+   rather than removed from his table, so he can see at a glance what is off
+   and switch it back — a disappearing row would leave him hunting for it.
+   -------------------------------------------------------------------------- */
+.adm-stock { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.adm-stock input { position: absolute; opacity: 0; width: 0; height: 0; }
+.adm-stock-pill { width: 36px; height: 21px; border-radius: 100px; flex: none; background: var(--accent-fill); position: relative; transition: background .15s; }
+.adm-stock-pill::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 15px; height: 15px; border-radius: 50%; background: #fff;
+  box-shadow: var(--shadow-sm); transition: transform .15s;
+}
+.adm-stock.is-off .adm-stock-pill { background: var(--line); }
+.adm-stock.is-off .adm-stock-pill::after { transform: translateX(15px); }
+.adm-stock-txt { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.adm-stock.is-off .adm-stock-txt { color: var(--muted-2); }
+.adm-stock input:focus-visible + .adm-stock-pill { outline: 2px solid var(--accent); outline-offset: 3px; }
+.adm-tr-off { background: var(--surface-2); }
+.adm-tr-off .adm-opt, .adm-tr-off .adm-opt-ex, .adm-tr-off .adm-pct { opacity: .45; }
+
+/* ---- quantity bands ----------------------------------------------------- */
+.adm-bandnote { display: block; margin: 0 0 12px; max-width: 62ch; }
+.adm-bandon { margin: 0 0 14px; }
+.adm-bandtr { grid-template-columns: 1fr 1fr 1fr 1.2fr; }
+.adm-bandtable input { width: 100%; max-width: 130px; font-family: var(--font-mono); font-size: .88rem; }
+.adm-bandtable[data-dim] { opacity: .5; }
+.adm-bandwarn {
+  margin: 12px 0 0; padding: 12px 15px;
+  border-left: 3px solid var(--accent-fill); background: var(--accent-tint);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: .87rem; color: var(--muted); max-width: 78ch;
+}
+/* Before/after impact of the band table. A rise is red because a rise is the
+   thing that generates a phone call; a cut is the accent because it is the
+   intent. Both are labelled with a signed number, never colour alone. */
+.adm-impact-h { margin-top: 30px; }
+.adm-imptr { grid-template-columns: 1.4fr 1fr 1fr .8fr; }
+.adm-imptr span { font-family: var(--font-mono); font-size: .86rem; }
+.adm-imptr span:first-child { font-family: var(--font); }
+.adm-imptr span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm-imp-up { color: var(--bad); }
+.adm-imp-down { color: var(--accent); }
+.adm-imp-flat { color: var(--muted-2); }
+
+/* ---- manual order form -------------------------------------------------- */
+.mf-card { margin-top: 24px; }
+.mf-card > summary { cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.mf-card > summary b { font-size: 1rem; }
 .mf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 14px; margin-top: 20px; }
 .mf-wide { grid-column: 1 / -1; }
 .mf-field { display: flex; flex-direction: column; gap: 6px; }
-.mf-field > span { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-2); }
-.mf-field input, .mf-field select, .mf-field textarea {
-  padding: 10px 12px; border-radius: 10px;
-  background: rgba(0, 0, 0, .22); border: 1px solid var(--line-soft);
-  color: var(--text); font: inherit; font-size: .95rem;
-}
-.mf-field input:focus, .mf-field select:focus, .mf-field textarea:focus {
-  outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6, 228, 221, .13);
-}
+.mf-field > span { font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-2); }
 .mf-field textarea { resize: vertical; }
-.mf-hint { font-size: .8rem; color: var(--muted-2); font-style: normal; }
+.mf-hint { font-size: .78rem; color: var(--muted-2); font-style: normal; }
 .mf-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
 
-/* ---- narrow screens: the rail becomes a scrolling tab strip ------------ */
-@media (max-width: 900px) {
-  .adm-shell { grid-template-columns: 1fr; gap: 20px; }
+/* ==========================================================================
+   TOAST — main.js drives this; it is the only thing shared with the site
+   ========================================================================== */
+.toast {
+  position: fixed; left: 50%; bottom: 26px;
+  transform: translateX(-50%) translateY(160%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--text); color: #fff;
+  font-size: .86rem; padding: 12px 18px; border-radius: 100px;
+  box-shadow: var(--shadow-pop); z-index: 90;
+  transition: transform .3s cubic-bezier(.2, .9, .25, 1.2);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex: none; }
+
+/* ==========================================================================
+   NARROW SCREENS — the rail becomes a scrolling tab strip across the top
+   ========================================================================== */
+@media (max-width: 940px) {
+  .adm-shell { grid-template-columns: 1fr; }
   .adm-rail {
-    position: static; flex-direction: row; gap: 4px;
-    overflow-x: auto; padding: 8px;
+    position: sticky; top: 0; z-index: 20;
+    height: auto; flex-direction: row; align-items: center; gap: 3px;
+    overflow-x: auto; padding: 8px 10px;
+    border-right: 0; border-bottom: 1px solid var(--line);
     -webkit-overflow-scrolling: touch;
   }
   .adm-rail-h { display: none; }
-  .adm-navbtn { white-space: nowrap; padding: 9px 13px; }
-  .adm-navbtn[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--teal); }
-  .adm-navbtn--out { margin: 0; padding-top: 9px; border-top: 0; border-radius: 10px; }
-  .mix-row { grid-template-columns: 96px minmax(0, 1fr) 70px; }
+  .adm-navbtn { white-space: nowrap; padding: 8px 12px; }
+  .adm-navbtn--out, .adm-navbtn--out + .adm-navbtn {
+    margin: 0; padding-top: 8px; border-top: 0; border-left: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+  }
+  .adm-main { padding: 22px 18px 60px; }
+  .pipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mix-row { grid-template-columns: 96px minmax(0, 1fr) 72px; }
   .mix-share { display: none; }
   .rec-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
-  .rec-when, .rec-ref { font-size: .8rem; }
+  .adm-ex-rows { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .pipe { grid-template-columns: 1fr; }
+  .adm-bandtr { grid-template-columns: 1fr 1fr; }
+  .adm-imptr { grid-template-columns: 1.3fr 1fr .7fr; }
+  .adm-imptr span:nth-child(2) { display: none; }
+  .adm-tr { grid-template-columns: 1fr 1fr; }
+  .adm-ex-rows { grid-template-columns: 1fr; }
+  .display-lg { font-size: 1.35rem; }
 }
 
-/* A week with no revenue: a baseline tick, never a short bar. A stub for zero
-   would read as a small amount of money, which is a different answer. */
-.rev-zero { display: block; height: 1px; width: 100%; background: var(--line-soft); }
-
-/* ---- sign-in ------------------------------------------------------------ */
-.adm-remember { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; max-width: 460px; cursor: pointer; }
-.adm-remember input { margin-top: 3px; accent-color: var(--teal); flex: none; }
-.adm-remember span { font-size: .92rem; color: var(--muted); }
-.adm-remember em { display: block; font-style: normal; font-size: .84rem; color: var(--muted-2); }
-
-/* Sign in by emailed code — the way back in when the password is gone. */
-.adm-forgot { margin: 16px 0 0; }
-.adm-link {
-  background: none; border: 0; padding: 0; cursor: pointer;
-  font-family: var(--font-round); font-size: .9rem; color: var(--teal);
-  text-decoration: underline; text-underline-offset: 3px;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
-.adm-link:hover { color: #fff; }
-.adm-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
-.adm-code { margin-top: 18px; max-width: 460px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
-.adm-code-h { font-size: 1rem; margin: 0 0 4px; font-family: var(--font-round); }
-.adm-code .adm-lock { margin-top: 8px; }
-.adm-code input { letter-spacing: .28em; font-weight: 700; text-align: center; }
-.adm-lockmsg { color: #ff8a5b; }
-.adm-lockmsg.is-ok { color: var(--teal); }
 
-/* ---- stock switch on the pricing tables ---------------------------------
-   Ian turns an option off when he cannot print it. A hidden option is dimmed
-   rather than removed from his table, so he can see at a glance what is off
-   and switch it back — a disappearing row would leave him hunting for it. */
-.adm-stock { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
-.adm-stock input { position: absolute; opacity: 0; width: 0; height: 0; }
-.adm-stock-pill {
-  width: 38px; height: 22px; border-radius: 100px; flex: none;
-  background: var(--teal); position: relative; transition: background .15s;
+/* Printing an order page is a real thing a print shop does. */
+@media print {
+  .adm-rail, .adm-savebar, .adm-search, .toast { display: none !important; }
+  .adm-shell { grid-template-columns: 1fr; }
+  .adm-main { padding: 0; }
+  .adm-card, .dash-card, .adm-enq, .dash-tile { box-shadow: none; break-inside: avoid; }
 }
-.adm-stock-pill::after {
-  content: ""; position: absolute; top: 3px; left: 3px;
-  width: 16px; height: 16px; border-radius: 50%; background: #0d1117;
-  transition: transform .15s;
-}
-.adm-stock.is-off .adm-stock-pill { background: var(--line-soft); }
-.adm-stock.is-off .adm-stock-pill::after { transform: translateX(16px); }
-.adm-stock-txt { font-size: .82rem; color: var(--muted); font-family: var(--font-round); white-space: nowrap; }
-.adm-stock.is-off .adm-stock-txt { color: var(--muted-2, #6c7f86); }
-.adm-stock input:focus-visible + .adm-stock-pill { outline: 2px solid var(--teal); outline-offset: 3px; }
-
-/* the row stays visible but reads as inactive */
-.adm-tr-off .adm-opt, .adm-tr-off .adm-opt-ex, .adm-tr-off .adm-pct { opacity: .42; }
-/* an unavailable example price is not a number — don't let it read as one */
-.adm-tr-off .adm-opt-ex b, .adm-ex-row b:not([data-money]) { font-variant-numeric: tabular-nums; }
-
-/* ---- quantity band editor ----------------------------------------------- */
-.adm-bandnote { display: block; margin: 0 0 12px; max-width: 60ch; }
-.adm-bandon { margin: 0 0 14px; }
-.adm-bandtr { grid-template-columns: 1fr 1fr 1fr 1.2fr; }
-.adm-bandtable input { width: 100%; max-width: 130px; background: var(--bg-3); border: 1px solid var(--line-soft);
-  border-radius: 8px; padding: 8px 11px; color: var(--text); font-family: var(--font-round); font-size: 14px; }
-.adm-bandtable[data-dim] { opacity: .45; }
-.adm-bandwarn { margin: 12px 0 0; padding: 12px 15px; border-left: 3px solid var(--teal);
-  background: rgba(4,164,159,.09); border-radius: 0 8px 8px 0; font-size: .88rem; color: var(--muted); max-width: 78ch; }
-/* Before/after impact of the band table. Rises are red because a rise is the
-   thing that generates a complaint; cuts are teal because they are the intent. */
-.adm-impact-h { margin-top: 30px; }
-.adm-imptr { grid-template-columns: 1.4fr 1fr 1fr .8fr; }
-.adm-imptr span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
-.adm-imp-up { color: #ff6b6b; }
-.adm-imp-down { color: var(--teal); }
-.adm-imp-flat { color: var(--muted); }
-@media (max-width: 720px) { .adm-bandtr { grid-template-columns: 1fr 1fr; } .adm-imptr { grid-template-columns: 1.3fr 1fr .7fr; } .adm-imptr span:nth-child(2) { display: none; } }
-
-/* Order search. Ian's question is "where's that job for Kelly", never "show me
-   rows 40-60", so it's one box over everything printed on the card. */
-.adm-search { display: flex; gap: 10px; align-items: center; margin: 0 0 14px; }
-.adm-search input {
-  flex: 1; min-width: 0; padding: 10px 14px; border-radius: 10px;
-  border: 1px solid var(--line-soft); background: var(--bg-3); color: var(--text);
-  font-family: var(--font-round); font-size: 14px;
-}
-.adm-search input:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(6,228,221,.22); }
-.adm-search-x {
-  flex: none; background: none; border: 1px solid var(--line-soft); border-radius: 10px;
-  padding: 9px 14px; color: var(--muted); font-family: var(--font-round); font-size: 13px; cursor: pointer;
-}
-.adm-search-x:hover { color: var(--text); border-color: var(--line-strong); }
-.adm-cap { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft); }
-.adm-art-soon, .adm-art-gone { display: inline-block; margin-left: 10px; font-size: 12.5px; font-family: var(--font-round); }
-.adm-art-soon { color: #ffb454; }
-.adm-art-gone { color: #ff6b6b; }
