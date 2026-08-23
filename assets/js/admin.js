@@ -315,7 +315,10 @@
 
   function navHtml() {
     return '<nav class="adm-rail" aria-label="Admin sections">' +
-      '<span class="adm-rail-h">Neotype</span>' +
+      // the black mark, not the neon one: the site's logo is drawn to glow on a
+      // dark canvas and all but disappears on a white rail
+      '<span class="adm-rail-h"><img src="assets/img/neotype-logo-black.png" alt="" aria-hidden="true">' +
+      '<span>Neotype<small>Dashboard</small></span></span>' +
       NAV.map(function (n) {
         return '<button class="adm-navbtn" data-view="' + n.key + '" aria-current="' +
           (n.key === view ? "page" : "false") + '"><span class="adm-navic" aria-hidden="true">' +
@@ -466,6 +469,14 @@
   ];
   var STAGE_LABEL = {};
   STAGES.forEach(function (s) { STAGE_LABEL[s.key] = s.label; });
+  /* An order carries whatever stage KV holds, which is not guaranteed to be one
+     of ours — an older record, a hand-written one, a stage we rename later. A
+     bare map lookup printed the literal word "undefined" onto the order card;
+     showing the raw value at least tells Ian what it actually says. */
+  function stageLabel(stage) {
+    var k = stage || "new";
+    return STAGE_LABEL[k] || String(k);
+  }
 
   var ORDERS = [];   // the loaded list, kept so the pipeline can re-render
 
@@ -654,18 +665,23 @@
      directly off each bar — not a pie, which makes three similar shares
      impossible to compare.
 
-     Palette: #04a49f (teal-2) / #8f6ce6 (purple-2) / #c1861f. Two are brand
-     tokens. It was validated with the dataviz validator against the real card
-     surface #1c242c across ALL pairs — the obvious brand green failed the
-     normal-vision floor against the teal (ΔE 11.9, needs ≥15), so amber
-     replaced it. Every bar is also directly labelled, so identity never rests
+     Palette: re-derived when the dashboard went from a dark card to white. A
+     palette is validated against a surface, not in the abstract, and the old
+     dark-surface set does not survive the move — #c1861f lands at 2.9:1 on
+     white and the near-grey "other" step reads as no colour at all.
+
+     This set passes all six checks against white: lightness band, chroma
+     floor, CVD separation, normal-vision separation and contrast. The order is
+     fixed and never cycled. None of these are the reserved status colours —
+     the amber a late job wears is deliberately a different hue from any series
+     here — and every bar is directly labelled besides, so identity never rests
      on colour alone.
      ====================================================================== */
   var MIX = {
-    stickers: { label: "Stickers", color: "#04a49f" },
-    banner:   { label: "Banners",  color: "#8f6ce6" },
-    corflute: { label: "Corflute", color: "#c1861f" },
-    other:    { label: "Other",    color: "#6c7f86" }
+    stickers: { label: "Stickers", color: "#0d9488" },
+    banner:   { label: "Banners",  color: "#7c3aed" },
+    corflute: { label: "Corflute", color: "#c11574" },
+    other:    { label: "Other",    color: "#5c6ac4" }
   };
 
   function analyticsStat(label, value, sub) {
@@ -902,7 +918,7 @@
     // "pending" is stored; "Awaiting payment" is what he reads and would type.
     var st = o.status || "paid";
     var hay = [o.ref, o.name, o.email, o.product, o.size, o.finish, o.shape,
-               o.turnaround, o.quantity, STAGE_LABEL[o.stage || "new"],
+               o.turnaround, o.quantity, stageLabel(o.stage),
                st, PAY_LABEL[st] || st,
                o.amount ? "$" + (o.amount / 100).toFixed(2) : ""]
       .filter(Boolean).join(" ").toLowerCase();
@@ -965,7 +981,7 @@
         '<span class="adm-ord-amt">$' + (o.amount / 100).toFixed(2) + " " + esc(o.currency || "AUD") + "</span>" +
         '<span class="adm-enq-when">' + esc(whenLabel(o.when)) + "</span></div>" +
         '<div class="adm-ord-meta"><span>Ref <b>' + esc(o.ref) + "</b></span>" +
-        (paid ? "<span>" + esc(STAGE_LABEL[o.stage || "new"]) + "</span>" : "") +
+        (paid ? "<span>" + esc(stageLabel(o.stage)) + "</span>" : "") +
         (d ? '<span class="pipe-due is-' + d.urgency + '">' + esc(d.label) + "</span>" : "") +
         (o.turnaround ? "<span>" + esc(o.turnaround) + "</span>" : "") +
         (o.name ? "<span>" + esc(o.name) + "</span>" : "") + "</div>" +
@@ -1176,6 +1192,7 @@ function esc(s) {
   function lockScreen(msg, tone) {
     root.className = "";
     root.innerHTML =
+      '<img class="adm-lockmark" src="assets/img/neotype-logo-black.png" alt="Neotype Studio">' +
       '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Neotype dashboard</h1>' +
       '<p class="lead">Sign in to see orders, enquiries and pricing.</p></div>' +
       '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password" autocomplete="current-password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +

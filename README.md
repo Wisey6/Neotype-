@@ -88,8 +88,9 @@ browser from `pricing-core.js`.
 functions/api/[[route]].js   the entire backend: pricing, checkout, artwork,
                              Stripe webhook, orders, enquiries, admin sign-in
 assets/
-  css/styles.css             the identity — dark, teal, glitch
-  css/admin.css              the dashboard
+  css/styles.css             the shop's identity — dark, teal, glitch
+  css/admin.css              the dashboard — standalone light theme, shares
+                             nothing with styles.css
   js/pricing-core.js         ★ every price and formula. Shared, UMD, no deps
   js/customizer.js           sticker builder
   js/largeformat.js          banner + corflute builders (driven by LF_META)
@@ -101,10 +102,23 @@ assets/
 
 ## Design
 
-Dark synthwave: `#212830` ground, `#06e4dd` teal and `#764cd9` purple as the
-brand pair, with Rubik for display and body, Varela Round for UI, Comfortaa for
-soft accents. Recurring motifs are die-cut dashed contours, a CMYK bar, and a
-glitch treatment on the wordmark. No CSS framework — `styles.css` owns all of it.
+**The shop** is dark synthwave: `#212830` ground, `#06e4dd` teal and `#764cd9`
+purple as the brand pair, with Rubik for display and body, Varela Round for UI,
+Comfortaa for soft accents. Recurring motifs are die-cut dashed contours, a CMYK
+bar, and a glitch treatment on the wordmark.
+
+**The dashboard is a different thing and looks like one.** `/admin` does not load
+`styles.css` at all: it is a white application with a full-height left rail,
+hairline rules, one stepped-down teal accent and monospaced figures. A tool one
+person uses to run a print shop has no business wearing a theme built to sell to
+strangers, and inheriting one meant a marketing header and a glitching logo above
+a table of orders. The trade is that every class the dashboard uses is defined in
+`admin.css` — but nothing the shop's design does can break it, and nothing done
+there can leak out to a customer.
+
+Colours in both are checked rather than chosen: text clears 4.5:1 on the surface
+behind it, and the dashboard's chart hues passed the categorical validator
+against white. No CSS framework in either.
 
 ## Tests
 

@@ -75,3 +75,19 @@ every listener attached to one — which had left the banner and corflute pages
 with a dead upload box, dead size fields and a **dead checkout button** a few
 hundred milliseconds after load, on every real visit. Nothing threw, and the
 panel looked perfectly normal. Those checks run deliberately *after* the rebuild.
+
+**admin-look.mjs** covers the dashboard's appearance, measured rather than
+eyeballed.
+
+    NODE_PATH=/tmp/pw/node_modules node .tests/admin-look.mjs ./shots
+
+`/admin` used to load the shop's `styles.css` and inherit a dark canvas, a 148px
+marketing header and a glitching logo above a table of orders. It is now a
+standalone light application, and every check here is something that would break
+silently if that were undone or half-undone: `styles.css` re-added, a token
+overridden, a colour picked by eye.
+
+The contrast block is the one that earns its keep. It computes the real ratio
+from the rendered colours, and it caught a micro-label at 4.39:1 — a value that
+passes on a white card and fails on the canvas beside it, which is exactly the
+kind of thing a light repaint gets wrong and nobody notices.
