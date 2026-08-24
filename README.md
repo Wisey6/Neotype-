@@ -142,6 +142,7 @@ declaring it makes Cloudflare run `npm install` on deploy.
 
 ## Docs
 
+`KNOWN-ISSUES.md` — what is wrong with /admin and what was left alone ·
 `PRICING.md` — how to change prices ·
 `CLOUDFLARE.md` — hosting, DNS, bindings, the runbook ·
 `SETUP.md` — deployment ·
