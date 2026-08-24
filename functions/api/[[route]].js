@@ -101,9 +101,62 @@ async function getPricing(env) {
   return DEFAULT_PRICING;
 }
 
-// Only numeric values are accepted into the stored price list, and only at
-// paths that already exist in the defaults — so a compromised admin session
-// can change a rate but cannot inject new keys or non-numeric values.
+/* Every option path the shop could legitimately mark out of stock, built from
+   the same two tables that price an order — so there is no second list to keep
+   in step when an option is added or renamed. */
+const STOCK_PATHS = (() => {
+  const paths = new Set();
+  for (const g of ["finish", "shape", "turnaround"])
+    for (const k of Object.keys(DEFAULT_PRICING.stickers[g] || {})) paths.add(`stickers.${g}.${k}`);
+  for (const p of Object.keys(LF_META))
+    for (const g of Object.keys(LF_META[p].groups))
+      for (const k of Object.keys(LF_META[p].groups[g])) paths.add(`${p}.${g}.${k}`);
+  return paths;
+})();
+
+const MAX_BANDS = 12;   // the editor shows seven; this is a ceiling, not a shape
+
+/* The out-of-stock map. `off["stickers.finish.holographic"] = true` means Ian
+   cannot print it today. Only `true` is stored and only for a path this shop
+   really has, so a compromised session cannot stuff KV with invented keys. */
+function sanitizeOff(input) {
+  const out = {};
+  if (!input || typeof input !== "object") return out;
+  for (const k of Object.keys(input)) if (input[k] === true && STOCK_PATHS.has(k)) out[k] = true;
+  return out;
+}
+
+/* The quantity band table, stickers only — priceStickers is the only thing that
+   reads it. An absent or empty table means the sliding curve prices the shop,
+   which is the shipped default, so "no valid rows" returns null rather than []. */
+function sanitizeBands(input) {
+  if (!Array.isArray(input)) return null;
+  const rows = [];
+  for (const b of input.slice(0, MAX_BANDS)) {
+    if (!b || typeof b !== "object") continue;
+    const from = Number(b.from), rate = Number(b.rate);
+    if (!isFinite(from) || !isFinite(rate) || from < 0 || rate < 0) continue;
+    rows.push({ from: Math.floor(from), rate });
+  }
+  if (!rows.length) return null;
+  rows.sort((a, b) => a.from - b.from);
+  return rows;
+}
+
+/* Only values the shop recognises are accepted into the stored price list.
+
+   The rule used to be "numbers, at paths that already exist in the defaults".
+   That is a good rule, and it silently threw away the two settings that are not
+   numbers: the out-of-stock map and the quantity bands. Neither appears in
+   DEFAULT_PRICING — `off` is an open-ended map of option paths, `qtyBands` is an
+   array — so the walker never found a key to copy them into, and dropped both on
+   every save. Ian could switch holographic off, watch it say Saved, reload, and
+   still be selling holographic. The band editor was write-only for the same
+   reason.
+
+   So they are carried explicitly now, and each is validated on its own terms
+   rather than passed through: the rate walker still cannot invent keys, and
+   neither can these two. */
 function sanitizePricing(input) {
   const out = structuredClone(DEFAULT_PRICING);
   (function copyNums(dst, src) {
@@ -113,6 +166,13 @@ function sanitizePricing(input) {
       } else if (dst[k] && typeof dst[k] === "object") copyNums(dst[k], src ? src[k] : null);
     }
   })(out, input);
+
+  const off = sanitizeOff(input && input.off);
+  if (Object.keys(off).length) out.off = off;
+
+  const bands = sanitizeBands(input && input.stickers && input.stickers.qtyBands);
+  if (bands) out.stickers.qtyBands = bands;
+
   return out;
 }
 

@@ -42,6 +42,14 @@ page cannot buy anything cheaply.
 Prices are stored in Workers KV and edited from `/admin`, so changing them needs
 no redeploy and no developer. `PRICING.md` explains every adjustable number.
 
+**3. What the browser sends is not what the server keeps.** Everything saved from
+`/admin` is validated on arrival: rates must be numbers at paths that already
+exist, an out-of-stock flag must name an option this shop really has, and a
+quantity band must be two non-negative numbers. So a test that checks the save
+payload has checked nothing — `.tests/stock-roundtrip.mjs` asserts what comes back
+out of KV instead, because a save that silently drops a setting is exactly the bug
+that reached production once already.
+
 ## The pricing model
 
 Stickers price by area with a fading small-run premium —
