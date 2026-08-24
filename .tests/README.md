@@ -91,3 +91,21 @@ The contrast block is the one that earns its keep. It computes the real ratio
 from the rendered colours, and it caught a micro-label at 4.39:1 — a value that
 passes on a white card and fails on the canvas beside it, which is exactly the
 kind of thing a light repaint gets wrong and nobody notices.
+
+**stock-roundtrip.mjs** covers the out-of-stock switches the whole way round,
+through the real Pages Function.
+
+    NODE_PATH=/tmp/pw/node_modules node .tests/stock-roundtrip.mjs ./shots
+
+It exists because `stock-toggle.mjs` covered both ends of this and still let the
+bug ship. Its last assertion is *"save payload carries the off flag"* — it checked
+what the **browser sends** and stopped there. The flag was correct on the wire and
+thrown away on arrival: `sanitizePricing` rebuilt the table from
+`DEFAULT_PRICING` and copied only numbers at keys that already existed there, and
+`off` is neither a number nor a key in the defaults. Ian could switch holographic
+off, watch it say Saved, and go on selling holographic. The quantity band editor
+was write-only for exactly the same reason.
+
+The rule it encodes: **assert what the server keeps, not what the client sent.**
+Revert the two lines that carry `off` and `qtyBands` and this suite drops six
+checks, including all forty options leaking at once.

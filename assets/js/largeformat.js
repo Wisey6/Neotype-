@@ -119,6 +119,22 @@
       "</div>";
   }
 
+  /* Same rule as the sticker builder: if it cannot be priced it cannot be
+     bought, and the page has to say so. Leaving the last good figure on screen
+     is worse here than there — on first load the total starts at zero, so an
+     entirely out-of-stock product advertised itself at $0. */
+  function setUnavailable(on) {
+    var go = document.getElementById("lfCheckout");
+    if (go) { go.disabled = on; go.setAttribute("aria-disabled", on ? "true" : "false"); }
+    if (!on) return;
+    setTxt("lfTotal", "—");
+    setTxt("lfPer", "—");
+    var ql = document.getElementById("lfQuoteLines");
+    if (ql) ql.innerHTML = '<div class="ql-row ql-note"><span>We can\'t make this one right now. ' +
+      'Try another option, or <a href="index.html#contact">ask us</a> ' +
+      "and we'll tell you when it's back.</span></div>";
+  }
+
   // ---- render -----------------------------------------------------------
   function render() {
     // preview rectangle sized to aspect, fit to the space the panel can give
@@ -138,6 +154,7 @@
     Object.keys(META.groups).forEach(function (g) { setTxt("lfval-" + g, META.groups[g][state.choices[g]]); });
 
     var r = quote();
+    setUnavailable(!r);
     if (!r) return;
     setTxt("lfTotal", r.total.toLocaleString());
     setTxt("lfPer", fmt(r.unit));
@@ -340,6 +357,7 @@
 
     // checkout
     document.getElementById("lfCheckout").addEventListener("click", function () {
+      if (!quote()) { setUnavailable(true); return; }
       var payload = { product: CFG.key, w: state.w, h: state.h, qty: state.qty };
       Object.keys(state.choices).forEach(function (g) { payload[g] = state.choices[g]; });
       var order = { file: state.file, fileName: state.fileName, payload: payload };

@@ -387,8 +387,26 @@
   }
 
   // ---- Price render -----------------------------------------------------
+  /* A configuration that cannot be priced must not keep showing the last price
+     that could. When Ian switches an option out of stock the server stops
+     accepting it that second — so a page still showing $70 and a live button
+     gives the customer no warning and a failed checkout as their first clue. */
+  function setUnavailable(on) {
+    var add = $("addCart");
+    if (add) { add.disabled = on; add.setAttribute("aria-disabled", on ? "true" : "false"); }
+    if (!on) return;
+    if (els.priceTotal) { stopNumber(els.priceTotal); els.priceTotal.textContent = "—"; }
+    if (els.pricePer) els.pricePer.textContent = "—";
+    if (els.savings) els.savings.style.display = "none";
+    if (els.quoteLines) els.quoteLines.innerHTML =
+      '<div class="ql-row ql-note"><span>We can\'t print this combination right now. ' +
+      'Try another finish or shape, or <a href="index.html#contact">ask us</a> ' +
+      "and we'll tell you when it's back.</span></div>";
+  }
+
   function renderPrice() {
     var r = quote();
+    setUnavailable(!r);
     if (!r) return;
     if (els.priceTotal) animateNumber(els.priceTotal, r.total);
     if (els.pricePer) els.pricePer.textContent = "$" + r.unit.toFixed(2);
@@ -410,6 +428,16 @@
   }
 
   var numTimers = {};
+  /* The count-up runs on requestAnimationFrame, so it keeps writing to the
+     element for a third of a second after it starts. Anything that replaces the
+     price has to stop it first, or the animation finishes and puts the old
+     figure back over the top — which is how an unavailable sticker went on
+     showing $70 next to a disabled button. */
+  function stopNumber(el) {
+    var id = (el && el.id) || "n";
+    if (numTimers[id]) { cancelAnimationFrame(numTimers[id]); delete numTimers[id]; }
+  }
+
   function animateNumber(el, target) {
     var id = el.id || "n";
     if (numTimers[id]) cancelAnimationFrame(numTimers[id]);
@@ -818,7 +846,11 @@
 
   function wireActions() {
     var add = $("addCart");
-    if (add) add.addEventListener("click", addToCart);
+    if (add) add.addEventListener("click", function () {
+      // belt and braces: disabled stops a click, this stops everything else
+      if (!quote()) { setUnavailable(true); return; }
+      addToCart();
+    });
   }
 
   // ---- Init -------------------------------------------------------------
