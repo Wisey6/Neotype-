@@ -25,7 +25,16 @@
     means no change to the shop's look can break the dashboard, and no change
     here can leak out to a customer.
   -->
-  <link rel="stylesheet" href="assets/css/admin.css?v=7" />
+  <link rel="stylesheet" href="assets/css/admin.css?v=8" />
+  <!--
+    Set before the stylesheet paints, not after. Reading the preference from
+    admin.js would flash the default theme for a frame or two on every load,
+    which looks like a bug on a tool someone opens twenty times a day.
+    Wrapped because a browser with site data blocked throws on localStorage.
+  -->
+  <script>
+    try { var t = localStorage.getItem("neotype.admin.theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
 </head>
 <body class="adm-body">
   <!-- admin.js renders the whole application into this element: the left rail
@@ -37,7 +46,7 @@
   <!-- The admin talks to this site's own /api function. Nothing to configure. -->
   <script>window.NEOTYPE_ADMIN = {};</script>
   <script src="assets/js/pricing-core.js?v=37"></script>
-  <script src="assets/js/admin.js?v=43" defer></script>
+  <script src="assets/js/admin.js?v=44" defer></script>
   <script src="assets/js/main.js?v=33" defer></script>
 </body>
 </html>

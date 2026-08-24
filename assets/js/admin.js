@@ -313,17 +313,34 @@
     window.scrollTo({ top: 0, behavior: "instant" in document.body.style ? "instant" : "auto" });
   }
 
+  /* Dark is the default because this is Neotype's tool and Neotype is a dark
+     brand. White stays available because Ian asked for it first, and the person
+     who uses this every day should get to decide — a preference, not an
+     argument. It is one attribute on <html>; admin.css defines both palettes. */
+  var THEME_KEY = "neotype.admin.theme";
+  function themeIsLight() { return document.documentElement.dataset.theme === "light"; }
+  function toggleTheme() {
+    var light = !themeIsLight();
+    if (light) document.documentElement.dataset.theme = "light";
+    else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (_) {}
+    var btn = document.getElementById("admTheme");
+    if (btn) btn.lastChild.nodeValue = light ? "Dark theme" : "Light theme";
+  }
+
   function navHtml() {
     return '<nav class="adm-rail" aria-label="Admin sections">' +
       // the black mark, not the neon one: the site's logo is drawn to glow on a
       // dark canvas and all but disappears on a white rail
-      '<span class="adm-rail-h"><img src="assets/img/neotype-logo-black.png" alt="" aria-hidden="true">' +
+      '<span class="adm-rail-h"><img src="assets/img/neotype-logo-white.png" alt="" aria-hidden="true">' +
       '<span>Neotype<small>Dashboard</small></span></span>' +
       NAV.map(function (n) {
         return '<button class="adm-navbtn" data-view="' + n.key + '" aria-current="' +
           (n.key === view ? "page" : "false") + '"><span class="adm-navic" aria-hidden="true">' +
           n.icon + "</span>" + n.label + "</button>";
       }).join("") +
+      '<button class="adm-navbtn adm-themebtn" id="admTheme"><span class="adm-navic" aria-hidden="true">◐</span>' +
+      (themeIsLight() ? "Dark theme" : "Light theme") + "</button>" +
       '<a class="adm-navbtn adm-navbtn--out" href="index.html"><span class="adm-navic" aria-hidden="true">↗</span>View site</a>' +
       '<button class="adm-navbtn" id="admSignOut"><span class="adm-navic" aria-hidden="true">⏻</span>Sign out</button>' +
       "</nav>";
@@ -425,6 +442,7 @@
     // re-render on every change, so per-button handlers would be lost.
     root.addEventListener("click", function (e) {
       var t = e.target;
+      if (t.closest && t.closest("#admTheme")) { toggleTheme(); return; }
       var nav = t.closest && t.closest("[data-view]");
       if (nav) { showView(nav.getAttribute("data-view")); return; }
       var adv = t.closest && t.closest(".pipe-adv");
@@ -646,7 +664,9 @@
     var late = open.filter(function (o) { var d = dueInfo(o); return d && d.urgency === "late"; }).length;
     var head = document.getElementById("admToday");
     if (head) {
-      head.innerHTML = !ORDERS.length
+      head.innerHTML = ORDERS_FAILED
+        ? "<b class=\"tint-bad\">Couldn't load your orders.</b> This is a connection problem, not an empty shop — reload in a moment."
+        : !ORDERS.length
         ? "No orders yet. When one comes in it lands here, with the customer's artwork attached."
         : late
           ? "<b class=\"tint-warn\">" + late + (late === 1 ? " order is" : " orders are") + " past the promised date.</b> " +
@@ -677,11 +697,16 @@
      here — and every bar is directly labelled besides, so identity never rests
      on colour alone.
      ====================================================================== */
+  /* The hues come from CSS, not from here, because there are now two themes and
+     a palette is validated against a surface rather than in the abstract. The
+     light-surface set fails the lightness band on the dark ground and the dark
+     set fails contrast on white — they are deliberately different numbers, and
+     baking either one into JS would leave the charts wrong in one theme. */
   var MIX = {
-    stickers: { label: "Stickers", color: "#0d9488" },
-    banner:   { label: "Banners",  color: "#7c3aed" },
-    corflute: { label: "Corflute", color: "#c11574" },
-    other:    { label: "Other",    color: "#5c6ac4" }
+    stickers: { label: "Stickers", color: "var(--cat-1)" },
+    banner:   { label: "Banners",  color: "var(--cat-2)" },
+    corflute: { label: "Corflute", color: "var(--cat-3)" },
+    other:    { label: "Other",    color: "var(--cat-4)" }
   };
 
   function analyticsStat(label, value, sub) {
@@ -926,18 +951,26 @@
     return q.toLowerCase().split(/\s+/).every(function (w) { return hay.indexOf(w) !== -1; });
   }
 
+  /* An empty list and a failed request render identically once ORDERS is [],
+     and the empty state states as fact that the business has no orders and no
+     revenue. A 500 from the API therefore told Ian his shop was empty. Track
+     the difference and say which one it is. */
+  var ORDERS_FAILED = false;
+
   function loadOrders() {
     fetch(API + "/orders", { headers: authHeaders() })
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
       .then(function (d) {
+        ORDERS_FAILED = false;
         ORDERS = (d && d.orders) || [];
         ORDER_META = { total: (d && d.total) || ORDERS.length, capped: !!(d && d.capped),
                        artExpires: (d && d.artExpires) || 0 };
         renderAll();
       })
       .catch(function () {
-        var h = document.getElementById("admToday");
-        if (h) h.textContent = "Couldn't load your orders — check your connection and reload.";
+        ORDERS_FAILED = true;
+        ORDERS = [];
+        renderAll();
       });
   }
 
@@ -961,6 +994,12 @@
   /* The full list, under the pipeline: every order including unpaid ones, with
      the detail the pipeline card leaves out. Newest first. */
   function ordersTable(list) {
+    if (ORDERS_FAILED) {
+      return '<div class="dash-card"><div class="dash-card-h"><h2>All orders</h2></div>' +
+        '<p class="dash-thin adm-loadfail">Couldn\'t load your orders just now — this is a ' +
+        "connection or server problem, <b>not</b> an empty shop. Reload in a moment. " +
+        "Nothing has been lost: Stripe holds the record for every payment.</p></div>";
+    }
     if (!list.length) {
       return '<div class="dash-card"><div class="dash-card-h"><h2>All orders</h2></div>' +
         '<p class="dash-thin">Nothing yet. Paid orders appear here automatically with the ' +
@@ -1073,8 +1112,20 @@ function esc(s) {
 
   function onEdit(e) {
     var t = e.target;
-    if (t.dataset.path) { var v = parseFloat(t.value); if (isFinite(v)) set(t.dataset.path, v); }
-    else if (t.dataset.mult) { var p = parseFloat(t.value); if (isFinite(p)) { var ks = t.dataset.mult.split("."); D[ks[0]][ks[1]][ks[2]] = 1 + p / 100; } }
+    /* Clamp at zero, in both directions of the mismatch it prevents.
+
+       min="0" on the input is advisory — typing a negative, pasting one, or
+       nudging below zero with the arrow keys all get through. The server
+       already refuses a negative and keeps the old value, so an unclamped
+       client showed Ian example prices computed from a number the shop would
+       never store: every sticker collapsing to the $18 minimum on screen while
+       the live table stayed as it was. A percentage below -100% is worse than
+       wrong, it inverts the multiplier. */
+    if (t.dataset.path) { var v = parseFloat(t.value); if (isFinite(v)) set(t.dataset.path, Math.max(0, v)); }
+    else if (t.dataset.mult) {
+      var p = parseFloat(t.value);
+      if (isFinite(p)) { var ks = t.dataset.mult.split("."); D[ks[0]][ks[1]][ks[2]] = Math.max(0, 1 + p / 100); }
+    }
     else if (t.dataset.band) {
       var parts = t.dataset.band.split("."), idx = parseInt(parts[0], 10), field = parts[1];
       D.stickers = D.stickers || {};
@@ -1086,6 +1137,7 @@ function esc(s) {
       var val = parseFloat(t.value);
       if (isFinite(val)) {
         // the editor speaks cents per cm²; the table stores dollars
+        val = Math.max(field === "from" ? 1 : 0, val);
         D.stickers.qtyBands[idx][field] = field === "rate" ? val / 100 : Math.round(val);
       }
       refreshBands();
@@ -1192,7 +1244,7 @@ function esc(s) {
   function lockScreen(msg, tone) {
     root.className = "";
     root.innerHTML =
-      '<img class="adm-lockmark" src="assets/img/neotype-logo-black.png" alt="Neotype Studio">' +
+      '<img class="adm-lockmark" src="assets/img/neotype-logo-white.png" alt="Neotype Studio">' +
       '<div class="section-head"><span class="eyebrow">Owner access</span><h1 class="display-lg">Neotype dashboard</h1>' +
       '<p class="lead">Sign in to see orders, enquiries and pricing.</p></div>' +
       '<div class="adm-lock"><input type="password" id="admPass" placeholder="Admin password" aria-label="Admin password" autocomplete="current-password"><button class="btn btn--accent" id="admUnlock">Unlock</button></div>' +
@@ -1254,7 +1306,14 @@ function esc(s) {
             return;
           }
           say("Code sent to " + (res.d.sentTo || "your studio inbox") + ". It expires in 10 minutes.");
-          forgot.hidden = true;
+          /* Do NOT hide this. The code expires in ten minutes and dies after
+             five wrong tries, and the app's own message then tells you to send
+             a new one — which was impossible, because the only control that
+             sends one had just removed itself. The recovery path dead-ended at
+             exactly the moment it was needed. The server rate-limits sending;
+             the button does not need to. */
+          forgot.disabled = false;
+          forgot.textContent = "Send another code";
           if (input) input.focus();
         })
         .catch(function () {
@@ -1307,7 +1366,14 @@ function esc(s) {
         }
         return r.json();
       })
-      .then(function (d) { if (d && d.ok) { remember(keep ? pw : ""); load(); } })
+      .then(function (d) {
+        if (d && d.ok) { remember(keep ? pw : ""); load(); return; }
+        /* Anything that is neither 401 nor a thrown network error used to fall
+           off the end of this chain: the button stayed disabled reading
+           "Checking…" for ever, with no message and no way back except a
+           reload. A 500 from the API must not look like a hung browser. */
+        if (d !== null) lockScreen("The admin service answered but not with a sign-in — try again in a moment.");
+      })
       .catch(function () { lockScreen("Couldn't reach the admin service — check your connection."); });
   }
 
