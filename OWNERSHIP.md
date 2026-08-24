@@ -69,7 +69,8 @@ yes out loud yet.
 Deliberately last, because it is the only step that can break a working deploy.
 
 ```sh
-# a full mirror — every branch, every tag, all 113 commits
+# a full mirror — every branch and tag, and every commit on all of them.
+# Verified 24 Aug 2026: 81 commits on main, 101 across all branches.
 git clone --mirror https://github.com/Wisey6/Neotype-.git neotype-backup.git
 tar czf neotype-backup-$(date +%F).tar.gz neotype-backup.git
 ```
@@ -146,7 +147,7 @@ All **verified** on 24 Aug 2026:
 | Internal documents | 301 to the homepage |
 | Apex domain | `neotype.au` → `www`, query string preserved, `/api/*` correctly excluded |
 | Stripe webhook | Live on both hostnames; rejects an unsigned request with 400 |
-| Test suite | 418 checks across 16 suites, 0 failures |
+| Test suite | 491 checks across 18 suites, 0 failures |
 
 ## What is deliberately unfinished
 
