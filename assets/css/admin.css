@@ -535,6 +535,17 @@
 }
 .adm-linkbtn:hover { text-decoration: none; }
 
+/* A section nested inside a card — the enquiry archive lives under the
+   enquiry list rather than beside it, because it is the same inbox in a
+   different state, not a different thing. */
+.adm-subcard {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.adm-subcard .adm-card-h { margin-bottom: 8px; }
+.adm-subcard h3 { margin: 0; font-size: 1rem; }
+
 /* ==========================================================================
    ANALYTICS
    ========================================================================== */

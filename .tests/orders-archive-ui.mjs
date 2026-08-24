@@ -37,6 +37,13 @@ let ORDERS = [
   mk({ n: 4, ref: "TEST0002", session: "cs_test_ddd", name: "Testo", amount: 50000, age: 3 }),
 ];
 
+let ENQ = [
+  { key: "enquiry:2026-08-01T00:00:00.000Z:aaaa1111", name: "Rae Fisher", email: "rae@fisher.example",
+    topic: "Quote", message: "After 300 die-cut stickers.", when: new Date(now - day).toISOString() },
+  { key: "enquiry:2026-08-02T00:00:00.000Z:bbbb2222", name: "Spam Bot", email: "bot@spam.example",
+    topic: "General", message: "buy followers cheap", when: new Date(now - 2 * day).toISOString() },
+];
+
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const p = await ctx.newPage();
@@ -49,7 +56,24 @@ await p.route("**/api/**", (r) => {
   if (post) { try { calls.push({ u, body: JSON.parse(r.request().postData() || "{}") }); } catch { calls.push({ u, body: {} }); } }
 
   if (u.includes("/verify")) return j({ ok: true });
-  if (u.includes("/enquiries")) return j({ enquiries: [] });
+  if (u.includes("/enquiry-archive")) {
+    const b = calls[calls.length - 1].body;
+    ENQ = ENQ.map((e) => (e.key === b.key ? { ...e, archived: b.archived !== false } : e));
+    return j({ ok: true, archived: b.archived !== false });
+  }
+  if (u.includes("/enquiry-purge")) {
+    const b = calls[calls.length - 1].body;
+    const t = ENQ.find((e) => e.key === b.key);
+    if (!t || !t.archived) return r.fulfill({ status: 409, contentType: "application/json", body: '{"error":"Archive that record before deleting it"}' });
+    ENQ = ENQ.filter((e) => e.key !== b.key);
+    return j({ ok: true, deleted: 1 });
+  }
+  if (u.includes("/enquiries-sweep")) {
+    const before = ENQ.length;
+    ENQ = ENQ.filter((e) => !e.archived);
+    return j({ ok: true, mode: "purge-archived", count: before - ENQ.length });
+  }
+  if (u.includes("/enquiries")) return j({ enquiries: ENQ });
   if (u.includes("/pricing")) return j(CORE.DEFAULT_PRICING);
 
   if (u.includes("/order-archive")) {
@@ -165,6 +189,33 @@ check("only live orders are left", ORDERS.length === 2 && ORDERS.every((o) => /c
   ORDERS.map((o) => o.ref).join(", "));
 await p.waitForTimeout(300);
 check("and the archive is gone from the page", await p.locator(".adm-ord--archived").count() === 0);
+
+
+console.log("\n[ enquiries archive too ]");
+await p.locator('[data-view="dash"]').click();
+await p.waitForTimeout(500);
+check("both enquiries are listed", await p.locator("#admEnq .adm-enq").count() === 2,
+  `${await p.locator("#admEnq .adm-enq").count()} shown`);
+check("each offers Archive", await p.locator("#admEnq .adm-enqarch").count() === 2);
+
+await p.locator("#admEnq .adm-enqarch").last().click();
+await p.waitForTimeout(500);
+check("the archived one leaves the list",
+  await p.locator("#admEnq .adm-enq:not(.adm-ord--archived)").count() === 1);
+check("an archived-enquiries section appears",
+  /Archived enquiries/.test(await p.locator("#admEnq").innerText()));
+check("the spam one is the one that went", !(await p.locator("#admEnq .adm-enq:not(.adm-ord--archived)").innerText()).includes("Spam Bot"));
+
+await p.locator("#admEnqArchToggle").click();
+await p.waitForTimeout(300);
+check("restoring is offered", await p.locator("#admEnq .adm-enqarch[data-on='0']").count() === 1);
+await p.locator("#admEnq .adm-enqpurge").first().click();
+await p.waitForTimeout(600);
+check("deleting warns it cannot be undone", dialogs.some((d) => /cannot be undone/i.test(d) && /enquiry from/i.test(d)),
+  dialogs[dialogs.length - 1]);
+check("and the enquiry is gone", ENQ.length === 1 && ENQ[0].name === "Rae Fisher",
+  ENQ.map((e) => e.name).join(", "));
+check("the remaining one is still listed", (await p.locator("#admEnq").innerText()).includes("Rae Fisher"));
 
 check("no JavaScript errors throughout", errs.length === 0, errs.join(" | "));
 

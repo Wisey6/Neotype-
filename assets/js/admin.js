@@ -384,7 +384,7 @@
       '<div id="admDash"></div>' +
       '<section class="adm-card" id="admEnq"><div class="adm-card-h"><h2>Enquiries</h2>' +
       '<span class="adm-note">from the contact form on the website</span></div>' +
-      '<p class="lead" id="admEnqBody">Loading…</p></section>' +
+      '<div id="admEnqBody"><p class="lead">Loading…</p></div></section>' +
       "</section>" +
       // ---- Orders (full table + manual entry)
       '<section class="adm-panel" id="panel-orders" hidden>' +
@@ -507,6 +507,12 @@
       var sweep = t.closest && t.closest(".adm-sweep");
       if (sweep) { sweepOrders(sweep.getAttribute("data-mode"), sweep); return; }
       if (t.closest && t.closest("#admArchToggle")) { SHOW_ARCHIVE = !SHOW_ARCHIVE; renderAll(); return; }
+      var earch = t.closest && t.closest(".adm-enqarch");
+      if (earch) { setEnqArchived(earch.getAttribute("data-key"), earch.getAttribute("data-on") === "1", earch); return; }
+      var epurge = t.closest && t.closest(".adm-enqpurge");
+      if (epurge) { purgeEnquiry(epurge.getAttribute("data-key"), epurge); return; }
+      if (t.closest && t.closest(".adm-enqsweep")) { sweepEnquiries(t.closest(".adm-enqsweep")); return; }
+      if (t.closest && t.closest("#admEnqArchToggle")) { SHOW_ENQ_ARCHIVE = !SHOW_ENQ_ARCHIVE; renderEnquiries(); return; }
       var jump = t.closest && t.closest("[data-goto]");
       if (jump) showView(jump.getAttribute("data-goto"));
     });
@@ -563,6 +569,16 @@
   function live()     { return ORDERS.filter(function (o) { return !o.archived; }); }
   function archived() { return ORDERS.filter(function (o) { return !!o.archived; }); }
   var SHOW_ARCHIVE = false;
+
+  /* Enquiries get the same treatment. An enquiry Ian has answered, or one that
+     is spam, is clutter on the panel he opens first every morning — but it is
+     still somebody's message, so the everyday action hides it rather than
+     destroying it. */
+  var ENQUIRIES = [];
+  var ENQ_FAILED = false;
+  function liveEnq()     { return ENQUIRIES.filter(function (e) { return !e.archived; }); }
+  function archivedEnq() { return ENQUIRIES.filter(function (e) { return !!e.archived; }); }
+  var SHOW_ENQ_ARCHIVE = false;
 
   // ---- due dates ----------------------------------------------------------
   // Derived, not stored: the turnaround the customer paid for sets the promise.
@@ -970,6 +986,7 @@
   // and switching views never shows a stale number next to a fresh one.
   function renderAll() {
     renderDash();
+    renderEnquiries();
     var full = document.getElementById("admOrdersFull");
     if (full) full.innerHTML = ordersTable(live()) + archiveCard(archived());
     if (view === "analytics") renderAnalytics();
@@ -1290,27 +1307,111 @@ function esc(s) {
       d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   }
   function loadEnquiries() {
+    fetch(API + "/enquiries", { headers: authHeaders() })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)); })
+      .then(function (d) {
+        ENQ_FAILED = false;
+        ENQUIRIES = (d && d.enquiries) || [];
+        renderEnquiries();
+      })
+      .catch(function () { ENQ_FAILED = true; ENQUIRIES = []; renderEnquiries(); });
+  }
+
+  /* One enquiry card. `archive` decides which action it offers, so the live
+     list and the archive share a single piece of markup and cannot drift into
+     showing different things about the same message. */
+  function enqCard(e, inArchive) {
+    return '<div class="adm-enq' + (inArchive ? " adm-ord--archived" : "") + '">' +
+      '<div class="adm-enq-top"><b>' + esc(e.name || "Someone") + "</b>" +
+      '<span class="adm-enq-topic">' + esc(e.topic || "General") + "</span>" +
+      '<span class="adm-enq-when">' + esc(whenLabel(e.when)) + "</span></div>" +
+      (e.email ? '<a class="adm-enq-mail" target="_blank" rel="noopener" href="' +
+        esc(mailHref(e.email, "Re: your Neotype enquiry")) + '">' + esc(e.email) + "</a>" : "") +
+      '<p class="adm-enq-msg">' + esc(e.message || "") + "</p>" +
+      '<p class="adm-ord-acts">' +
+      (inArchive
+        ? '<button type="button" class="btn btn--ghost btn--sm adm-enqarch" data-key="' + esc(e.key || "") +
+            '" data-on="0">Restore</button>' +
+          '<button type="button" class="btn btn--ghost btn--sm adm-danger adm-enqpurge" data-key="' +
+            esc(e.key || "") + '">Delete permanently</button>'
+        : '<button type="button" class="btn btn--ghost btn--sm adm-enqarch" data-key="' + esc(e.key || "") +
+            '" data-on="1">Archive</button>') +
+      "</p></div>";
+  }
+
+  function renderEnquiries() {
     var box = document.getElementById("admEnqBody");
     if (!box) return;
-    fetch(API + "/enquiries", { headers: authHeaders() })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (!d) { box.textContent = "Couldn't load enquiries."; return; }
-        var list = d.enquiries || [];
-        if (!list.length) { box.textContent = "No enquiries yet. They'll appear here as soon as someone uses the contact form."; return; }
-        var html = '<div class="adm-enq-list">';
-        list.forEach(function (e) {
-          html += '<div class="adm-enq">' +
-            '<div class="adm-enq-top"><b>' + esc(e.name) + "</b>" +
-            '<span class="adm-enq-topic">' + esc(e.topic || "General") + "</span>" +
-            '<span class="adm-enq-when">' + esc(whenLabel(e.when)) + "</span></div>" +
-            '<a class="adm-enq-mail" target="_blank" rel="noopener" href="' +
-              esc(mailHref(e.email, "Re: your Neotype enquiry")) + '">' + esc(e.email) + "</a>" +
-            '<p class="adm-enq-msg">' + esc(e.message) + "</p></div>";
-        });
-        box.outerHTML = html + "</div>";
-      })
-      .catch(function () { box.textContent = "Couldn't load enquiries."; });
+
+    if (ENQ_FAILED) {
+      box.innerHTML = '<p class="lead adm-loadfail">Couldn\'t load your enquiries just now — this is a ' +
+        "connection or server problem, <b>not</b> an empty inbox. Reload in a moment.</p>";
+      return;
+    }
+
+    var open = liveEnq(), old = archivedEnq(), html = "";
+
+    html += open.length
+      ? '<div class="adm-enq-list">' + open.map(function (e) { return enqCard(e, false); }).join("") + "</div>"
+      : '<p class="lead">' + (old.length
+          ? "Nothing new — everything here has been archived."
+          : "No enquiries yet. They'll appear here as soon as someone uses the contact form.") + "</p>";
+
+    if (old.length) {
+      html += '<div class="adm-subcard"><div class="adm-card-h"><h3>Archived enquiries</h3>' +
+        '<span class="adm-note">' + old.length + " hidden from the list above</span></div>";
+      html += SHOW_ENQ_ARCHIVE
+        ? '<p class="dash-thin">Restoring puts one back. Deleting is permanent — the message and the ' +
+            'sender\'s address go for good. <button type="button" class="adm-linkbtn" id="admEnqArchToggle">Hide</button></p>' +
+          '<div class="adm-enq-list">' + old.map(function (e) { return enqCard(e, true); }).join("") + "</div>" +
+          '<p class="adm-ord-acts"><button type="button" class="btn btn--ghost btn--sm adm-danger adm-enqsweep" ' +
+            'data-mode="purge-archived">Empty the enquiry archive (' + old.length + ")</button></p>"
+        : '<p class="dash-thin">Out of the way, not deleted. ' +
+          '<button type="button" class="adm-linkbtn" id="admEnqArchToggle">Show them</button></p>';
+      html += "</div>";
+    }
+
+    box.innerHTML = html;
+  }
+
+  function setEnqArchived(key, on, btn) {
+    if (!key) { toast("That enquiry is missing its reference — reload the page"); return; }
+    if (btn) { btn.disabled = true; btn.textContent = on ? "Archiving…" : "Restoring…"; }
+    post("/enquiry-archive", { key: key, archived: on }, function (ok, d) {
+      if (!ok) { toast(d.error || "Couldn't archive that enquiry"); if (btn) btn.disabled = false; return; }
+      ENQUIRIES.forEach(function (e) { if (e.key === key) e.archived = on; });
+      toast(on ? "Archived — it's in the archive if you want it back" : "Restored");
+      renderEnquiries();
+    });
+  }
+
+  function purgeEnquiry(key, btn) {
+    if (!key) return;
+    var e = ENQUIRIES.filter(function (x) { return x.key === key; })[0];
+    var who = (e && (e.name || e.email)) || "this enquiry";
+    if (!window.confirm("Permanently delete the enquiry from " + who + "?\n\nThis cannot be undone — the " +
+      "message and their email address are gone for good.")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Deleting…"; }
+    post("/enquiry-purge", { key: key }, function (ok, d) {
+      if (!ok) { toast(d.error || "Couldn't delete that enquiry"); if (btn) btn.disabled = false; return; }
+      ENQUIRIES = ENQUIRIES.filter(function (x) { return x.key !== key; });
+      toast("Deleted permanently");
+      renderEnquiries();
+    });
+  }
+
+  function sweepEnquiries(btn) {
+    if (!window.confirm("Permanently delete everything in the enquiry archive?\n\nThis cannot be undone. " +
+      "Only archived enquiries are affected — anything still in your list stays exactly where it is.")) return;
+    var label = btn && btn.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+    post("/enquiries-sweep", { mode: "purge-archived" }, function (ok, d) {
+      if (btn) { btn.disabled = false; if (label) btn.textContent = label; }
+      if (!ok) { toast(d.error || "Couldn't do that just now"); return; }
+      var n = d.count || 0;
+      toast(n ? "Deleted " + n + " enquiry" + (n === 1 ? "" : "s") + " permanently" : "The archive was already empty");
+      loadEnquiries();
+    });
   }
 
   function onEdit(e) {
