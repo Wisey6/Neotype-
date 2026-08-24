@@ -19,6 +19,15 @@ const lum = (rgb) => {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 };
 const parse = (s) => (s.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+/* An active nav item's tint is rgba(...,.10). Read as opaque it measures teal
+   on teal — 1:1 — and the check fails on a colour nobody can see. Composite it
+   over what is actually behind it first. */
+const over = (fg, bg) => {
+  const a = Number((fg.match(/[\d.]+/g) || [])[3] ?? 1);
+  if (a >= 1) return fg;
+  const f = parse(fg), b = parse(bg);
+  return `rgb(${f.map((v, i) => Math.round(v * a + b[i] * (1 - a))).join(",")})`;
+};
 const ratio = (a, b) => { const x = lum(parse(a)), y = lum(parse(b)); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const isLight = (s) => lum(parse(s)) > 0.6;
 
@@ -64,14 +73,13 @@ check("no marketing header on the page", await p.locator(".site-header").count()
 check("no glitching logo", await p.locator("[data-glitch]").count() === 0);
 
 console.log("\n[ sign in ]");
+const canvas = await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor);
 const cardBg = await p.locator("#admRoot").evaluate(el => getComputedStyle(el).backgroundColor);
-check("the page is light, not dark", isLight(await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor)),
-  await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor));
-check("sign-in is a card, not text adrift on the canvas", isLight(cardBg) &&
-  cardBg !== await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor), cardBg);
-check("it carries a legible mark", await p.locator(".adm-lockmark").count() === 1 &&
-  /black/.test(await p.locator(".adm-lockmark").getAttribute("src")),
-  await p.locator(".adm-lockmark").getAttribute("src"));
+/* Dark by default — this is Neotype's tool and Neotype is a dark brand. The
+   white version is a preference on the rail, not the shipped state. */
+check("the dashboard opens in the brand's dark theme", !isLight(canvas), canvas);
+check("sign-in is a card, not text adrift on the canvas", cardBg !== canvas, cardBg);
+check("it carries a mark", await p.locator(".adm-lockmark").count() === 1);
 check("there is no rail before you are signed in", await p.locator(".adm-rail").count() === 0);
 
 await p.locator('input[type="password"]').fill("x");
@@ -85,9 +93,10 @@ check("the rail is on the left", rail.x < 4, `x=${Math.round(rail.x)}`);
 check("it runs the full height of the window", rail.height >= 940, `${Math.round(rail.height)}px of 950`);
 check("it starts at the very top — no header above it", rail.y < 2, `y=${Math.round(rail.y)}`);
 check("content sits beside it, not under it", main.x >= rail.x + rail.width - 1, `main.x=${Math.round(main.x)} rail ends ${Math.round(rail.x + rail.width)}`);
-check("the rail is white", isLight(await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor)),
+check("the rail lifts off the canvas rather than blending into it",
+  await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor) !== canvas,
   await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor));
-check("every nav section is there", await p.locator(".adm-navbtn").count() === 7);
+check("every nav section is there, plus the theme switch", await p.locator(".adm-navbtn").count() === 8);
 check("the current section is marked for a screen reader too, not colour alone",
   await p.locator('.adm-navbtn[aria-current="page"]').count() === 1);
 
@@ -112,8 +121,37 @@ for (const [label, sel] of [
 }
 const railActive = await p.locator('.adm-navbtn[aria-current="page"]').evaluate(e =>
   [getComputedStyle(e).color, getComputedStyle(e).backgroundColor]);
-check("the active nav item clears 4.5:1 on its own tint", ratio(railActive[0], railActive[1]) >= 4.5,
-  ratio(railActive[0], railActive[1]).toFixed(2) + ":1");
+const railBg = await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor);
+const activeBg = over(railActive[1], railBg);
+check("the active nav item clears 4.5:1 on its own tint", ratio(railActive[0], activeBg) >= 4.5,
+  ratio(railActive[0], activeBg).toFixed(2) + ":1");
+
+/* A second palette is a second chance to ship an illegible one. Everything
+   above is re-measured after the switch, because "we checked the dark one" is
+   not a statement about the theme Ian may actually be using. */
+console.log("\n[ the light theme is a real theme, not a leftover ]");
+await p.locator("#admTheme").click();
+await p.waitForTimeout(300);
+const lightCanvas = await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor);
+check("the switch actually lights the page", isLight(lightCanvas), lightCanvas);
+check("and says how to get back", /dark/i.test(await p.locator("#admTheme").innerText()),
+  await p.locator("#admTheme").innerText());
+check("the mark stays visible on a white rail — it is inverted, not hidden",
+  (await p.locator(".adm-rail-h img").evaluate(el => getComputedStyle(el).filter)).indexOf("invert") !== -1,
+  await p.locator(".adm-rail-h img").evaluate(el => getComputedStyle(el).filter));
+for (const [label, sel] of [["body text", ".lead"], ["nav label", '.adm-navbtn:not([aria-current="page"])'],
+     ["micro-label", ".eyebrow"], ["tile caption", ".dash-note"]]) {
+  const [fg, bg] = await p.locator(sel).first().evaluate(e => {
+    let n = e, bg = "rgba(0, 0, 0, 0)";
+    while (n && bg === "rgba(0, 0, 0, 0)") { bg = getComputedStyle(n).backgroundColor; n = n.parentElement; }
+    return [getComputedStyle(e).color, bg];
+  });
+  check(`light: ${label} clears 4.5:1`, ratio(fg, bg) >= 4.5, ratio(fg, bg).toFixed(2) + ":1");
+}
+check("the choice survives a reload", await p.evaluate(() => { try { return localStorage.getItem("neotype.admin.theme"); } catch (e) { return null; } }) === "light");
+await p.locator("#admTheme").click();
+await p.waitForTimeout(250);
+check("and switches back", !isLight(await p.locator("body").evaluate(el => getComputedStyle(el).backgroundColor)));
 
 console.log("\n[ orders ]");
 await p.locator('[data-view="orders"]').click();
@@ -131,7 +169,10 @@ await p.waitForTimeout(600);
 /* These four passed the categorical validator against a light surface:
    lightness band, chroma floor, CVD separation, normal-vision separation and
    contrast. Changing one by eye is how a palette silently stops passing. */
-const WANT = ["rgb(13, 148, 136)", "rgb(124, 58, 237)", "rgb(193, 21, 116)"];
+/* The dark-surface set. A palette is validated against a surface, not in the
+   abstract — the light-surface hues fail the lightness band here and vice
+   versa, so these are deliberately different numbers, not a drift. */
+const WANT = ["rgb(4, 164, 159)", "rgb(143, 108, 230)", "rgb(193, 134, 31)"];
 const dots = await p.locator(".mix-dot").evaluateAll(els => els.map(e => getComputedStyle(e).backgroundColor));
 check("the mix bars use the light-surface palette", dots.every(d => WANT.includes(d)), dots.join(" "));
 check("every bar is named as well as coloured", await p.locator(".mix-label").count() === dots.length);
@@ -174,7 +215,7 @@ check("content is below it, not beside it", mmain.y >= mrail.y + mrail.height - 
 check("nothing spills sideways",
   await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   await mp.evaluate(() => document.documentElement.scrollWidth + " vs " + window.innerWidth));
-check("every section is still reachable", await mp.locator(".adm-navbtn").count() === 7);
+check("every section is still reachable", await mp.locator(".adm-navbtn").count() === 8);
 if (OUT) await mp.screenshot({ path: OUT + "/admin-mobile.png", fullPage: false }).catch(() => {});
 
 check("no JS errors on either width", errs.length === 0 && merrs.length === 0, errs.concat(merrs).join(" | "));

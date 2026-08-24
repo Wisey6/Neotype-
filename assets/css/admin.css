@@ -27,7 +27,65 @@
    validator on a light surface — lightness band, chroma floor, CVD separation
    and normal-vision separation — which the old dark-surface set did not.
    -------------------------------------------------------------------------- */
+/* ---- tokens -------------------------------------------------------------
+   Dark by default, because this is Neotype's tool and Neotype is a dark
+   identity — #212830 ground, teal and purple. The white version below is kept
+   as an opt-in theme rather than deleted: Ian asked for white first, and the
+   rail has a switch. Whichever he lands on, both are checked, not chosen by
+   eye — every text colour clears 4.5:1 on the surface it actually sits on and
+   every chart fill clears 3:1 as a graphical object.
+
+   The brand teal is the payoff of going dark. #06e4dd is 1.5:1 on white and
+   unusable for anything but decoration; on this ground it is 9.6:1, so the
+   dashboard can finally wear the shop's real colour instead of a stepped-down
+   substitute.
+   -------------------------------------------------------------------------- */
 :root {
+  --bg: #171d24;            /* app canvas */
+  --surface: #1e2630;       /* cards and the rail lift off it */
+  --surface-2: #242f3a;
+  --surface-3: #2b3742;
+
+  --text: #e8f4f3;          /* 13.6:1 on --surface */
+  --muted: #9fb3ba;         /*  7.0:1 */
+  --muted-2: #8a9ea7;       /*  4.9:1 — the floor, checked on --surface-2 too */
+
+  --line: #33414e;
+  --line-soft: #2a3540;
+
+  --accent: #06e4dd;        /* 9.6:1 — the shop's own teal, legible at last */
+  --accent-3: #30bfbb;      /* one step down, for fills big enough to glare */
+  --accent-fill: #04a49f;
+  --accent-ink: #04211f;
+  --accent-tint: rgba(6, 228, 221, .10);
+  --accent-line: rgba(6, 228, 221, .34);
+
+  /* Reserved status colours. Never used for a chart series. */
+  --bad: #ff8a8a;   --bad-tint: rgba(255, 107, 107, .12);  --bad-line: rgba(255, 107, 107, .42);
+  --warn: #ffc266;  --warn-tint: rgba(255, 180, 84, .12);  --warn-line: rgba(255, 180, 84, .42);
+  --good: #5fe38f;  --good-tint: rgba(95, 227, 143, .12);  --good-line: rgba(95, 227, 143, .40);
+
+  /* Categorical series, fixed order, never cycled. Two are brand tokens. This
+     set passes all six checks against a dark surface — the light-surface set
+     does not survive the move, and vice versa. */
+  --cat-1: #04a49f;   /* stickers */
+  --cat-2: #8f6ce6;   /* banners  */
+  --cat-3: #c1861f;   /* corflute */
+  --cat-4: #6d7fd0;   /* other    */
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-md: 0 6px 18px -8px rgba(0, 0, 0, .6);
+  --shadow-pop: 0 16px 40px -14px rgba(0, 0, 0, .75);
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --rail-w: 248px;
+
+  --font: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+:root[data-theme="light"] {
   --bg: #f4f6f8;            /* app canvas behind the cards */
   --surface: #ffffff;       /* cards, rail, rows */
   --surface-2: #f8fafc;     /* table headers, inset wells */
@@ -74,6 +132,7 @@
   /* System monospace: the terminal texture with no extra font request. */
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
+:root[data-theme="light"] { --accent-3: #0f766e; }
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -113,6 +172,7 @@
   padding: 18px 14px 22px;
   background: var(--surface);
   border-right: 1px solid var(--line);
+  box-shadow: 1px 0 0 var(--accent-tint);
 }
 /* The wordmark. A quiet one — this is a tool, and the person using it already
    knows whose shop it is. */
@@ -122,6 +182,11 @@
   font-weight: 800; font-size: 1.02rem; letter-spacing: -.01em; color: var(--text);
 }
 .adm-rail-h img { display: block; height: 26px; width: auto; }
+/* The mark ships as white-on-transparent for the dark rail. Inverting a pure
+   white silhouette gives a pure black one, which is exactly the light-theme
+   asset — so one line covers both rather than shipping and swapping two files. */
+:root[data-theme="light"] .adm-rail-h img,
+:root[data-theme="light"] .adm-lockmark { filter: invert(1); }
 .adm-rail-h small {
   display: block; font-size: .66rem; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2);
@@ -136,7 +201,10 @@
   transition: background .12s ease, color .12s ease;
 }
 .adm-navbtn:hover { background: var(--surface-3); color: var(--text); text-decoration: none; }
-.adm-navbtn[aria-current="page"] { background: var(--accent-tint); color: var(--accent); }
+.adm-navbtn[aria-current="page"] {
+  background: var(--accent-tint); color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
 .adm-navic { width: 18px; text-align: center; font-size: .95rem; flex: none; }
 /* Everything below the rule leaves the dashboard, so it sits apart from the
    sections and gets pushed to the bottom of the rail. */
@@ -144,7 +212,16 @@
 .adm-navbtn--out, .adm-navbtn--out + .adm-navbtn { border-top: 1px solid var(--line-soft); border-radius: 0; }
 .adm-navbtn--out + .adm-navbtn { padding-top: 12px; }
 
-.adm-main { min-width: 0; padding: 30px 36px 72px; }
+.adm-main { min-width: 0; padding: 0 0 72px; }
+.adm-main > * { padding-left: 36px; padding-right: 36px; }
+/* The CMYK signal bar is the shop's own motif. Two pixels of it across the top
+   of the working column says whose tool this is; the full 5px animated version
+   belongs on the site, selling to strangers. */
+.adm-main::before {
+  content: ""; display: block; height: 2px; padding: 0;
+  background: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #00ff5e, #00e5ff, #3a86ff, #a24bff, #ff004c);
+}
+.adm-main > .adm-panel { padding-top: 30px; }
 .adm-panel[hidden] { display: none; }
 
 /* ---- panel heading ------------------------------------------------------ */
@@ -200,7 +277,7 @@
 .adm-lock input:focus, .adm-search input:focus, .mf-field input:focus,
 .mf-field select:focus, .mf-field textarea:focus,
 .adm-money:focus-within, .adm-pct:focus-within {
-  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15, 118, 110, .13);
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint);
 }
 .adm-money input:focus, .adm-pct input:focus { outline: none; box-shadow: none; }
 
@@ -289,7 +366,12 @@
   border-radius: 100px; padding: 1px 8px; font-size: .78rem;
   font-family: var(--font-mono); font-weight: 600;
 }
-.pipe-empty { margin: 0; padding: 8px 4px; font-size: .8rem; color: var(--muted-2); }
+/* A die-cut contour — the shop's other motif — on the stages with nothing in
+   them, so an empty column reads as a space waiting for a job, not a bug. */
+.pipe-empty {
+  margin: 0; padding: 16px 12px; font-size: .8rem; color: var(--muted-2);
+  border: 1.5px dashed var(--line); border-radius: var(--radius-sm); text-align: center;
+}
 .pipe-job {
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--accent-fill);
@@ -346,7 +428,9 @@
   text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .rev-bar { align-self: end; width: 100%; min-height: 3px; background: var(--accent-fill); border-radius: 4px 4px 0 0; }
-.rev-bar.is-now { background: var(--accent); }
+/* One step down from the neon: #06e4dd at bar size pulls the eye off every
+   other week in the chart. */
+.rev-bar.is-now { background: var(--accent-3); }
 .rev-x { font-size: .7rem; color: var(--muted-2); text-align: center; white-space: nowrap; }
 /* A week with no revenue is a baseline tick, never a short bar — a stub would
    read as a small amount of money, which is a different answer. */
@@ -524,7 +608,7 @@
 .adm-stock-pill { width: 36px; height: 21px; border-radius: 100px; flex: none; background: var(--accent-fill); position: relative; transition: background .15s; }
 .adm-stock-pill::after {
   content: ""; position: absolute; top: 3px; left: 3px;
-  width: 15px; height: 15px; border-radius: 50%; background: #fff;
+  width: 15px; height: 15px; border-radius: 50%; background: var(--text);
   box-shadow: var(--shadow-sm); transition: transform .15s;
 }
 .adm-stock.is-off .adm-stock-pill { background: var(--line); }
@@ -571,6 +655,17 @@
 .mf-hint { font-size: .78rem; color: var(--muted-2); font-style: normal; }
 .mf-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 20px; }
 
+/* Tints used inline by admin.js in the dashboard headline and the load-failure
+   notice. They were referenced before they existed, so the words carried no
+   colour at all. */
+.tint-bad { color: var(--bad); }
+.tint-warn { color: var(--warn); }
+.adm-loadfail { color: var(--warn); }
+.adm-loadfail b { color: var(--text); }
+
+/* ---- theme switch -------------------------------------------------------- */
+.adm-themebtn .adm-navic { font-size: .9rem; }
+
 /* ==========================================================================
    TOAST — main.js drives this; it is the only thing shared with the site
    ========================================================================== */
@@ -578,13 +673,14 @@
   position: fixed; left: 50%; bottom: 26px;
   transform: translateX(-50%) translateY(160%);
   display: flex; align-items: center; gap: 10px;
-  background: var(--text); color: #fff;
+  background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--accent-line);
   font-size: .86rem; padding: 12px 18px; border-radius: 100px;
   box-shadow: var(--shadow-pop); z-index: 90;
   transition: transform .3s cubic-bezier(.2, .9, .25, 1.2);
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
-.toast .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex: none; }
+.toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
 
 /* ==========================================================================
    NARROW SCREENS — the rail becomes a scrolling tab strip across the top
