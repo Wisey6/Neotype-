@@ -206,6 +206,23 @@
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .adm-navic { width: 18px; text-align: center; font-size: .95rem; flex: none; }
+
+/* Pricing is a labelled group of three, not a collapsible menu. The heading is
+   presentational — the buttons under it are the real navigation, and a screen
+   reader should hear three ordinary items, not a fake tree. */
+.adm-navgroup {
+  display: block; padding: 14px 11px 4px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted-2, var(--muted));
+}
+/* The indent is what makes these read as belonging to the heading above. The
+   rule keeps that legible when the label alone would not. */
+.adm-navbtn--sub { padding-left: 24px; position: relative; }
+.adm-navbtn--sub::before {
+  content: ""; position: absolute; left: 13px; top: 6px; bottom: 6px;
+  width: 1px; background: var(--line-soft);
+}
+.adm-navbtn--sub[aria-current="page"]::before { background: transparent; }
 /* Everything below the rule leaves the dashboard, so it sits apart from the
    sections and gets pushed to the bottom of the rail. */
 .adm-navbtn--out { margin-top: auto; padding-top: 16px; }
@@ -496,6 +513,27 @@
 .adm-art-soon, .adm-art-gone { display: inline-block; margin-left: 10px; font-size: .8rem; font-weight: 600; }
 .adm-art-soon { color: var(--warn); }
 .adm-art-gone { color: var(--bad); }
+
+/* --- archive ------------------------------------------------------------
+   Row actions sit at the bottom of a card, quiet by default. Archive is an
+   everyday action and looks like one; anything that destroys data is marked
+   and stays marked, so a red button is never a surprise. */
+.adm-ord-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+.adm-ord-pill.is-test { background: var(--surface-3); color: var(--muted); border: 1px solid var(--line-soft); }
+.adm-ord--archived { opacity: .82; }
+.adm-ord--archived:hover { opacity: 1; }
+
+.btn.adm-danger { color: var(--bad); border-color: var(--bad-line); }
+.btn.adm-danger:hover { background: var(--bad-tint); color: var(--bad); border-color: var(--bad); }
+
+/* A button that reads as part of the sentence it sits in. It is a <button>
+   and not an <a> because it changes what this page shows, not where you are. */
+.adm-linkbtn {
+  border: 0; background: none; padding: 0; font: inherit; font-weight: 600;
+  color: var(--accent); cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.adm-linkbtn:hover { text-decoration: none; }
 
 /* ==========================================================================
    ANALYTICS

@@ -16,6 +16,7 @@ Disallow: /success.html
 # crawler asking in the first place. Adding a new internal file? Add it in both.
 Disallow: /handover.html
 Disallow: /KNOWN-ISSUES.md
+Disallow: /OWNERSHIP.md
 Disallow: /README.md
 Disallow: /CLOUDFLARE.md
 Disallow: /PRICING.md

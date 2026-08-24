@@ -333,6 +333,34 @@ Not currently set: DKIM (`selector1._domainkey`, `selector2._domainkey`),
 `_dmarc`, `enterpriseregistration` and `enterpriseenrollment`. There are no AAAA
 records — correct, they were removed earlier.
 
+### Re-verified 24 Aug 2026, after the nameserver move
+
+The table above is the **17 Aug** snapshot, taken while GoDaddy was still
+authoritative. Nameservers moved to Cloudflare on 19 Aug, which is exactly the
+kind of operation that silently drops records, so the zone was re-queried on
+24 Aug. Three things changed; the table is left as the historical snapshot it
+says it is.
+
+**Every record marked KEEP survived.** Verified individually: the Outlook `MX`,
+the `MS=ms80978019` verification `TXT`, the SPF `TXT`, and the `autodiscover`,
+`lyncdiscover` and `msoid` CNAMEs, plus both Teams `SRV` records. Mail and Teams
+are intact.
+
+| Since 17 Aug | Now |
+|---|---|
+| `_dmarc` listed as not set | **Set** — `v=DMARC1; p=none;`. Monitoring only, and still no `rua`, so nobody receives the reports. That is the open item, not the record's absence |
+| `CNAME email` → `email.secureserver.net` | **Gone.** It was marked "safe to drop" and the move dropped it |
+| `CNAME _domainconnect` | **Gone.** Expected — it was GoDaddy Domain Connect, and the zone is no longer GoDaddy's |
+
+Still not set, unchanged: both DKIM selectors, `enterpriseregistration`,
+`enterpriseenrollment`. Still no AAAA records.
+
+**Domain family.** `neotype.au` is the only Neotype domain registered to the
+business. `neotype.com.au`, `neotype.net.au`, `neotype.studio`, `neotype.co`,
+`neotypestudio.au`, `neotypestudio.com.au` and `neotypeprint.au` all return
+NXDOMAIN. `neotype.com` *is* registered, but to an unrelated third party on
+Arvixe shared hosting — it is not ours and should not be assumed available.
+
 **How this inventory was built, and why that matters.** The first version was
 assembled by querying each record name individually over DNS-over-HTTPS. DNS has
 no "list everything" query without a zone transfer, so that method can only ever

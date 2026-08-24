@@ -522,6 +522,34 @@ function orderKey(session) {
    A pipeline nobody keeps current is worse than no pipeline. */
 const ORDER_STAGES = ["new", "proof", "approved", "shipped"];
 
+/* Only ever address a real order key — never an arbitrary KV key. `cs_` is a
+   Stripe session; `man_` is an order Ian typed in himself. A cs_-only pattern
+   would silently make manual orders unmovable, which is how this was first got
+   wrong. Defined once because three routes now need it and a fourth will, and
+   two copies of a security check drift apart in exactly one direction. */
+const ORDER_KEY_RE = /^order:[0-9TZ.:-]+:(cs|man)_[A-Za-z0-9_]+$/;
+
+/* A Stripe session created in test mode is `cs_test_…`; live money is
+   `cs_live_…`. The difference is in the id itself, so "delete the test orders"
+   can be answered exactly rather than by date-guessing — and a sweep written
+   against this can never reach a real order, by construction. */
+const TEST_SESSION_RE = /:cs_test_[A-Za-z0-9_]+$/;
+
+/* KV list() returns a page at a time. Anything that must see EVERY key has to
+   follow the cursor — a single call silently stops at the first page, which for
+   a sweep means "deleted some of them" while reporting success. */
+async function allOrderKeys(env) {
+  const names = [];
+  let cursor;
+  for (;;) {
+    const page = await env.NEOTYPE.list({ prefix: "order:", cursor });
+    for (const k of page.keys) names.push(k.name);
+    if (page.list_complete || !page.cursor) break;
+    cursor = page.cursor;
+  }
+  return names;
+}
+
 function paymentState(s) {
   if (s.payment_status === "paid" || s.payment_status === "no_payment_required") return "paid";
   if (s.status === "complete") return "pending";
@@ -996,10 +1024,7 @@ export const onRequest = async ({ request, env }) => {
     const key = str(body.key, 200);
     const stage = str(body.stage, 20);
     if (!ORDER_STAGES.includes(stage)) return json({ error: "Unknown stage" }, 400);
-    // Only ever address a real order key — never an arbitrary KV key.
-    // `cs_` is a Stripe session; `man_` is an order Ian typed in himself. A
-    // cs_-only pattern here would silently make manual orders unmovable.
-    if (!/^order:[0-9TZ.:-]+:(cs|man)_[A-Za-z0-9_]+$/.test(key)) return json({ error: "Unknown order" }, 400);
+    if (!ORDER_KEY_RE.test(key)) return json({ error: "Unknown order" }, 400);
     if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
     const rec = await env.NEOTYPE.get(key, { type: "json" });
     if (!rec) return json({ error: "Unknown order" }, 404);
@@ -1010,6 +1035,91 @@ export const onRequest = async ({ request, env }) => {
     rec.stage = stage;
     await env.NEOTYPE.put(key, JSON.stringify(rec));
     return json({ ok: true, stage: stage });
+  }
+
+  /* --- archive / restore an order (admin) ------------------------------
+     Archiving is the everyday "delete": the order leaves the list, stops
+     counting in Analytics and Receipts, and is still there. Deleting a real
+     order outright is unrecoverable — KV has no undo and Stripe's copy is a
+     payment record, not this pipeline — so the destructive version is a
+     separate route below that refuses to run until an order is archived. */
+  if (route === "order-archive" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const key = str(body.key, 200);
+    if (!ORDER_KEY_RE.test(key)) return json({ error: "Unknown order" }, 400);
+    if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+    const rec = await env.NEOTYPE.get(key, { type: "json" });
+    if (!rec) return json({ error: "Unknown order" }, 404);
+    const archived = body.archived !== false;
+    rec.archived = archived;
+    if (archived) rec.archivedAt = new Date().toISOString();
+    else delete rec.archivedAt;
+    await env.NEOTYPE.put(key, JSON.stringify(rec));
+    return json({ ok: true, archived: archived });
+  }
+
+  /* --- permanently delete an archived order (admin) ---------------------
+     Deliberately refuses anything that is not already archived. That makes
+     destruction a two-step Ian has to mean: archive, look at it in the
+     archive, then delete. A single mis-click cannot reach this. */
+  if (route === "order-purge" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const key = str(body.key, 200);
+    if (!ORDER_KEY_RE.test(key)) return json({ error: "Unknown order" }, 400);
+    if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+    const rec = await env.NEOTYPE.get(key, { type: "json" });
+    if (!rec) return json({ error: "Unknown order" }, 404);
+    if (!rec.archived) return json({ error: "Archive that order before deleting it" }, 409);
+    await env.NEOTYPE.delete(key);
+    return json({ ok: true, deleted: 1 });
+  }
+
+  /* --- bulk tidy-ups (admin) --------------------------------------------
+     Two, and only two, because each answers a question that would otherwise
+     be answered by clicking the same button forty times:
+
+       archive-test    every order whose Stripe session is a TEST-mode one.
+                       Matched on the session id, so it cannot touch real
+                       money however many live orders sit beside it.
+       purge-archived  empty the archive. Only ever deletes records already
+                       archived, which is the same two-step as above. */
+  if (route === "orders-sweep" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    const mode = str(body.mode, 20);
+    if (mode !== "archive-test" && mode !== "purge-archived") return json({ error: "Unknown action" }, 400);
+    if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+
+    const names = await allOrderKeys(env);
+    let count = 0, skipped = 0;
+
+    if (mode === "archive-test") {
+      const targets = names.filter((n) => ORDER_KEY_RE.test(n) && TEST_SESSION_RE.test(n));
+      for (const n of targets) {
+        const rec = await env.NEOTYPE.get(n, { type: "json" });
+        if (!rec) continue;
+        if (rec.archived) { skipped++; continue; }
+        rec.archived = true;
+        rec.archivedAt = new Date().toISOString();
+        await env.NEOTYPE.put(n, JSON.stringify(rec));
+        count++;
+      }
+      return json({ ok: true, mode: mode, count: count, already: skipped });
+    }
+
+    for (const n of names) {
+      if (!ORDER_KEY_RE.test(n)) continue;
+      const rec = await env.NEOTYPE.get(n, { type: "json" });
+      if (!rec || !rec.archived) continue;
+      await env.NEOTYPE.delete(n);
+      count++;
+    }
+    return json({ ok: true, mode: mode, count: count });
   }
 
   // --- add an order that didn't come through the website (admin) ---

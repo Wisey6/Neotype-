@@ -96,7 +96,20 @@ check("content sits beside it, not under it", main.x >= rail.x + rail.width - 1,
 check("the rail lifts off the canvas rather than blending into it",
   await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor) !== canvas,
   await p.locator(".adm-rail").evaluate(el => getComputedStyle(el).backgroundColor));
-check("every nav section is there, plus the theme switch", await p.locator(".adm-navbtn").count() === 8);
+check("every nav section is there, plus the theme switch", await p.locator(".adm-navbtn").count() === 10,
+  `${await p.locator(".adm-navbtn").count()} buttons`);
+/* textContent, not innerText: the label is text-transform:uppercase, so the
+   rendered text is "PRICING" and comparing it against the source case fails on
+   a group that is perfectly correct. */
+check("pricing is a group of three under Dashboard, not one page at the end",
+  await p.locator(".adm-navbtn--sub").count() === 3 &&
+  (await p.locator(".adm-navgroup").textContent()) === "Pricing",
+  `${await p.locator(".adm-navbtn--sub").count()} sub-items`);
+check("each product has its own pricing page",
+  await p.locator("#panel-price-stickers").count() === 1 &&
+  await p.locator("#panel-price-banner").count() === 1 &&
+  await p.locator("#panel-price-corflute").count() === 1);
+check("and each one carries its own Save", await p.locator(".adm-save").count() === 3);
 check("the current section is marked for a screen reader too, not colour alone",
   await p.locator('.adm-navbtn[aria-current="page"]').count() === 1);
 
@@ -161,7 +174,9 @@ check("an unknown stage does not render as the word \"undefined\"", !/undefined/
 check("it shows the raw stage instead", /wrapping/i.test(ordersTxt));
 check("an unpaid order is tinted, not just pilled",
   await p.locator(".adm-ord--pending").first().evaluate(el => getComputedStyle(el).backgroundColor) !== surface);
-check("and offers no artwork download", await p.locator(".adm-ord--pending .btn").count() === 0);
+check("and offers no artwork download", await p.locator(".adm-ord--pending .adm-ord-art .btn").count() === 0);
+check("but can still be archived out of the way",
+  await p.locator(".adm-ord--pending .adm-arch").count() === 1);
 
 console.log("\n[ charts — the palette is validated, so pin it ]");
 await p.locator('[data-view="analytics"]').click();
@@ -215,7 +230,8 @@ check("content is below it, not beside it", mmain.y >= mrail.y + mrail.height - 
 check("nothing spills sideways",
   await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   await mp.evaluate(() => document.documentElement.scrollWidth + " vs " + window.innerWidth));
-check("every section is still reachable", await mp.locator(".adm-navbtn").count() === 8);
+check("every section is still reachable", await mp.locator(".adm-navbtn").count() === 10,
+  `${await mp.locator(".adm-navbtn").count()} buttons`);
 if (OUT) await mp.screenshot({ path: OUT + "/admin-mobile.png", fullPage: false }).catch(() => {});
 
 check("no JS errors on either width", errs.length === 0 && merrs.length === 0, errs.concat(merrs).join(" | "));

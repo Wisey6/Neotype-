@@ -23,7 +23,7 @@ await p.route("**/api/**", r => {
 });
 await p.goto(B + "/admin.html", { waitUntil: "networkidle" });
 await p.fill("#admPass", "x"); await p.click("#admUnlock");
-await p.waitForSelector(".adm-rail"); await p.click('[data-view="pricing"]'); await p.waitForTimeout(700);
+await p.waitForSelector(".adm-rail"); await p.click('[data-view="price-stickers"]'); await p.waitForTimeout(700);
 
 console.log("\n[ band editor ]");
 check("seven band rows render", await p.locator("[data-band$='.from']").count() === 7);
@@ -51,7 +51,7 @@ check("editing a rate updates the example", before !== after, `${before} → ${a
 check("clamp warning appears for a steep step", !(await p.locator("#admBandWarn").isHidden()));
 
 if (OUT) await p.screenshot({ path: `${OUT}/10-admin-bands.png` });
-await p.click("#admSave"); await p.waitForTimeout(500);
+await p.click("#panel-price-stickers .adm-save"); await p.waitForTimeout(500);
 check("bands reach the save payload", !!(saved && saved.stickers && saved.stickers.qtyBands && saved.stickers.qtyBands.length === 7));
 check("rate stored in dollars, not cents", saved && saved.stickers.qtyBands[3].rate === 0.005,
       saved ? String(saved.stickers.qtyBands[3].rate) : "-");

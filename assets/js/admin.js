@@ -283,23 +283,42 @@
 
   /* ======================================================================
      THE SHELL
-     One page, a left rail, and five panels. Nothing navigates away, so the
+     One page, a left rail, and seven panels. Nothing navigates away, so the
      loaded orders survive every switch and the whole tool feels instant.
      Order matters: Ian opens this to answer "what do I have to make today",
-     so Dashboard is first and Pricing — set once, touched rarely — is last.
+     so Dashboard is first — and pricing, which turned out to be neither set
+     once nor touched rarely, sits directly under it as three product pages.
      ====================================================================== */
+  /* Pricing used to be one page with all three products stacked on it, and it
+     sat last on the rail on the reasoning that it is set once and touched
+     rarely. Both turned out to be wrong in use: Ian reprices far more often
+     than "once", and doing it meant scrolling past every sticker option to
+     reach corflute. So pricing is now a group directly under Dashboard, one
+     page per product — the thing being repriced is chosen on the rail instead
+     of by scrolling. */
   var NAV = [
     { key: "dash",      label: "Dashboard", icon: "◧" },
+    { group: "Pricing", items: [
+      { key: "price-stickers", label: "Stickers", icon: "◈", prod: "stickers" },
+      { key: "price-banner",   label: "Banners",  icon: "◈", prod: "banner" },
+      { key: "price-corflute", label: "Corflute", icon: "◈", prod: "corflute" }
+    ] },
     { key: "orders",    label: "Orders",    icon: "▤" },
     { key: "analytics", label: "Analytics", icon: "◔" },
-    { key: "receipts",  label: "Receipts",  icon: "⎘" },
-    { key: "pricing",   label: "Pricing",   icon: "◈" }
+    { key: "receipts",  label: "Receipts",  icon: "⎘" }
   ];
+
+  // One flat list of every reachable view, so showView and the rail can never
+  // disagree about what exists.
+  var NAV_ITEMS = NAV.reduce(function (acc, n) {
+    return acc.concat(n.items ? n.items : [n]);
+  }, []);
+
   var view = "dash";
 
   function showView(key) {
     view = key;
-    NAV.forEach(function (n) {
+    NAV_ITEMS.forEach(function (n) {
       var btn = document.querySelector('[data-view="' + n.key + '"]');
       var panel = document.getElementById("panel-" + n.key);
       if (btn) btn.setAttribute("aria-current", n.key === key ? "page" : "false");
@@ -328,6 +347,12 @@
     if (btn) btn.lastChild.nodeValue = light ? "Dark theme" : "Light theme";
   }
 
+  function navBtn(n, extra) {
+    return '<button class="adm-navbtn' + extra + '" data-view="' + n.key + '" aria-current="' +
+      (n.key === view ? "page" : "false") + '"><span class="adm-navic" aria-hidden="true">' +
+      n.icon + "</span>" + n.label + "</button>";
+  }
+
   function navHtml() {
     return '<nav class="adm-rail" aria-label="Admin sections">' +
       // the black mark, not the neon one: the site's logo is drawn to glow on a
@@ -335,9 +360,11 @@
       '<span class="adm-rail-h"><img src="assets/img/neotype-logo-white.png" alt="" aria-hidden="true">' +
       '<span>Neotype<small>Dashboard</small></span></span>' +
       NAV.map(function (n) {
-        return '<button class="adm-navbtn" data-view="' + n.key + '" aria-current="' +
-          (n.key === view ? "page" : "false") + '"><span class="adm-navic" aria-hidden="true">' +
-          n.icon + "</span>" + n.label + "</button>";
+        if (!n.items) return navBtn(n, "");
+        // A labelled group, not a collapsible one: three items that are always
+        // relevant, and a disclosure would just add a click to every reprice.
+        return '<span class="adm-navgroup" role="presentation">' + n.group + "</span>" +
+          n.items.map(function (c) { return navBtn(c, " adm-navbtn--sub"); }).join("");
       }).join("") +
       '<button class="adm-navbtn adm-themebtn" id="admTheme"><span class="adm-navic" aria-hidden="true">◐</span>' +
       (themeIsLight() ? "Dark theme" : "Light theme") + "</button>" +
@@ -380,15 +407,39 @@
       '<p class="lead">Every payment, with a link straight to it in Stripe. Stripe is the record for tax and refunds — this is the index into it.</p></div>' +
       '<div id="admReceipts"></div>' +
       "</section>" +
-      // ---- Pricing
-      '<section class="adm-panel" id="panel-pricing" hidden>' +
-      '<div class="section-head"><span class="eyebrow">Set once, change anytime</span>' +
-      '<h1 class="display-lg">Pricing</h1>' +
-      '<p class="lead">Change a dollar amount or a percentage and hit <b>Save prices</b>. The example prices update as you type, so you can see exactly what customers will pay. Then it goes live straight away.</p></div>';
+      "";
 
+    // ---- Pricing: one panel per product, chosen on the rail
     ORDER.forEach(function (prod) {
       var C = PROD[prod];
-      html += '<section class="adm-card"><div class="adm-card-h"><h2>' + C.title + '</h2><span class="adm-note">' + C.unitNote + "</span></div>";
+      html +=
+        '<section class="adm-panel" id="panel-price-' + prod + '" hidden>' +
+        '<div class="section-head"><span class="eyebrow">' + C.title + ' pricing</span>' +
+        '<h1 class="display-lg">' + C.title + "</h1>" +
+        '<p class="lead">Change a dollar amount or a percentage and hit <b>Save prices</b>. The example ' +
+        'prices update as you type, so you can see exactly what customers will pay. Then it goes live ' +
+        "straight away. <b>Saving here saves every product</b>, so a half-finished change on another " +
+        "page goes live too.</p></div>" +
+        pricingCard(prod) +
+        '<div class="adm-savebar"><button class="btn btn--accent adm-save">Save prices</button>' +
+        '<button class="btn btn--ghost adm-undo">Undo changes</button>' +
+        '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>' +
+        "</section>";
+    });
+
+    html += "</div>";
+
+    root.className = "adm-shell";
+    root.innerHTML = html;
+    wireShell(root);
+  }
+
+  /* One product's price card: examples, money fields, option tables, and the
+     quantity bands. Split out of buildForm when pricing became three pages —
+     the markup is identical per product, only the panel around it changed. */
+  function pricingCard(prod) {
+    var C = PROD[prod];
+    var html = '<section class="adm-card"><div class="adm-card-h"><h2>' + C.title + '</h2><span class="adm-note">' + C.unitNote + "</span></div>";
 
       // live example prices
       html += '<div class="adm-ex-box"><span class="adm-ex-title">Example prices</span><div class="adm-ex-rows">';
@@ -423,18 +474,15 @@
         C.advanced.forEach(function (a) { html += '<label class="adm-field"><span>' + a.label + "</span>" + moneyInput(prod + "." + a.path, a.plain) + "</label>"; });
         html += "</div></details>";
       }
-      html += "</section>";
-    });
+    html += "</section>";
+    return html;
+  }
 
-    html += '<div class="adm-savebar"><button class="btn btn--accent" id="admSave">Save prices</button>' +
-      '<button class="btn btn--ghost" id="admReload">Undo changes</button>' +
-      '<span class="adm-hint">Signed in · changes go live the moment you save</span></div>' +
-      "</section></div>";
-
-    root.className = "adm-shell";
-    root.innerHTML = html;
-    document.getElementById("admSave").addEventListener("click", save);
-    document.getElementById("admReload").addEventListener("click", load);
+  /* Every listener the shell needs, bound once to the root. Save and Undo are
+     matched by class rather than id because there is now one pair per pricing
+     page — three elements with the same id would be invalid, and only the first
+     would ever have been found. */
+  function wireShell(root) {
     root.addEventListener("input", onEdit);
     root.addEventListener("change", onEdit);   // checkboxes fire change, not input
     refreshBands();
@@ -447,9 +495,18 @@
       if (nav) { showView(nav.getAttribute("data-view")); return; }
       var adv = t.closest && t.closest(".pipe-adv");
       if (adv) { advance(adv.getAttribute("data-key"), adv.getAttribute("data-stage"), adv); return; }
+      if (t.closest && t.closest(".adm-save")) { save(); return; }
+      if (t.closest && t.closest(".adm-undo")) { load(); return; }
       if (t.closest && t.closest("#admOrderQX")) { ORDER_Q = ""; renderAll(); return; }
       if (t.closest && t.closest("#admSignOut")) { signOut(); return; }
       if (t.closest && t.closest("#admManualSave")) { saveManual(t.closest("#admManualSave")); return; }
+      var arch = t.closest && t.closest(".adm-arch");
+      if (arch) { setArchived(arch.getAttribute("data-key"), arch.getAttribute("data-on") === "1", arch); return; }
+      var purge = t.closest && t.closest(".adm-purge");
+      if (purge) { purgeOrder(purge.getAttribute("data-key"), purge); return; }
+      var sweep = t.closest && t.closest(".adm-sweep");
+      if (sweep) { sweepOrders(sweep.getAttribute("data-mode"), sweep); return; }
+      if (t.closest && t.closest("#admArchToggle")) { SHOW_ARCHIVE = !SHOW_ARCHIVE; renderAll(); return; }
       var jump = t.closest && t.closest("[data-goto]");
       if (jump) showView(jump.getAttribute("data-goto"));
     });
@@ -497,6 +554,15 @@
   }
 
   var ORDERS = [];   // the loaded list, kept so the pipeline can re-render
+
+  /* Archiving is the everyday delete. An archived order is still in storage and
+     still recoverable, but it is gone from every surface that answers a
+     question about the business: the dashboard, the pipeline, Analytics and
+     Receipts all read live() so an archived order can never quietly inflate a
+     revenue figure. Only the archive itself reads archived(). */
+  function live()     { return ORDERS.filter(function (o) { return !o.archived; }); }
+  function archived() { return ORDERS.filter(function (o) { return !!o.archived; }); }
+  var SHOW_ARCHIVE = false;
 
   // ---- due dates ----------------------------------------------------------
   // Derived, not stored: the turnaround the customer paid for sets the promise.
@@ -659,14 +725,14 @@
   function renderDash() {
     var host = document.getElementById("admDash");
     if (!host) return;
-    var paid = ORDERS.filter(function (o) { return (o.status || "paid") === "paid"; });
+    var paid = live().filter(function (o) { return (o.status || "paid") === "paid"; });
     var open = paid.filter(function (o) { return (o.stage || "new") !== "shipped"; });
     var late = open.filter(function (o) { var d = dueInfo(o); return d && d.urgency === "late"; }).length;
     var head = document.getElementById("admToday");
     if (head) {
       head.innerHTML = ORDERS_FAILED
         ? "<b class=\"tint-bad\">Couldn't load your orders.</b> This is a connection problem, not an empty shop — reload in a moment."
-        : !ORDERS.length
+        : !live().length
         ? "No orders yet. When one comes in it lands here, with the customer's artwork attached."
         : late
           ? "<b class=\"tint-warn\">" + late + (late === 1 ? " order is" : " orders are") + " past the promised date.</b> " +
@@ -675,7 +741,7 @@
             ? "<b>" + open.length + (open.length === 1 ? " order" : " orders") + " to make</b>, all on schedule."
             : "Everything's shipped. Nothing waiting on you.";
     }
-    host.innerHTML = tiles(ORDERS) + pipeline(ORDERS) + revenue(ORDERS);
+    host.innerHTML = tiles(live()) + pipeline(live()) + revenue(live());
   }
 
   /* ======================================================================
@@ -718,7 +784,7 @@
   function renderAnalytics() {
     var host = document.getElementById("admAnalytics");
     if (!host) return;
-    var paid = ORDERS.filter(function (o) { return (o.status || "paid") === "paid"; });
+    var paid = live().filter(function (o) { return (o.status || "paid") === "paid"; });
 
     if (!paid.length) {
       host.innerHTML = '<div class="dash-card"><p class="dash-thin">No paid orders yet. ' +
@@ -786,7 +852,7 @@
       '<span class="adm-note">revenue by product, all paid orders</span></div>' +
       '<div class="mix-chart">' + mix + "</div>" +
       '<details class="an-details"><summary>See the numbers</summary>' + table + "</details></div>" +
-      revenue(ORDERS);
+      revenue(live());
   }
 
   /* ======================================================================
@@ -810,7 +876,7 @@
   function renderReceipts() {
     var host = document.getElementById("admReceipts");
     if (!host) return;
-    var paid = ORDERS.filter(function (o) { return (o.status || "paid") === "paid"; });
+    var paid = live().filter(function (o) { return (o.status || "paid") === "paid"; });
     if (!paid.length) {
       host.innerHTML = '<div class="dash-card"><p class="dash-thin">No payments yet.</p></div>';
       return;
@@ -905,7 +971,7 @@
   function renderAll() {
     renderDash();
     var full = document.getElementById("admOrdersFull");
-    if (full) full.innerHTML = ordersTable(ORDERS);
+    if (full) full.innerHTML = ordersTable(live()) + archiveCard(archived());
     if (view === "analytics") renderAnalytics();
     if (view === "receipts") renderReceipts();
   }
@@ -926,6 +992,71 @@
         renderAll();
       })
       .catch(function () { toast("Couldn't move that order"); if (btn) btn.disabled = false; });
+  }
+
+  /* ---- archive, restore, delete ------------------------------------------
+     Two steps, on purpose. Archive is reversible and is what Ian will actually
+     use. Delete is permanent — KV has no undo, and Stripe's copy is a record of
+     a payment, not of this job's artwork, stage or notes — so it is only
+     offered inside the archive, on something already put there deliberately. */
+  function setArchived(key, on, btn) {
+    if (!key) { toast("That order is missing its reference — reload the page"); return; }
+    if (btn) { btn.disabled = true; btn.textContent = on ? "Archiving…" : "Restoring…"; }
+    post("/order-archive", { key: key, archived: on }, function (ok, d) {
+      if (!ok) { toast(d.error || "Couldn't archive that order"); if (btn) btn.disabled = false; return; }
+      ORDERS.forEach(function (o) { if (o.key === key) o.archived = on; });
+      toast(on ? "Archived — it's in the archive if you want it back" : "Restored");
+      renderAll();
+    });
+  }
+
+  function purgeOrder(key, btn) {
+    if (!key) return;
+    var o = ORDERS.filter(function (x) { return x.key === key; })[0];
+    var ref = (o && o.ref) || "this order";
+    if (!window.confirm("Permanently delete " + ref + "?\n\nThis cannot be undone — the order, its " +
+      "details and its artwork link are gone for good. Stripe keeps the payment record, but nothing " +
+      "here can be recovered.")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Deleting…"; }
+    post("/order-purge", { key: key }, function (ok, d) {
+      if (!ok) { toast(d.error || "Couldn't delete that order"); if (btn) btn.disabled = false; return; }
+      ORDERS = ORDERS.filter(function (x) { return x.key !== key; });
+      toast("Deleted permanently");
+      renderAll();
+    });
+  }
+
+  function sweepOrders(mode, btn) {
+    var msg = mode === "archive-test"
+      ? "Archive every test-mode order?\n\nThese are orders paid with Stripe test cards — no real money " +
+        "was involved. They move to the archive, where you can look through them before deleting. Real " +
+        "orders are not touched."
+      : "Permanently delete everything in the archive?\n\nThis cannot be undone. Only archived orders " +
+        "are affected — anything still in your orders list stays exactly where it is.";
+    if (!window.confirm(msg)) return;
+    var label = btn && btn.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+    post("/orders-sweep", { mode: mode }, function (ok, d) {
+      if (btn) { btn.disabled = false; if (label) btn.textContent = label; }
+      if (!ok) { toast(d.error || "Couldn't do that just now"); return; }
+      var n = d.count || 0;
+      toast(mode === "archive-test"
+        ? (n ? "Archived " + n + " test order" + (n === 1 ? "" : "s") : "No test orders left to archive")
+        : (n ? "Deleted " + n + " order" + (n === 1 ? "" : "s") + " permanently" : "The archive was already empty"));
+      // Re-read rather than patching in place: a sweep touches records this
+      // page may not have loaded, so the server's list is the only honest one.
+      loadOrders();
+    });
+  }
+
+  // One shape for every admin POST, so a new call site can't forget the auth
+  // header or the "responded, but not ok" case that a bare .then() misses.
+  function post(path, body, done) {
+    fetch(API + path, { method: "POST", headers: authHeaders(true), body: JSON.stringify(body) })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { done(r.ok && d.ok !== false, d); });
+      })
+      .catch(function () { done(false, {}); });
   }
 
   // ---- orders -------------------------------------------------------------
@@ -1035,6 +1166,8 @@
           : /^https?:\/\//.test(o.artwork || "")
             ? '<p class="adm-ord-art"><a class="btn btn--ghost btn--sm" href="' + esc(o.artwork) + '">⬇ Download artwork</a>' + artWarn(o) + "</p>"
             : '<p class="adm-ord-art adm-ord-noart">⚠ No artwork file — chase the customer for it</p>') +
+        '<p class="adm-ord-acts"><button type="button" class="btn btn--ghost btn--sm adm-arch" data-key="' +
+          esc(o.key || "") + '" data-on="1">Archive</button></p>' +
         "</div>";
     }).join("");
 
@@ -1058,6 +1191,76 @@
           "this list is capped so the dashboard stays quick.</p>"
         : "") +
       "</div>";
+  }
+
+  /* The archive. Collapsed to a single line when it's empty, because a shop
+     that has never archived anything shouldn't be shown a filing cabinet.
+
+     The two destructive controls live here and nowhere else. "Clear out the
+     test orders" is offered because every shop starts with a pile of them from
+     setting Stripe up, and clicking Archive forty times is how a real order
+     gets archived by accident. It matches on the Stripe session id, so it
+     cannot reach an order that took real money. */
+  function archiveCard(list) {
+    var testLeft = live().filter(isTestOrder).length;
+    var sweepBtn = testLeft
+      ? '<button type="button" class="btn btn--ghost btn--sm adm-sweep" data-mode="archive-test">' +
+        "Archive " + testLeft + " test order" + (testLeft === 1 ? "" : "s") + "</button>"
+      : "";
+
+    if (!list.length) {
+      if (!testLeft) return "";
+      return '<div class="dash-card"><div class="dash-card-h"><h2>Tidy up</h2>' +
+        '<span class="adm-note">test-mode orders from setting Stripe up</span></div>' +
+        '<p class="dash-thin">There ' + (testLeft === 1 ? "is 1 order" : "are " + testLeft + " orders") +
+        " here paid with a Stripe <b>test</b> card, so no real money was involved. Archiving them clears " +
+        "your list without deleting anything — you can look through the archive and delete them for good " +
+        "when you're happy.</p><p class=\"adm-ord-acts\">" + sweepBtn + "</p></div>";
+    }
+
+    var head = '<div class="dash-card"><div class="dash-card-h"><h2>Archive</h2>' +
+      '<span class="adm-note">' + list.length + " order" + (list.length === 1 ? "" : "s") +
+      " · hidden from your orders, the dashboard and the money figures</span></div>";
+
+    if (!SHOW_ARCHIVE) {
+      return head + '<p class="dash-thin">These are out of the way but not deleted. ' +
+        '<button type="button" class="adm-linkbtn" id="admArchToggle">Show the archive</button></p>' +
+        '<p class="adm-ord-acts">' + sweepBtn + "</p></div>";
+    }
+
+    var rows = list.map(function (o) {
+      var item = [o.quantity, o.size, o.finish, o.shape].filter(Boolean).join(" · ") || o.product || "Order";
+      return '<div class="adm-enq adm-ord adm-ord--archived">' +
+        '<div class="adm-enq-top"><b>' + esc(item) + "</b>" +
+        (isTestOrder(o) ? '<span class="adm-ord-pill is-test">Test mode</span>' : "") +
+        '<span class="adm-ord-amt">$' + ((o.amount || 0) / 100).toFixed(2) + " " + esc(o.currency || "AUD") + "</span>" +
+        '<span class="adm-enq-when">' + esc(whenLabel(o.when)) + "</span></div>" +
+        '<div class="adm-ord-meta"><span>Ref <b>' + esc(o.ref || "—") + "</b></span>" +
+        (o.name ? "<span>" + esc(o.name) + "</span>" : "") + "</div>" +
+        '<p class="adm-ord-acts">' +
+        '<button type="button" class="btn btn--ghost btn--sm adm-arch" data-key="' + esc(o.key || "") +
+          '" data-on="0">Restore</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm adm-danger adm-purge" data-key="' +
+          esc(o.key || "") + '">Delete permanently</button></p>' +
+        "</div>";
+    }).join("");
+
+    return head +
+      '<p class="dash-thin">Restoring puts an order back in your list. Deleting is permanent — Stripe ' +
+      "keeps the payment record, but the job's details and artwork link go for good. " +
+      '<button type="button" class="adm-linkbtn" id="admArchToggle">Hide the archive</button></p>' +
+      '<div class="adm-enq-list">' + rows + "</div>" +
+      '<p class="adm-ord-acts">' + sweepBtn +
+      '<button type="button" class="btn btn--ghost btn--sm adm-danger adm-sweep" data-mode="purge-archived">' +
+      "Empty the archive (" + list.length + ")</button></p></div>";
+  }
+
+  /* Stripe test sessions are `cs_test_…`, live money is `cs_live_…`. Read from
+     the id rather than inferred from a date, so this is a fact about the order
+     and not a guess about when the shop went live. */
+  function isTestOrder(o) {
+    return /^cs_test_/.test(String((o && o.session) || "")) ||
+           /:cs_test_/.test(String((o && o.key) || ""));
   }
 
   // ---- enquiry inbox ------------------------------------------------------
@@ -1193,15 +1396,19 @@ function esc(s) {
       .then(function (d) { buildForm(d || {}); })
       .catch(function () { lockScreen("Couldn't reach the pricing service — is the site deployed?"); });
   }
+  /* There is one price list and one Save, but three pricing pages and so three
+     Save buttons. They all post the whole list, so every one of them has to
+     show the same state — leaving the other two live would let a second save
+     fire mid-flight from a page Ian happened to switch to. */
   function save() {
-    var btn = document.getElementById("admSave");
-    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    var btns = [].slice.call(document.querySelectorAll(".adm-save"));
+    btns.forEach(function (b) { b.disabled = true; b.textContent = "Saving…"; });
     fetch(API + "/pricing", {
       method: "POST", headers: authHeaders(true), body: JSON.stringify(D)
     }).then(function (r) { if (r.status === 401) { toast("Incorrect password — nothing was saved"); return null; } return r.json(); })
       .then(function (d) { if (d && d.ok) { toast("Saved — new prices are live"); } else if (d) { toast(d.error || "Couldn't save"); } })
       .catch(function () { toast("Couldn't save — please try again"); })
-      .then(function () { if (btn) { btn.disabled = false; btn.textContent = "Save prices"; } });
+      .then(function () { btns.forEach(function (b) { b.disabled = false; b.textContent = "Save prices"; }); });
   }
 
   /* Staying signed in is OPT-IN and per-device. Ian checks orders from his
