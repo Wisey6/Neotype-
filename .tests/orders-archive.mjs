@@ -207,5 +207,55 @@ console.log("\n[ only real order keys, only known actions ]");
   check("storage is exactly as it was", kv.size === 4);
 }
 
+
+console.log("\n[ enquiries archive the same way ]");
+{
+  const E1 = "enquiry:2026-08-01T00:00:00.000Z:a1b2c3d4";
+  const E2 = "enquiry:2026-08-02T00:00:00.000Z:e5f6a7b8";
+  const seedE = () => [
+    [E1, JSON.stringify({ name: "Rae Fisher", email: "rae@fisher.example", topic: "Quote", message: "300 stickers?", when: "2026-08-01T00:00:00.000Z" })],
+    [E2, JSON.stringify({ name: "Spam Bot", email: "bot@spam.example", topic: "General", message: "buy followers", when: "2026-08-02T00:00:00.000Z" })],
+    [K_LIVE, order({ ref: "LIVE0001", session: "cs_live_ccc333" })],
+  ];
+  const { env, kv } = makeEnv(seedE());
+
+  const a = await call(env, "enquiry-archive", { key: E2, archived: true });
+  check("archiving an enquiry succeeds", a.status === 200 && a.json.ok === true, `HTTP ${a.status}`);
+  check("it is flagged, not deleted", (await read(kv, E2)).archived === true && kv.has(E2));
+  check("the other enquiry is untouched", (await read(kv, E1)).archived === undefined);
+
+  const early = await call(env, "enquiry-purge", { key: E1 });
+  check("purging an unarchived enquiry is refused", early.status === 409, `HTTP ${early.status}`);
+
+  const gone = await call(env, "enquiry-purge", { key: E2 });
+  check("an archived one deletes", gone.status === 200 && !kv.has(E2));
+
+  await call(env, "enquiry-archive", { key: E1, archived: true });
+  const swept = await call(env, "enquiries-sweep", { mode: "purge-archived" });
+  check("emptying the enquiry archive works", swept.status === 200 && swept.json.count === 1, `count=${swept.json.count}`);
+  check("and it left the ORDER alone", kv.has(K_LIVE), "orders and enquiries must not sweep each other");
+}
+
+console.log("\n[ the two kinds cannot address each other ]");
+{
+  const E1 = "enquiry:2026-08-01T00:00:00.000Z:a1b2c3d4";
+  const { env, kv } = makeEnv([
+    [E1, JSON.stringify({ name: "Rae", email: "r@e.example", message: "hi", when: "2026-08-01T00:00:00.000Z", archived: true })],
+    [K_TEST1, order({ ref: "TEST0001", session: "cs_test_aaa111", archived: true })],
+  ]);
+  const a = await call(env, "order-archive", { key: E1, archived: true });
+  check("an enquiry key is rejected by the ORDER route", a.status === 400, `HTTP ${a.status}`);
+  const b = await call(env, "enquiry-purge", { key: K_TEST1 });
+  check("an order key is rejected by the ENQUIRY route", b.status === 400, `HTTP ${b.status}`);
+  check("both records survive", kv.has(E1) && kv.has(K_TEST1));
+
+  for (const [route, body] of [["enquiry-archive", { key: E1, archived: true }], ["enquiries-sweep", { mode: "purge-archived" }]]) {
+    const anon = await call(env, route, body, { noAuth: true });
+    check(`${route} refuses an unauthenticated call`, anon.status === 401, `HTTP ${anon.status}`);
+  }
+  const m = await call(env, "enquiries-sweep", { mode: "archive-test" });
+  check("enquiries have no test-mode sweep", m.status === 400, `HTTP ${m.status}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

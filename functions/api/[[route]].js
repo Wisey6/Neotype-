@@ -535,19 +535,62 @@ const ORDER_KEY_RE = /^order:[0-9TZ.:-]+:(cs|man)_[A-Za-z0-9_]+$/;
    against this can never reach a real order, by construction. */
 const TEST_SESSION_RE = /:cs_test_[A-Za-z0-9_]+$/;
 
+/* An enquiry from the contact form. Same shape of key as an order — a prefix,
+   an ISO timestamp, and an id — so the same addressing rules apply. */
+const ENQUIRY_KEY_RE = /^enquiry:[0-9TZ.:-]+:[A-Za-z0-9-]{1,40}$/;
+
 /* KV list() returns a page at a time. Anything that must see EVERY key has to
    follow the cursor — a single call silently stops at the first page, which for
    a sweep means "deleted some of them" while reporting success. */
-async function allOrderKeys(env) {
+async function allKeys(env, prefix) {
   const names = [];
   let cursor;
   for (;;) {
-    const page = await env.NEOTYPE.list({ prefix: "order:", cursor });
+    const page = await env.NEOTYPE.list({ prefix, cursor });
     for (const k of page.keys) names.push(k.name);
     if (page.list_complete || !page.cursor) break;
     cursor = page.cursor;
   }
   return names;
+}
+
+/* Archive, restore, and delete are identical for an order and an enquiry — only
+   the key pattern differs. Written once so the two can't drift, because the way
+   they would drift is one of them quietly losing the archived-before-delete
+   check, and that check is the only thing standing between a mis-click and an
+   unrecoverable record. */
+async function archiveRecord(env, keyRe, key, archived) {
+  if (!keyRe.test(key)) return json({ error: "Unknown record" }, 400);
+  if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+  const rec = await env.NEOTYPE.get(key, { type: "json" });
+  if (!rec) return json({ error: "Unknown record" }, 404);
+  rec.archived = archived;
+  if (archived) rec.archivedAt = new Date().toISOString();
+  else delete rec.archivedAt;
+  await env.NEOTYPE.put(key, JSON.stringify(rec));
+  return json({ ok: true, archived });
+}
+
+async function purgeRecord(env, keyRe, key) {
+  if (!keyRe.test(key)) return json({ error: "Unknown record" }, 400);
+  if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
+  const rec = await env.NEOTYPE.get(key, { type: "json" });
+  if (!rec) return json({ error: "Unknown record" }, 404);
+  if (!rec.archived) return json({ error: "Archive that record before deleting it" }, 409);
+  await env.NEOTYPE.delete(key);
+  return json({ ok: true, deleted: 1 });
+}
+
+async function purgeArchived(env, prefix, keyRe) {
+  let count = 0;
+  for (const n of await allKeys(env, prefix)) {
+    if (!keyRe.test(n)) continue;
+    const rec = await env.NEOTYPE.get(n, { type: "json" });
+    if (!rec || !rec.archived) continue;
+    await env.NEOTYPE.delete(n);
+    count++;
+  }
+  return count;
 }
 
 function paymentState(s) {
@@ -1005,7 +1048,11 @@ export const onRequest = async ({ request, env }) => {
     const items = await Promise.all(names.map((n) => env.NEOTYPE.get(n, { type: "json" })));
     // Orders carry their own key so the dashboard can move them along the
     // pipeline without having to reconstruct it (and get it subtly wrong).
-    const out = items.map((it, i) => (it && field === "orders" ? Object.assign({ key: names[i] }, it) : it));
+    /* Both kinds carry their own key now. Orders always did — the dashboard
+       needs it to move a job along the pipeline. Enquiries did not, which was
+       fine while they were read-only and is not once they can be archived:
+       without a key there is nothing to address. */
+    const out = items.map((it, i) => (it ? Object.assign({ key: names[i] }, it) : it));
     return json({
       [field]: out.filter(Boolean),
       total: all.length,
@@ -1047,17 +1094,15 @@ export const onRequest = async ({ request, env }) => {
     if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
-    const key = str(body.key, 200);
-    if (!ORDER_KEY_RE.test(key)) return json({ error: "Unknown order" }, 400);
-    if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
-    const rec = await env.NEOTYPE.get(key, { type: "json" });
-    if (!rec) return json({ error: "Unknown order" }, 404);
-    const archived = body.archived !== false;
-    rec.archived = archived;
-    if (archived) rec.archivedAt = new Date().toISOString();
-    else delete rec.archivedAt;
-    await env.NEOTYPE.put(key, JSON.stringify(rec));
-    return json({ ok: true, archived: archived });
+    return archiveRecord(env, ORDER_KEY_RE, str(body.key, 200), body.archived !== false);
+  }
+
+  // --- archive / restore a contact-form enquiry (admin) ---
+  if (route === "enquiry-archive" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    return archiveRecord(env, ENQUIRY_KEY_RE, str(body.key, 200), body.archived !== false);
   }
 
   /* --- permanently delete an archived order (admin) ---------------------
@@ -1068,14 +1113,29 @@ export const onRequest = async ({ request, env }) => {
     if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
-    const key = str(body.key, 200);
-    if (!ORDER_KEY_RE.test(key)) return json({ error: "Unknown order" }, 400);
+    return purgeRecord(env, ORDER_KEY_RE, str(body.key, 200));
+  }
+
+  // --- permanently delete an archived enquiry (admin) ---
+  if (route === "enquiry-purge" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    return purgeRecord(env, ENQUIRY_KEY_RE, str(body.key, 200));
+  }
+
+  /* --- empty the enquiry archive (admin) --------------------------------
+     No test-mode equivalent here: an enquiry is somebody typing into the
+     contact form, so there is no machine-readable way to tell a real one from
+     a trial. Ian archives what he does not want, then empties it. */
+  if (route === "enquiries-sweep" && method === "POST") {
+    if (!(await authorised(request, env))) return json({ error: "Unauthorized" }, 401);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "Bad request" }, 400); }
+    if (str(body.mode, 20) !== "purge-archived") return json({ error: "Unknown action" }, 400);
     if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
-    const rec = await env.NEOTYPE.get(key, { type: "json" });
-    if (!rec) return json({ error: "Unknown order" }, 404);
-    if (!rec.archived) return json({ error: "Archive that order before deleting it" }, 409);
-    await env.NEOTYPE.delete(key);
-    return json({ ok: true, deleted: 1 });
+    const count = await purgeArchived(env, "enquiry:", ENQUIRY_KEY_RE);
+    return json({ ok: true, mode: "purge-archived", count });
   }
 
   /* --- bulk tidy-ups (admin) --------------------------------------------
@@ -1095,7 +1155,7 @@ export const onRequest = async ({ request, env }) => {
     if (mode !== "archive-test" && mode !== "purge-archived") return json({ error: "Unknown action" }, 400);
     if (!env.NEOTYPE) return json({ error: "Storage unavailable" }, 500);
 
-    const names = await allOrderKeys(env);
+    const names = await allKeys(env, "order:");
     let count = 0, skipped = 0;
 
     if (mode === "archive-test") {
@@ -1112,13 +1172,7 @@ export const onRequest = async ({ request, env }) => {
       return json({ ok: true, mode: mode, count: count, already: skipped });
     }
 
-    for (const n of names) {
-      if (!ORDER_KEY_RE.test(n)) continue;
-      const rec = await env.NEOTYPE.get(n, { type: "json" });
-      if (!rec || !rec.archived) continue;
-      await env.NEOTYPE.delete(n);
-      count++;
-    }
+    count = await purgeArchived(env, "order:", ORDER_KEY_RE);
     return json({ ok: true, mode: mode, count: count });
   }
 
