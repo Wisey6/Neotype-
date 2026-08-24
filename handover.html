@@ -365,6 +365,33 @@ footer {
   <p>The search box above the order list takes anything you remember — a reference, a customer's name,
   part of their email, a size, a finish. Typing two things narrows it rather than widening it, so
   <span class="mono">kelly holo</span> finds Kelly's holographic job and nothing else.</p>
+
+  <h3>Getting rid of an order</h3>
+  <p>Every order has an <strong>Archive</strong> button. Archiving puts it out of the way: it leaves
+  your order list, and it stops counting in your dashboard totals, your Analytics and your Receipts.
+  It is <em>not</em> deleted — it sits in the <strong>Archive</strong> at the bottom of the Orders
+  page, and <strong>Restore</strong> puts it straight back.</p>
+  <p>Archiving is the one you want almost every time: a duplicate, a job that fell through, a payment
+  that failed. Use it freely — nothing is lost.</p>
+
+  <div class="note stop">
+    <p class="note-h">Delete permanently is exactly what it says</p>
+    <p>Inside the archive, each order also offers <strong>Delete permanently</strong>. That erases it —
+    the customer's details, the job, the link to their artwork. There is no undo and no recycle bin.</p>
+    <p>Stripe still has its own record of the <em>payment</em>, so your books are safe either way. What
+    goes for good is everything else about the job.</p>
+    <p>Because of that, an order has to be archived first. You can't delete something in one click by
+    accident.</p>
+  </div>
+
+  <h3>Clearing out the test orders</h3>
+  <p>While the shop was being built, orders were put through with Stripe's <strong>test</strong> cards —
+  fake money, real-looking orders. They're still in your list.</p>
+  <p>At the bottom of the Orders page there's a button offering to archive them, and it tells you how
+  many there are. It finds them by the payment itself, not by the date, so <strong>it cannot touch an
+  order that took real money</strong> — however they're mixed together. Press it, look through the
+  archive to satisfy yourself, then <strong>Empty the archive</strong> when you're happy.</p>
+  <p>Do that once and your dashboard is showing you your actual business.</p>
 </section>
 
 <hr>
@@ -390,10 +417,15 @@ footer {
 
 <section id="prices">
   <h2><span class="n">05</span>Changing your prices</h2>
-  <p class="sub">The <strong>Pricing</strong> tab. Everything is editable, every figure updates live as
-  you type, and nothing takes effect until you press Save.</p>
+  <p class="sub">Under <strong>Pricing</strong> on the left there are three pages — <strong>Stickers</strong>,
+  <strong>Banners</strong> and <strong>Corflute</strong>. Pick the one you're repricing. Everything is
+  editable, every figure updates live as you type, and nothing takes effect until you press Save.</p>
 
-  <p>The first three boxes in the sticker section are the ones you'll actually reach for:
+  <p><strong>Save saves all three.</strong> There is one price list behind those pages, so pressing Save
+  on the corflute page also publishes anything you changed on stickers. If you only meant to change one
+  thing, press <strong>Undo changes</strong> and start again rather than saving half a thought.</p>
+
+  <p>The first three boxes on the sticker page are the ones you'll actually reach for:
   <strong>Rate per m²</strong> for large runs, the <strong>small-run premium per m²</strong> added on
   top of it for short jobs, and the <strong>minimum order</strong>. Everything below them —
   finishes, cuts, turnarounds — is a percentage adjustment on that rate.</p>

@@ -82,7 +82,7 @@ console.log("\n[ band impact table ]");
 await p.goto(B + "/admin.html", { waitUntil: "networkidle" });
 await p.fill("#admPass", "x"); await p.click("#admUnlock");
 await p.waitForSelector(".adm-rail");
-await p.click('[data-view="pricing"]');
+await p.click('[data-view="price-stickers"]');
 await p.waitForTimeout(700);
 await p.locator(".adm-impact").scrollIntoViewIfNeeded();
 check("the impact table renders", await p.locator(".adm-impact").count() === 1);
