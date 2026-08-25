@@ -61,6 +61,30 @@ start it on an evening when someone needs the shop working.
 
 ---
 
+## First, settle one question: same Cloudflare account, or a different one?
+
+This decides whether you are doing a configuration job or a data migration, and
+nothing else in this document makes sense until it is answered.
+
+**KV namespaces and R2 buckets belong to a Cloudflare account.** They cannot be
+shared across accounts, and a Pages project can only bind storage that lives in
+its own account.
+
+| | What it means |
+|---|---|
+| **Same account** as the existing Pages project | Your new project can bind the **existing** `NEOTYPE` KV namespace and `ART` bucket. Live prices, every order, every enquiry and all artwork carry straight over. This is a configuration job. |
+| **A different account** | You get an **empty** KV namespace. The shop will serve the shipped default prices, `/admin` will show no orders and no enquiries, and no artwork will resolve. Nothing is lost from the old account — but nothing arrives in the new one either. This is a migration, and it needs a deliberate export and import that nobody has written yet. |
+
+**How to tell:** in the Cloudflare dashboard, look at Storage & Databases → KV.
+If a namespace called `NEOTYPE` is listed and already holds a `pricing` key, you
+are in the right account. If the list is empty, you are not.
+
+If it turns out to be a different account, **stop and say so** rather than
+standing up an empty shop that looks fine. Serving default prices to real
+customers is worse than serving nothing, because nobody notices.
+
+---
+
 ## What a working deployment needs
 
 A Pages project pointed at this repo will build and serve the HTML immediately.
@@ -200,7 +224,9 @@ done
 `404` means they did not deploy. A `cs_test_…` session id means the test key is
 in use; `cs_live_…` means real money. `/api/pricing` returning a base rate of
 `85` means KV is not bound or is empty and the shipped defaults are being served
-— the live table reads `150`.
+— the live table reads `150`. If you see `85`, re-read the account question at
+the top of this document before changing anything: an empty KV usually means the
+project is in the wrong Cloudflare account, not that a binding is misspelt.
 
 Then run the suite. No network, no credentials:
 
