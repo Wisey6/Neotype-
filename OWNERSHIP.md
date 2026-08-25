@@ -9,8 +9,15 @@ else's. They are deliberately separate documents, because one is read once and
 the other is read whenever something breaks.
 
 Everything marked **verified** below was checked against production on
-24 Aug 2026. Everything marked **from the runbook** comes from `CLOUDFLARE.md`
+25 Aug 2026. Everything marked **from the runbook** comes from `CLOUDFLARE.md`
 and needs a human with console access to confirm.
+
+> **Where this got to — 25 Aug 2026.** Ian now has **Claude**, **GitHub**,
+> **Cloudflare** and **Resend** configured, and has set his own admin password
+> and signed off the prices. What is left is **Stripe**, the **domain
+> registration**, and the **Google Business Profile**. The site was re-checked
+> after those account changes and is unaffected: all pages 200, checkout still
+> creating live Stripe sessions, and every mail record still in place.
 
 ---
 
@@ -26,25 +33,31 @@ re-cloned from any backup; a Stripe account with the live keys in it cannot.
 
 ## The accounts
 
-| Account | What it holds | Action |
+| Account | What it holds | State |
 |---|---|---|
-| **Cloudflare** | The site itself, the KV namespace holding orders and prices, the R2 bucket holding artwork, DNS, and every secret | Add Ian as a member |
-| **Stripe** | The money. Live keys, and the webhook that records orders | Add Ian to the account |
-| **GoDaddy** | The domain registration | Confirm Ian holds it |
-| **Microsoft 365** | `kiko@neotype.au` | Already his |
-| **Resend** | Order email, enquiry email, and the `/admin` recovery codes | Add Ian |
-| **Google Business Profile** | The local listing | Transfer primary owner |
-| **GitHub** | The source code | Collaborator now, transfer later |
+| **Cloudflare** | The site itself, the KV namespace holding orders and prices, the R2 bucket holding artwork, DNS, and every secret | ✅ Ian configured |
+| **Resend** | Order email, enquiry email, and the `/admin` recovery codes | ✅ Ian configured |
+| **GitHub** | The source code | ✅ Ian configured |
+| **Claude** | How Ian gets help with any of the above | ✅ Ian configured |
+| **Microsoft 365** | `kiko@neotype.au` | ✅ Already his |
+| **Stripe** | The money. Live keys, and the webhook that records orders | ⬜ **Add Ian to the account** |
+| **GoDaddy** | The domain registration | ⬜ **Confirm Ian holds it** |
+| **Google Business Profile** | The local listing | ⬜ **Transfer primary owner** |
 
-Resend is easy to file under "just email" and skip. Don't — it is also what
-delivers the six-digit code that gets you back into `/admin` when the password
-is lost. Losing Resend turns a forgotten password into a lockout.
+Resend is easy to file under "just email" and skip. It was not skipped, and that
+matters more than it looks: Resend is what delivers the six-digit code that gets
+you back into `/admin` when the password is lost. Without it, a forgotten
+password is a lockout rather than an inconvenience.
+
+**Stripe is now the important one.** It is the only remaining account that holds
+money rather than infrastructure, and the one thing on this list that cannot be
+rebuilt from anything else.
 
 ---
 
 ## The order to do it in
 
-**1. Set `ADMIN_PASSWORD` to something Ian chose.**
+**1. Set `ADMIN_PASSWORD` to something Ian chose.** ✅ *Done — Ian set his own.*
 Cloudflare → Pages → Settings → Variables and Secrets. Add it as a **Secret**,
 to **both** Production and Preview. Then have Ian sign in with it.
 
@@ -56,14 +69,15 @@ support, not by whoever typed it. Write it down somewhere real. The recovery
 path is described in `CLOUDFLARE.md` §3c and is worth testing once while
 someone is watching.
 
-**2. Confirm the prices.**
+**2. Confirm the prices.** ✅ *Done — Ian signed these off.*
 The live table currently reads $150/m² base for stickers, $200 premium,
 $50/m² for banners with a $60 minimum, and $58/m² for corflute. A 75 × 75 mm
 die-cut matte run of 100 prices at $127. Ian has already set these through
 `/admin` and they stuck — this is a yes/no, not a task, but nobody has said the
 yes out loud yet.
 
-**3. Move the accounts.** The table above.
+**3. Move the accounts.** The table above — Stripe, the domain and the
+Google listing are what remain.
 
 **4. Back up the repository, and add Ian to it.**
 Deliberately last, because it is the only step that can break a working deploy.
@@ -147,7 +161,7 @@ All **verified** on 24 Aug 2026:
 | Internal documents | 301 to the homepage |
 | Apex domain | `neotype.au` → `www`, query string preserved, `/api/*` correctly excluded |
 | Stripe webhook | Live on both hostnames; rejects an unsigned request with 400 |
-| Test suite | 491 checks across 18 suites, 0 failures |
+| Test suite | 513 checks across 18 suites, 0 failures |
 
 ## What is deliberately unfinished
 
