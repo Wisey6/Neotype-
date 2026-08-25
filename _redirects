@@ -32,6 +32,7 @@
 # Adding a new internal document? Add it here in the same commit.
 
 /handover.html    /  301
+/START-HERE.md    /  301
 /KNOWN-ISSUES.md  /  301
 /OWNERSHIP.md     /  301
 /README.md        /  301
