@@ -146,7 +146,8 @@ declaring it makes Cloudflare run `npm install` on deploy.
 `PRICING.md` — how to change prices ·
 `CLOUDFLARE.md` — hosting, DNS, bindings, the runbook ·
 `SETUP.md` — deployment ·
-`MAIL-DNS.md` — email records
+`MAIL-DNS.md` — email records ·
+`CONNECTORS.md` — Ian's Claude connectors and what each needs first
 
 ## Accessibility
 
