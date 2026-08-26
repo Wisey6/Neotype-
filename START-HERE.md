@@ -214,9 +214,13 @@ curl -s -X POST "$BASE/api/checkout" -H 'Content-Type: application/json' \
   -d '{"product":"stickers","w":75,"h":75,"qty":100,"finish":"vinyl-matte","shape":"die","turnaround":"standard"}' \
   | head -c 120
 
-# internal documents must NOT be readable — every one a 301
+# internal documents must NOT be readable — every one a 301.
+# Print the first bytes of the body too: on Pages a 200 has two different
+# causes and the status code alone cannot tell them apart.
 for p in /START-HERE.md /OWNERSHIP.md /KNOWN-ISSUES.md /CLOUDFLARE.md /handover.html; do
-  printf '%-22s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' "$BASE$p")"
+  printf '%-22s %-4s %s\n' "$p" \
+    "$(curl -s -o /dev/null -w '%{http_code}' "$BASE$p")" \
+    "$(curl -s "$BASE$p" | head -c 14 | tr -d '\n')"
 done
 ```
 
@@ -227,6 +231,15 @@ in use; `cs_live_…` means real money. `/api/pricing` returning a base rate of
 — the live table reads `150`. If you see `85`, re-read the account question at
 the top of this document before changing anything: an empty KV usually means the
 project is in the wrong Cloudflare account, not that a binding is misspelt.
+
+**Only `301` passes on the internal documents.** This repository ships no
+`404.html`, so Pages falls back to serving `index.html` **with a `200`** for any
+path it cannot match — a missing file and a leaked one return the same status.
+That is why the check prints the body. A `200` whose body starts `<!DOCTYPE
+html` means the document is *absent from the deploy*; a `200` whose body starts
+with Markdown (`# `) means it is there and its `_redirects` rule is not.
+Verified on production, 26 Aug 2026: an invented path returns the homepage with
+`200`.
 
 Then run the suite. No network, no credentials:
 
